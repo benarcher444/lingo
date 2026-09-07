@@ -64,9 +64,10 @@ back until you get both right. Answers are matched case- and accent-insensitivel
 (`etre` is accepted for `être`), with a manual override when you were right and
 the checker disagreed.
 
-**Listening practice** — the word is spoken, you type what you heard. Speech uses
-the browser's own voices, so there is no audio to download or cache and it works
-with no internet.
+**Listening practice** — the word is spoken in the target language and you type
+what it *means* in English, so it tests comprehension rather than spelling back
+what you just heard. Speech uses the browser's own voices, so there is no audio
+to download or cache and it works with no internet.
 
 **Conversation** — write in the language you are learning. Your sentence is
 quietly corrected into fluent text first, then answered in that language, and you
@@ -80,8 +81,10 @@ OPENAI_API_KEY=sk-...       # or ANTHROPIC_API_KEY for anthropic
 # AI_MODEL=gpt-4o-mini      # optional; overrides the provider default
 ```
 
-Defaults are `gpt-4o-mini` for OpenAI and `claude-opus-5` for Anthropic. Leave
-`AI_PROVIDER` unset and it uses whichever key is present, preferring OpenAI.
+Defaults are `gpt-4o-mini` for OpenAI and `claude-opus-5` for Anthropic. To use
+Claude, set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`; nothing else
+changes. Leave `AI_PROVIDER` unset and it uses whichever key is present,
+preferring OpenAI.
 Run `npm run ai:check` to confirm it works before relying on it. Without a
 provider the page says so and everything else still works.
 
@@ -206,6 +209,22 @@ hangs off `user_id`, so multi-user is structural rather than retrofitted.
 language is an insert. `progress` holds one row per word/mode/direction;
 `attempts` holds one row per answer, so the scoring formula can be retuned
 against real history later. `stat_snapshots` is append-only.
+
+---
+
+## Using it on your phone
+
+The server binds to every interface, so any device on the same Wi-Fi can reach
+it. The startup log prints the address:
+
+```
+On this machine:  http://localhost:3000
+On your phone:    http://192.168.0.6:3000   (same Wi-Fi)
+```
+
+Use that second one. `0.0.0.0` is the bind address, not somewhere you can
+browse to. The IP changes when you join a different network, which is why the
+server reports it rather than the README hard-coding one.
 
 ---
 

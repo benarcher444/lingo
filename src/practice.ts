@@ -92,7 +92,10 @@ export function recordAnswer(opts: {
 
   if (!word) return null;
 
-  const expected = opts.direction === "to_english" ? word.english : word.term;
+  // Only "from_english" asks for the target language. Listening plays the
+  // target-language word and asks what it means, so it wants the English —
+  // that tests comprehension rather than spelling back what you just heard.
+  const expected = opts.direction === "from_english" ? word.term : word.english;
   const graded = opts.override === true || answersMatch(opts.given, expected);
 
   const previousScore = currentScore(opts.wordId, opts.mode);

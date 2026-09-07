@@ -193,13 +193,24 @@ function lanAddresses(): string[] {
 }
 
 try {
-  await app.listen({ port: PORT, host: HOST });
+  await app.listen({
+    port: PORT,
+    host: HOST,
+    // Fastify's default line reads "listening at http://0.0.0.0:3000", which
+    // looks like an address you can open but is only the bind address. Replace
+    // it with the addresses that actually work.
+    listenTextResolver: () => `Lingo is running`,
+  });
 
   app.log.info(`Database: ${databasePath}`);
   app.log.info(`On this machine:  http://localhost:${PORT}`);
 
-  for (const address of lanAddresses()) {
-    app.log.info(`On your network:  http://${address}:${PORT}`);
+  const lan = lanAddresses();
+  for (const address of lan) {
+    app.log.info(`On your phone:    http://${address}:${PORT}   (same Wi-Fi)`);
+  }
+  if (lan.length === 0) {
+    app.log.warn("No network address found — only this machine can reach it.");
   }
 } catch (error) {
   app.log.error(error);

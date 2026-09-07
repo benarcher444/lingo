@@ -115,8 +115,10 @@ export function barChart(
 
   const rowH = 32;
   const height = rows.length * rowH + 8;
-  const labelW = 140;
-  const barW = W - labelW - 62;
+  // labelX inset: the text used to start at x=0, flush against the card border.
+  const labelX = 10;
+  const labelW = 150;
+  const barW = W - labelW - 66;
 
   const bars = rows
     .map((row, i) => {
@@ -125,7 +127,7 @@ export function barChart(
       const w = (pct / 100) * barW;
 
       return `
-        <text x="0" y="${y + 13}" font-size="14" fill="var(--text-muted)">${esc(truncate(row.label, 15))}</text>
+        <text x="${labelX}" y="${y + 13}" font-size="14" fill="var(--text-muted)">${esc(truncate(row.label, 15))}</text>
         <rect x="${labelW}" y="${y + 3}" width="${barW}" height="13" rx="6.5" fill="var(--surface-sunken)" />
         <rect x="${labelW}" y="${y + 3}" width="${Math.max(0, w).toFixed(1)}" height="13" rx="6.5" fill="var(--learnt)" />
         <text x="${labelW + barW + 9}" y="${y + 13}" font-size="13" fill="var(--text-faint)"

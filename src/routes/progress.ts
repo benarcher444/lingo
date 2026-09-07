@@ -104,12 +104,18 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       .map((v) => Number(v))
       .filter((n) => Number.isInteger(n));
 
-    const showAllCategories = requestedCats.length === 0;
+    // A hidden marker distinguishes "the user chose nothing" from "first visit,
+    // no query string". Without it, unticking every category read as "show
+    // everything", so the overall line could never be seen on its own.
+    const explicitSelection = query["filtered"] === "1";
+
+    const showAllCategories = !explicitSelection && requestedCats.length === 0;
     const selectedCats = new Set(
       showAllCategories ? types.map((t) => t.wordTypeId) : requestedCats,
     );
 
-    const includeOverall = query["overall"] !== "0";
+    // On a first visit the overall line is on; after that the checkbox decides.
+    const includeOverall = explicitSelection ? query["overall"] === "1" : true;
 
     /* ---- The series ---- */
 
@@ -192,6 +198,65 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const totalAnswers = days.reduce((sum, d) => sum + d.count, 0);
     const activeDays = days.filter((d) => d.count > 0).length;
 
+    /* ---- Today's practice, split by mode ----
+       Deliberately ignores the mode toggle and the category filter: this is
+       "what have I done today", and both modes count towards that. */
+
+    const todayStamp = new Date().toISOString().slice(0, 10);
+
+    const todayRows = db
+      .select({
+        mode: attempts.mode,
+        answers: sql<number>`count(*)`,
+        correct: sql<number>`sum(case when ${attempts.correct} then 1 else 0 end)`,
+        words: sql<number>`count(distinct ${attempts.wordId})`,
+      })
+      .from(attempts)
+      .innerJoin(words, eq(words.id, attempts.wordId))
+      .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
+      .where(
+        and(
+          eq(wordTypes.languageId, language.id),
+          eq(sql`substr(${attempts.answeredAt}, 1, 10)`, todayStamp),
+        ),
+      )
+      .groupBy(attempts.mode)
+      .all();
+
+    const todayFor = (m: Mode) => {
+      const row = todayRows.find((r) => r.mode === m);
+      return {
+        answers: row?.answers ?? 0,
+        correct: row?.correct ?? 0,
+        words: row?.words ?? 0,
+      };
+    };
+
+    const todayWritten = todayFor("written");
+    const todayAudio = todayFor("audio");
+    const todayTotalWords = todayWritten.words + todayAudio.words;
+
+    const todayCard = (
+      title: string,
+      icon: string,
+      stats: { answers: number; correct: number; words: number },
+      colour: string,
+    ) => {
+      const pct = stats.answers > 0 ? Math.round((100 * stats.correct) / stats.answers) : 0;
+      return `<div class="today-mode">
+        <div class="today-mode-head">${icon}<span>${esc(title)}</span></div>
+        <div class="today-figure" style="color:${colour}">${stats.words}</div>
+        <div class="today-caption">word${stats.words === 1 ? "" : "s"} tested</div>
+        <div class="today-sub">
+          ${
+            stats.answers > 0
+              ? `${stats.answers} answer${stats.answers === 1 ? "" : "s"} · ${pct}% right`
+              : `<span class="hint">nothing yet today</span>`
+          }
+        </div>
+      </div>`;
+    };
+
     /* ---- Status split ---- */
 
     const statusBands = [
@@ -214,16 +279,6 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       )
       .join("");
 
-    const measureUrl = (key: string) => {
-      const params = new URLSearchParams();
-      params.set("language", String(language.id));
-      params.set("mode", mode);
-      params.set("measure", key);
-      if (!includeOverall) params.set("overall", "0");
-      if (!showAllCategories) for (const id of selectedCats) params.append("cats", String(id));
-      return `/progress?${params.toString()}`;
-    };
-
     const body = `
       ${pageHead({
         title: "Progress",
@@ -245,6 +300,13 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
             <form method="get" action="/progress" class="row" id="measure-form">
               <input type="hidden" name="language" value="${language.id}">
               <input type="hidden" name="mode" value="${mode}">
+              ${
+                showAllCategories && includeOverall
+                  ? ""
+                  : `<input type="hidden" name="filtered" value="1">
+                     ${includeOverall ? `<input type="hidden" name="overall" value="1">` : ""}
+                     ${[...selectedCats].map((id) => `<input type="hidden" name="cats" value="${id}">`).join("")}`
+              }
               <select class="select" name="measure" onchange="this.form.submit()" aria-label="Measure">
                 ${Object.entries(MEASURES)
                   .map(
@@ -266,6 +328,9 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
             <input type="hidden" name="language" value="${language.id}">
             <input type="hidden" name="mode" value="${mode}">
             <input type="hidden" name="measure" value="${measure}">
+            <!-- Marks the selection as deliberate, so unticking everything
+                 means "show nothing" rather than falling back to "show all". -->
+            <input type="hidden" name="filtered" value="1">
 
             <span class="chart-filters-label">Show</span>
 
@@ -279,15 +344,31 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
                 (t) => `
               <label class="check">
                 <input type="checkbox" name="cats" value="${t.wordTypeId}"
-                       ${!showAllCategories && selectedCats.has(t.wordTypeId) ? "checked" : ""}
+                       ${selectedCats.has(t.wordTypeId) ? "checked" : ""}
                        onchange="this.form.submit()"> ${esc(t.wordTypeName)}
                 <span class="hint">${t.total}</span>
               </label>`,
               )
               .join("")}
 
-            <a class="btn btn-sm btn-ghost" href="${esc(measureUrl(measure).replace(/&cats=\d+/g, "").replace("&overall=0", ""))}">Reset</a>
+            <a class="btn btn-sm btn-ghost"
+               href="/progress?language=${language.id}&mode=${mode}&measure=${measure}">Reset</a>
           </form>
+        </div>
+
+        <!-- Today at a glance, both modes side by side. Separate from the
+             30-day activity chart, which is about consistency over time. -->
+        <div class="card">
+          <div class="card-head">
+            <div><h2>Today</h2>
+              <div class="sub">${esc(todayStamp)} · ${todayTotalWords} word${todayTotalWords === 1 ? "" : "s"} practised across both modes</div></div>
+          </div>
+          <div class="card-body">
+            <div class="today-grid">
+              ${todayCard("Written practice", icons.pen, todayWritten, "var(--accent)")}
+              ${todayCard("Listening practice", icons.ear, todayAudio, "#2f7dc4")}
+            </div>
+          </div>
         </div>
 
         <!-- Where every word currently sits. These four sum to the total. -->

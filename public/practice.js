@@ -31,7 +31,7 @@ let overrideKeyHandler = null;
 const DIRECTION_LABEL = {
   to_english: `${config.languageName ?? "Target"} → English`,
   from_english: `English → ${config.languageName ?? "Target"}`,
-  listen: "Listening",
+  listen: `${config.languageName ?? "Target"} heard → English`,
 };
 
 /* ------------------------------------------------------------------
@@ -172,7 +172,7 @@ function render() {
                    <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
                  </svg>
                </button>
-               <div class="quiz-meta">Tap to replay · ${escapeHtml(card.wordType)}</div>`
+               <div class="quiz-meta">Tap to replay · what does it mean? · ${escapeHtml(card.wordType)}</div>`
             : `<div class="quiz-prompt">${escapeHtml(prompt)}</div>
                <div class="quiz-meta">${escapeHtml(card.wordType)}</div>`
         }

@@ -16,7 +16,7 @@ const MODE_COPY: Record<Mode, { title: string; sub: string }> = {
   },
   audio: {
     title: "Listening practice",
-    sub: "Hear the word, type what you heard. Replay as often as you like.",
+    sub: "Hear the word, then type what it means in English. Replay as often as you like.",
   },
 };
 

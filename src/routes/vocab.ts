@@ -447,7 +447,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         }
 
         <div class="card">
-          <div class="card-head">
+          <div class="card-head list-head">
             <div>
               <h2>Your words</h2>
               <div class="sub">${shown.length} of ${rows.length}${rows.length > 300 ? " (first 300)" : ""}${
@@ -456,9 +456,17 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                   : ""
               }</div>
             </div>
-            <form class="row" method="get" action="/vocab">
-              <input type="hidden" name="language" value="${language.id}">
-              <select class="select" name="sort" onchange="this.form.submit()" aria-label="Sort by">
+          </div>
+
+          <!-- Its own full-width bar rather than crammed into the card header,
+               where three controls were squeezed into a narrow column and
+               stacked one per line. -->
+          <form class="list-toolbar" method="get" action="/vocab">
+            <input type="hidden" name="language" value="${language.id}">
+
+            <label class="toolbar-field">
+              <span>Sort</span>
+              <select class="select" name="sort" onchange="this.form.submit()">
                 ${Object.entries(SORTS)
                   .map(
                     ([key, label]) =>
@@ -466,6 +474,10 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                   )
                   .join("")}
               </select>
+            </label>
+
+            <label class="toolbar-field">
+              <span>Category</span>
               <select class="select" name="type" onchange="this.form.submit()">
                 <option value="">All types</option>
                 ${types
@@ -475,11 +487,21 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                   )
                   .join("")}
               </select>
-              <input class="input" style="width:190px" type="search" name="q"
-                     placeholder="Search words…" value="${esc(search)}">
-              <button class="btn" type="submit">Search</button>
-            </form>
-          </div>
+            </label>
+
+            <label class="toolbar-field toolbar-search">
+              <span>Search</span>
+              <input class="input" type="search" name="q"
+                     placeholder="Word or meaning…" value="${esc(search)}">
+            </label>
+
+            <button class="btn" type="submit">Search</button>
+            ${
+              search || selectedType !== null || sort !== "added_desc"
+                ? `<a class="btn btn-ghost btn-sm" href="${esc(vocabUrl(language.id, {}))}">Clear</a>`
+                : ""
+            }
+          </form>
           ${
             shown.length === 0
               ? `<div class="empty">
