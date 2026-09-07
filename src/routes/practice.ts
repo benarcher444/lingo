@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
@@ -287,7 +289,9 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       count: parsed.data.count,
     });
 
-    return reply.send({ cards });
+    // Answers carry this back, so a day's practice can be counted as sessions
+    // rather than as distinct words.
+    return reply.send({ sessionId: randomUUID(), cards });
   });
 
   app.post("/api/practice/answer", async (request, reply) => {
@@ -301,6 +305,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
         direction: z.enum(["to_english", "from_english", "listen"]),
         answer: z.string().max(300),
         override: z.boolean().optional(),
+        sessionId: z.string().max(64).optional(),
       })
       .safeParse(request.body);
 
@@ -313,6 +318,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       direction: parsed.data.direction,
       given: parsed.data.answer,
       override: parsed.data.override,
+      sessionId: parsed.data.sessionId ?? null,
     });
 
     if (!result) return reply.code(404).send({ error: "not_found" });

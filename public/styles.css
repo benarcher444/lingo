@@ -1005,13 +1005,27 @@ table.data tbody tr:hover { background: var(--surface-2); }
 
 .today-mode-head svg { width: 15px; height: 15px; stroke-width: 1.9; flex: none; }
 
+/* Two figures side by side: the session total you set a target against, and
+   how many distinct words that actually covered. */
+.today-pair {
+  display: flex;
+  gap: 26px;
+  align-items: flex-start;
+  margin-top: 8px;
+}
+
 .today-figure {
   font-size: 2.3rem;
   font-weight: 680;
   letter-spacing: -0.03em;
   line-height: 1.1;
-  margin-top: 8px;
   font-variant-numeric: tabular-nums;
+}
+
+.today-figure-sub {
+  font-size: 1.5rem;
+  color: var(--text-muted);
+  padding-top: 0.55rem;
 }
 
 .today-caption {

@@ -76,6 +76,8 @@ export function recordAnswer(opts: {
   given: string;
   /** Learner overrode a miss to correct — recorded, but counted as correct. */
   override?: boolean;
+  /** Groups answers into one practice session. See attempts.sessionId. */
+  sessionId?: string | null;
 }): AnswerResult | null {
   const word = db
     .select({
@@ -145,6 +147,7 @@ export function recordAnswer(opts: {
       correct: graded,
       overridden: opts.override === true,
       givenAnswer: opts.given.slice(0, 200),
+      sessionId: opts.sessionId ?? null,
     })
     .run();
 

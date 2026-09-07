@@ -7,6 +7,7 @@
 
 import {
   answersMatch,
+  stripParenthetical,
   daysBetween,
   scoreWord,
   selectionOdds,
@@ -55,6 +56,36 @@ check("accepts coeur for cœur", answersMatch("coeur", "cœur"), true);
 check("accepts straight for curly apostrophe", answersMatch("l'eau", "l’eau"), true);
 check("accepts n for ñ", answersMatch("manana", "mañana"), true);
 check("still rejects a wrong answer", answersMatch("cat", "the dog"), false);
+
+console.log("\nStripping notes");
+check("removes a trailing note", stripParenthetical("because (pq)"), "because");
+check("removes a mid-string note", stripParenthetical("to know (facts) well"), "to know well");
+check("leaves plain text alone", stripParenthetical("because"), "because");
+
+console.log("\nParenthetical notes are optional");
+check("bare answer for a noted expectation", answersMatch("because", "because (pq)"), true);
+check("typing the note too is fine", answersMatch("because (pq)", "because (pq)"), true);
+check("to know (facts)", answersMatch("to know", "to know (facts)"), true);
+check("since (time)", answersMatch("since", "since (time)"), true);
+check("note on the answer side only", answersMatch("because (whatever)", "because"), true);
+check("accents still work alongside", answersMatch("etre", "être (verb)"), true);
+check("a genuinely wrong answer still fails", answersMatch("although", "because (pq)"), false);
+check("empty never passes", answersMatch("", "because (pq)"), false);
+check("note-only expectation does not match empty", answersMatch("", "(pq)"), false);
+
+console.log("\nSlash means 'either reading'");
+check("first alternative", answersMatch("at last", "at last/finally"), true);
+check("second alternative", answersMatch("finally", "at last/finally"), true);
+check("the whole thing as written", answersMatch("at last/finally", "at last/finally"), true);
+check("shared prefix: to do", answersMatch("to do", "to do/make"), true);
+check("shared prefix: to make", answersMatch("to make", "to do/make"), true);
+check("bare second part", answersMatch("make", "to do/make"), true);
+check("three alternatives", answersMatch("hi", "hello/hi/hey"), true);
+check("slash plus a note", answersMatch("finally", "at last/finally (fin)"), true);
+check("slash plus an accent", answersMatch("etre", "être/exister"), true);
+check("a wrong answer still fails", answersMatch("never", "at last/finally"), false);
+check("a fragment does not pass", answersMatch("at", "at last/finally"), false);
+check("empty still never passes", answersMatch("", "at last/finally"), false);
 
 console.log("\nScoring");
 check("never-tested word scores 0", scoreWord({ directions: [], lastTested: null }, "written"), 0);

@@ -152,11 +152,21 @@ export const attempts = sqliteTable(
     /** True when the learner overrode a wrong answer to correct. */
     overridden: integer("overridden", { mode: "boolean" }).notNull().default(false),
     givenAnswer: text("given_answer"),
+    /**
+     * Which practice session this answer belonged to. Lets "words tested today"
+     * be counted the way a daily target is counted — three sessions of 30, 30
+     * and 40 is 100, whether or not the same word appeared twice. Counting
+     * distinct words instead would report a smaller, different thing.
+     *
+     * Null on rows recorded before sessions were tracked.
+     */
+    sessionId: text("session_id"),
     answeredAt: text("answered_at").notNull().default(now),
   },
   (table) => ({
     wordIdx: index("attempts_word_idx").on(table.wordId),
     answeredAtIdx: index("attempts_answered_at_idx").on(table.answeredAt),
+    sessionIdx: index("attempts_session_idx").on(table.sessionId),
   }),
 );
 

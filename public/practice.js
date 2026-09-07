@@ -20,6 +20,8 @@ let rightFirstTime = 0;
 let wrong = 0;
 let learntNow = 0;
 let awaitingContinue = false;
+/** Issued by the server when a session starts; sent back with every answer. */
+let sessionId = null;
 /** Active while a miss is on screen, so `y` can override it. Removed after. */
 let overrideKeyHandler = null;
 
@@ -101,6 +103,7 @@ form?.addEventListener("submit", async (event) => {
 
   const payload = await response.json();
   cards = payload.cards ?? [];
+  sessionId = payload.sessionId ?? null;
 
   if (cards.length === 0) {
     quizEl.hidden = false;
@@ -225,6 +228,7 @@ async function onAnswer(event) {
       mode: config.mode,
       direction: current.direction,
       answer,
+      sessionId,
     }),
   });
 
@@ -316,6 +320,7 @@ async function override(given) {
       direction: current.direction,
       answer: given,
       override: true,
+      sessionId,
     }),
   });
 
@@ -393,7 +398,16 @@ function speakTerm(text) {
 
   window.speechSynthesis.cancel();
 
-  const utterance = new SpeechSynthesisUtterance(text);
+  // Speak the plain word: drop parenthetical notes (otherwise it reads "because
+  // open bracket p q") and take the first alternative before a slash (otherwise
+  // "to do/make" is read as "to do slash make").
+  const spoken = String(text)
+    .replace(/\([^)]*\)/g, " ")
+    .split("/")[0]
+    .replace(/\s+/g, " ")
+    .trim();
+
+  const utterance = new SpeechSynthesisUtterance(spoken || text);
   utterance.lang = config.languageCode || "en-GB";
   utterance.rate = 0.9;
 

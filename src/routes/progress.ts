@@ -209,7 +209,18 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         mode: attempts.mode,
         answers: sql<number>`count(*)`,
         correct: sql<number>`sum(case when ${attempts.correct} then 1 else 0 end)`,
+        /** Distinct words — how much of the vocabulary today touched. */
         words: sql<number>`count(distinct ${attempts.wordId})`,
+        /**
+         * Words counted once per session, so three sessions of 30, 30 and 40
+         * total 100 even where the same word came up twice. That is how a daily
+         * target is counted. Rows from before sessions were tracked have a null
+         * session id; coalescing to the date groups each such day as one
+         * session, which matches what the old figure meant.
+         */
+        wordsWithRepeats: sql<number>`count(distinct
+          coalesce(${attempts.sessionId}, substr(${attempts.answeredAt}, 1, 10))
+          || ':' || ${attempts.wordId})`,
       })
       .from(attempts)
       .innerJoin(words, eq(words.id, attempts.wordId))
@@ -229,6 +240,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         answers: row?.answers ?? 0,
         correct: row?.correct ?? 0,
         words: row?.words ?? 0,
+        wordsWithRepeats: row?.wordsWithRepeats ?? 0,
       };
     };
 
@@ -239,14 +251,24 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const todayCard = (
       title: string,
       icon: string,
-      stats: { answers: number; correct: number; words: number },
+      stats: { answers: number; correct: number; words: number; wordsWithRepeats: number },
       colour: string,
     ) => {
       const pct = stats.answers > 0 ? Math.round((100 * stats.correct) / stats.answers) : 0;
       return `<div class="today-mode">
         <div class="today-mode-head">${icon}<span>${esc(title)}</span></div>
-        <div class="today-figure" style="color:${colour}">${stats.words}</div>
-        <div class="today-caption">word${stats.words === 1 ? "" : "s"} tested</div>
+
+        <div class="today-pair">
+          <div title="Counted once per session, so repeats across sessions add up — the figure to set a daily target against">
+            <div class="today-figure" style="color:${colour}">${stats.wordsWithRepeats}</div>
+            <div class="today-caption">words tested</div>
+          </div>
+          <div title="How many different words today touched, counting each once">
+            <div class="today-figure today-figure-sub">${stats.words}</div>
+            <div class="today-caption">different words</div>
+          </div>
+        </div>
+
         <div class="today-sub">
           ${
             stats.answers > 0
@@ -256,6 +278,8 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         </div>
       </div>`;
     };
+
+    const todayTotalTested = todayWritten.wordsWithRepeats + todayAudio.wordsWithRepeats;
 
     /* ---- Status split ---- */
 
@@ -361,7 +385,11 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         <div class="card">
           <div class="card-head">
             <div><h2>Today</h2>
-              <div class="sub">${esc(todayStamp)} · ${todayTotalWords} word${todayTotalWords === 1 ? "" : "s"} practised across both modes</div></div>
+              <div class="sub">${esc(todayStamp)} · <strong>${todayTotalTested}</strong> word${todayTotalTested === 1 ? "" : "s"} tested across both modes${
+                todayTotalWords !== todayTotalTested
+                  ? ` · ${todayTotalWords} different`
+                  : ""
+              }</div></div>
           </div>
           <div class="card-body">
             <div class="today-grid">

@@ -252,6 +252,84 @@ export function normaliseAnswer(text: string): string {
   return deaccent(text).trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/**
+ * Remove parenthesised notes: "because (pq)" -> "because".
+ *
+ * Brackets are used to disambiguate entries that share a translation — car is
+ * "because (c)", parce que is "because (pq)", savoir is "to know (facts)". That
+ * context is worth keeping on the card, but nobody types it when answering.
+ */
+export function stripParenthetical(text: string): string {
+  return text
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Expand a slash into the readings it stands for.
+ *
+ *   "at last/finally"  ->  at last/finally, at last, finally, at finally
+ *   "to do/make"       ->  to do/make, to do, make, to make
+ *
+ * Two shapes are in play. Sometimes the slash separates whole alternatives
+ * ("at last/finally"); sometimes it separates only the final word and the rest
+ * is shared ("to do/make" means "to do" or "to make"). Both readings are
+ * generated because there is no reliable way to tell them apart, and being
+ * lenient here only risks accepting a phrasing the learner plausibly meant —
+ * far better than rejecting an answer that was right.
+ */
+function expandAlternatives(text: string): string[] {
+  if (!text.includes("/")) return [text];
+
+  const parts = text
+    .split("/")
+    .map((part) => part.trim())
+    .filter(Boolean);
+
+  if (parts.length < 2) return [text];
+
+  const out = new Set<string>([text, ...parts]);
+
+  // Shared-prefix reading: everything before the last word of the first part.
+  const firstWords = parts[0]!.split(/\s+/);
+  if (firstWords.length > 1) {
+    const prefix = firstWords.slice(0, -1).join(" ");
+    for (const part of parts.slice(1)) out.add(`${prefix} ${part}`);
+  }
+
+  return [...out];
+}
+
+/**
+ * Every spelling that should be accepted for a stored value: with and without
+ * the parenthetical note, and with slashes expanded.
+ */
+export function answerVariants(text: string): string[] {
+  const bases = new Set<string>([text, stripParenthetical(text)]);
+  const variants = new Set<string>();
+
+  for (const base of bases) {
+    for (const alternative of expandAlternatives(base)) {
+      const normalised = normaliseAnswer(alternative);
+      if (normalised) variants.add(normalised);
+    }
+  }
+
+  return [...variants];
+}
+
+/**
+ * Answers match on any shared reading. "because" is accepted for
+ * "because (pq)", "finally" for "at last/finally", "to make" for "to do/make" —
+ * while the card still shows the full stored text.
+ */
 export function answersMatch(given: string, expected: string): boolean {
-  return normaliseAnswer(given) === normaliseAnswer(expected);
+  // An empty answer must never pass: that is the deliberate "I don't know".
+  if (!given.trim()) return false;
+
+  const expectedVariants = new Set(answerVariants(expected));
+  if (expectedVariants.size === 0) return false;
+
+  return answerVariants(given).some((variant) => expectedVariants.has(variant));
 }
