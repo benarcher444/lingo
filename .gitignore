@@ -1,0 +1,27 @@
+node_modules/
+dist/
+
+# SQLite database and its WAL sidecars — this is your real learning history.
+# Back it up, but never commit it.
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Generated review screenshots
+screenshots/
+
+# The archived Python app is reference only; keep it out of the new history.
+old_code_repo/
+
+# OS / editor noise
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/

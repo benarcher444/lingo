@@ -1,0 +1,1425 @@
+/* ============================================================
+   Design tokens
+   Light is the base; dark redefines only the values that change,
+   so no colour has its sole definition inside a media query.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  --bg: #f7f6f3;
+  --surface: #ffffff;
+  --surface-2: #fbfaf8;
+  --surface-sunken: #f1efeb;
+  --border: #e5e1da;
+  --border-strong: #d4cfc5;
+
+  --text: #1c1a17;
+  --text-muted: #6f6a61;
+  --text-faint: #9c968b;
+
+  --accent: #5b4bd6;
+  --accent-hover: #4c3dc0;
+  --accent-soft: #eeecfc;
+  --accent-border: #cfc9f5;
+  --on-accent: #ffffff;
+
+  --learnt: #16855f;
+  --learnt-soft: #e2f4ed;
+  --learnt-border: #b3e0ce;
+
+  --learning: #b8761b;
+  --learning-soft: #fdf1de;
+  --learning-border: #f0d6a8;
+
+  --new: #857f74;
+  --new-soft: #efece7;
+  --new-border: #ddd8cf;
+
+  --danger: #c0392f;
+  --danger-soft: #fceceb;
+  --danger-border: #f0c4c0;
+
+  --shadow-sm: 0 1px 2px rgb(28 26 23 / 0.05);
+  --shadow: 0 1px 3px rgb(28 26 23 / 0.07), 0 6px 16px -6px rgb(28 26 23 / 0.09);
+  --shadow-lg: 0 2px 6px rgb(28 26 23 / 0.06), 0 18px 40px -12px rgb(28 26 23 / 0.16);
+
+  --radius-sm: 7px;
+  --radius: 11px;
+  --radius-lg: 16px;
+  --radius-xl: 22px;
+
+  --sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --serif: ui-serif, Georgia, "Iowan Old Style", "Times New Roman", serif;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+
+  --sidebar-w: 244px;
+  --content-max: 1080px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+
+    --bg: #131217;
+    --surface: #1b1a21;
+    --surface-2: #201f27;
+    --surface-sunken: #16151b;
+    --border: #2c2a34;
+    --border-strong: #3d3a47;
+
+    --text: #eceaf0;
+    --text-muted: #a29daf;
+    --text-faint: #726d7e;
+
+    --accent: #9384ff;
+    --accent-hover: #a99dff;
+    --accent-soft: #241f42;
+    --accent-border: #3d3470;
+    --on-accent: #16131f;
+
+    --learnt: #3fc79a;
+    --learnt-soft: #12302a;
+    --learnt-border: #1e5245;
+
+    --learning: #e0a548;
+    --learning-soft: #322612;
+    --learning-border: #574122;
+
+    --new: #8e8899;
+    --new-soft: #24232b;
+    --new-border: #35333e;
+
+    --danger: #f0736a;
+    --danger-soft: #341c1c;
+    --danger-border: #5c3230;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+    --shadow: 0 1px 3px rgb(0 0 0 / 0.35), 0 6px 16px -6px rgb(0 0 0 / 0.5);
+    --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -12px rgb(0 0 0 / 0.6);
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg: #131217;
+  --surface: #1b1a21;
+  --surface-2: #201f27;
+  --surface-sunken: #16151b;
+  --border: #2c2a34;
+  --border-strong: #3d3a47;
+
+  --text: #eceaf0;
+  --text-muted: #a29daf;
+  --text-faint: #726d7e;
+
+  --accent: #9384ff;
+  --accent-hover: #a99dff;
+  --accent-soft: #241f42;
+  --accent-border: #3d3470;
+  --on-accent: #16131f;
+
+  --learnt: #3fc79a;
+  --learnt-soft: #12302a;
+  --learnt-border: #1e5245;
+
+  --learning: #e0a548;
+  --learning-soft: #322612;
+  --learning-border: #574122;
+
+  --new: #8e8899;
+  --new-soft: #24232b;
+  --new-border: #35333e;
+
+  --danger: #f0736a;
+  --danger-soft: #341c1c;
+  --danger-border: #5c3230;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow: 0 1px 3px rgb(0 0 0 / 0.35), 0 6px 16px -6px rgb(0 0 0 / 0.5);
+  --shadow-lg: 0 2px 6px rgb(0 0 0 / 0.4), 0 18px 40px -12px rgb(0 0 0 / 0.6);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  font-weight: 620;
+  letter-spacing: -0.018em;
+  line-height: 1.25;
+}
+
+h1 { font-size: 1.6rem; }
+h2 { font-size: 1.15rem; }
+h3 { font-size: 0.98rem; }
+
+p { margin: 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover { text-decoration: underline; }
+
+img { max-width: 100%; }
+
+[hidden] { display: none !important; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ============================================================
+   App shell
+   ============================================================ */
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  min-height: 100vh;
+  /* Paints the sidebar column and its divider for the full page height. The
+     sidebar itself is only 100vh tall (it sticks), so without this the column
+     background stops partway down any page taller than the viewport. */
+  background:
+    linear-gradient(var(--border), var(--border)) calc(var(--sidebar-w) - 1px) 0 / 1px 100% no-repeat,
+    linear-gradient(var(--surface), var(--surface)) 0 0 / var(--sidebar-w) 100% no-repeat;
+}
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 20px 14px;
+  /* Column background and divider come from .app so they span the whole page. */
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px 18px;
+  color: var(--text);
+  font-weight: 640;
+  letter-spacing: -0.02em;
+}
+
+.brand:hover { text-decoration: none; }
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: linear-gradient(145deg, var(--accent), #8b6ff0);
+  color: #fff;
+  font-family: var(--serif);
+  font-size: 15px;
+  font-weight: 700;
+  flex: none;
+}
+
+.nav-label {
+  padding: 14px 10px 6px;
+  color: var(--text-faint);
+  font-size: 0.68rem;
+  font-weight: 660;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 0.895rem;
+  font-weight: 520;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.nav-item:hover {
+  background: var(--surface-sunken);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.nav-item[aria-current="page"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.nav-item svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+  stroke-width: 1.8;
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  min-width: 0;
+}
+
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 640;
+  flex: none;
+  text-transform: uppercase;
+}
+
+.sidebar-email {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   Main
+   ============================================================ */
+
+.main {
+  min-width: 0;
+  padding: 30px 34px 72px;
+}
+
+.container {
+  max-width: var(--content-max);
+  margin: 0 auto;
+}
+
+.page-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+
+.page-head .sub {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  max-width: 62ch;
+}
+
+.head-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.stack { display: grid; gap: 18px; }
+.stack-sm { display: grid; gap: 10px; }
+.row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.spacer { flex: 1; }
+
+/* Grid and flex children default to min-width:auto, so they refuse to shrink
+   below their content — which stops the table's own overflow-x from ever
+   engaging and pushes the whole page into horizontal scroll instead. */
+.stack > *,
+.stack-sm > *,
+.container > * {
+  min-width: 0;
+}
+
+/* ============================================================
+   Card
+   ============================================================ */
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 15px 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.card-head h2 { font-size: 1rem; }
+
+.card-head .sub {
+  color: var(--text-muted);
+  font-size: 0.83rem;
+  margin-top: 2px;
+}
+
+.card-body { padding: 18px; }
+.card-body.tight { padding: 0; }
+
+/* ============================================================
+   Progress banner — the "where should I add words" summary
+   ============================================================ */
+
+.progress-banner {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+.banner-top {
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+}
+
+.banner-figure {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ring {
+  --pct: 0;
+  position: relative;
+  width: 62px;
+  height: 62px;
+  flex: none;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--learnt) calc(var(--pct) * 1%),
+    var(--surface-sunken) 0
+  );
+  display: grid;
+  place-items: center;
+}
+
+.ring::after {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.ring span {
+  position: relative;
+  z-index: 1;
+  font-size: 0.86rem;
+  font-weight: 680;
+  letter-spacing: -0.02em;
+}
+
+.banner-figure-text .big {
+  font-size: 1.28rem;
+  font-weight: 660;
+  letter-spacing: -0.02em;
+}
+
+.banner-figure-text .small {
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.banner-stats {
+  display: flex;
+  gap: 26px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+
+.mini-stat .value {
+  font-size: 1.15rem;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.mini-stat .label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 560;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+
+.mini-stat .value.learnt { color: var(--learnt); }
+.mini-stat .value.learning { color: var(--learning); }
+.mini-stat .value.new { color: var(--new); }
+
+/* Per-word-type breakdown strip */
+/* Flex rather than grid: a wrapped final row containing one category stretches
+   to fill the width, instead of leaving a block of dead space. Dividers are
+   cell borders, so any leftover area is just card background. */
+.type-strip {
+  display: flex;
+  flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+}
+
+.type-cell {
+  /* Grows to fill a full row, but capped so a lone category on a wrapped row
+     stays card-sized rather than stretching across the whole banner. */
+  flex: 1 1 158px;
+  max-width: 300px;
+  min-width: 0;
+  padding: 11px 14px 13px;
+  display: block;
+  color: inherit;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  transition: background 0.12s ease;
+}
+
+.type-cell:last-child { border-right: none; }
+
+.type-cell:hover {
+  background: var(--surface-2);
+  text-decoration: none;
+}
+
+.type-cell .name {
+  font-size: 0.83rem;
+  font-weight: 580;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+}
+
+.type-cell .count {
+  color: var(--text-faint);
+  font-size: 0.75rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.type-cell .pct {
+  margin-top: 5px;
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  margin-top: 6px;
+  height: 5px;
+  border-radius: 99px;
+  background: var(--surface-sunken);
+  overflow: hidden;
+  display: flex;
+}
+
+.bar i { display: block; height: 100%; }
+.bar i.learnt { background: var(--learnt); }
+.bar i.learning { background: var(--learning); }
+
+/* Nudge toward thin categories */
+.type-cell.is-thin { background: var(--learning-soft); }
+.type-cell.is-thin:hover { background: var(--learning-soft); filter: brightness(0.98); }
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 560;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.06s ease;
+}
+
+.btn:hover {
+  background: var(--surface-sunken);
+  text-decoration: none;
+}
+
+.btn:active { transform: translateY(1px); }
+
+.btn svg { width: 15px; height: 15px; stroke-width: 1.9; }
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--on-accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+
+.btn-ghost:hover { background: var(--surface-sunken); color: var(--text); }
+
+.btn-danger { color: var(--danger); border-color: var(--danger-border); }
+.btn-danger:hover { background: var(--danger-soft); }
+
+.btn-lg { padding: 11px 20px; font-size: 0.95rem; }
+.btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* ============================================================
+   Forms
+   ============================================================ */
+
+.field { display: grid; gap: 5px; }
+
+.field label {
+  font-size: 0.83rem;
+  font-weight: 570;
+  color: var(--text-muted);
+}
+
+.input,
+.select,
+textarea.input {
+  width: 100%;
+  padding: 8px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.input:focus,
+.select:focus,
+textarea.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.input::placeholder { color: var(--text-faint); }
+
+.select {
+  appearance: none;
+  padding-right: 30px;
+  background-image: linear-gradient(45deg, transparent 50%, currentColor 50%),
+    linear-gradient(135deg, currentColor 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+.form-grid {
+  display: grid;
+  /* 170px, not 190px: at 190 two columns plus the gap exceed a 390px phone's
+     content width, which pushed the whole page into horizontal scroll. */
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 13px;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.check input { accent-color: var(--accent); width: 15px; height: 15px; }
+
+/* anywhere, not break-all: long unbroken strings (a database path, a URL) wrap
+   instead of forcing the page wider, but ordinary prose still breaks on spaces. */
+.hint {
+  color: var(--text-faint);
+  font-size: 0.79rem;
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+
+kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--surface-sunken);
+  font-family: var(--sans);
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ============================================================
+   Fast word entry
+   ============================================================ */
+
+.add-settings {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* The two text fields plus the button sit on one line so Tab runs straight
+   through them; the button drops below on narrow screens. */
+.add-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.add-row .btn { height: 38px; }
+
+.form-busy,
+.is-busy .add-row { opacity: 0.6; }
+
+/* Accent bar — click a character, or Alt+1…9, or type the letter then the
+   accent key. Sits directly under the entry fields it feeds. */
+.accent-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.accent-bar-label,
+.accent-bar-hint {
+  font-size: 0.76rem;
+  color: var(--text-faint);
+}
+
+.accent-bar-label {
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-right: 3px;
+}
+
+.accent-bar-hint { margin-left: 4px; }
+
+.accent-key {
+  position: relative;
+  min-width: 34px;
+  height: 32px;
+  padding: 0 6px;
+  border: 1px solid var(--border-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--serif);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.1s ease, border-color 0.1s ease, transform 0.06s ease;
+}
+
+.accent-key:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+.accent-key:active { transform: translateY(1px); }
+
+.accent-key sub {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font-family: var(--sans);
+  font-size: 0.55rem;
+  color: var(--text-faint);
+  line-height: 1;
+}
+
+.accent-key:hover sub { color: var(--accent); }
+
+.add-feedback {
+  font-size: 0.83rem;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+
+.add-feedback-ok {
+  color: var(--learnt);
+  background: var(--learnt-soft);
+  border-color: var(--learnt-border);
+}
+
+.add-feedback-error {
+  color: var(--danger);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+
+/* Briefly mark a row added without a reload, so it is obvious it landed. */
+@keyframes just-added-flash {
+  from { background: var(--learnt-soft); }
+  to { background: transparent; }
+}
+
+table.data tr.just-added {
+  animation: just-added-flash 1.6s ease-out;
+}
+
+/* ============================================================
+   Alerts
+   ============================================================ */
+
+.alert {
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  font-size: 0.87rem;
+  border: 1px solid;
+}
+
+.alert-error {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+  color: var(--danger);
+}
+
+.alert-ok {
+  background: var(--learnt-soft);
+  border-color: var(--learnt-border);
+  color: var(--learnt);
+}
+
+.alert-info {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+  color: var(--accent);
+}
+
+/* ============================================================
+   Table
+   ============================================================ */
+
+.table-wrap { overflow-x: auto; }
+
+table.data {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+table.data th {
+  text-align: left;
+  padding: 9px 16px;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 640;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--surface-2);
+}
+
+table.data td {
+  padding: 9px 16px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+
+table.data tr:last-child td { border-bottom: none; }
+table.data tbody tr:hover { background: var(--surface-2); }
+
+.term { font-family: var(--serif); font-size: 1.02rem; }
+.num { font-variant-numeric: tabular-nums; text-align: right; }
+
+/* ============================================================
+   Pills
+   ============================================================ */
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 9px;
+  border-radius: 99px;
+  border: 1px solid;
+  font-size: 0.735rem;
+  font-weight: 580;
+  white-space: nowrap;
+}
+
+.pill-learnt { background: var(--learnt-soft); border-color: var(--learnt-border); color: var(--learnt); }
+.pill-learning { background: var(--learning-soft); border-color: var(--learning-border); color: var(--learning); }
+.pill-new { background: var(--new-soft); border-color: var(--new-border); color: var(--new); }
+.pill-accent { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
+.pill-plain { background: var(--surface-sunken); border-color: var(--border); color: var(--text-muted); }
+
+/* ============================================================
+   Empty state
+   ============================================================ */
+
+.empty {
+  display: grid;
+  justify-items: center;
+  text-align: center;
+  gap: 6px;
+  padding: 54px 26px;
+}
+
+.empty-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 6px;
+  border-radius: var(--radius-lg);
+  background: var(--accent-soft);
+  color: var(--accent);
+  border: 1px solid var(--accent-border);
+}
+
+.empty-icon svg { width: 24px; height: 24px; stroke-width: 1.7; }
+
+.empty h2 { font-size: 1.06rem; }
+
+.empty p {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  max-width: 46ch;
+}
+
+.empty .btn { margin-top: 12px; }
+
+/* ============================================================
+   Quiz
+   ============================================================ */
+
+.quiz-shell {
+  max-width: 660px;
+  margin: 0 auto;
+  display: grid;
+  gap: 16px;
+}
+
+.quiz-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.quiz-progress .bar { flex: 1; margin: 0; height: 6px; }
+.quiz-progress .bar i.learnt { background: var(--accent); }
+
+.quiz-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  padding: 34px 30px 26px;
+  text-align: center;
+}
+
+.quiz-direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 11px;
+  border-radius: 99px;
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  color: var(--accent);
+  font-size: 0.745rem;
+  font-weight: 620;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.quiz-prompt {
+  margin: 20px 0 4px;
+  font-family: var(--serif);
+  font-size: 2.15rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.quiz-meta { color: var(--text-faint); font-size: 0.82rem; }
+
+.quiz-form { margin-top: 24px; display: grid; gap: 11px; }
+
+.quiz-input {
+  width: 100%;
+  padding: 13px 16px;
+  border: 1.5px solid var(--border-strong);
+  border-radius: var(--radius);
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-family: var(--serif);
+  font-size: 1.14rem;
+  text-align: center;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.quiz-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+  background: var(--surface);
+}
+
+/* The verdict lives inside the answer form, which already has grid gap. */
+.quiz-form .verdict { margin-top: 0; }
+
+.verdict {
+  margin-top: 20px;
+  padding: 15px 18px;
+  border-radius: var(--radius);
+  border: 1px solid;
+  display: grid;
+  gap: 3px;
+}
+
+.verdict-right { background: var(--learnt-soft); border-color: var(--learnt-border); }
+.verdict-wrong { background: var(--danger-soft); border-color: var(--danger-border); }
+
+.verdict .headline {
+  font-size: 0.78rem;
+  font-weight: 660;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.verdict-right .headline { color: var(--learnt); }
+.verdict-wrong .headline { color: var(--danger); }
+
+.verdict .answer { font-family: var(--serif); font-size: 1.32rem; }
+
+.verdict .given {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  text-decoration: line-through;
+}
+
+.audio-btn {
+  display: grid;
+  place-items: center;
+  width: 86px;
+  height: 86px;
+  margin: 22px auto 6px;
+  border-radius: 50%;
+  border: 1px solid var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.12s ease;
+}
+
+.audio-btn:hover { background: var(--accent); color: var(--on-accent); }
+.audio-btn:active { transform: scale(0.96); }
+.audio-btn svg { width: 32px; height: 32px; stroke-width: 1.7; }
+
+/* ============================================================
+   Chat
+   ============================================================ */
+
+.chat-log {
+  display: grid;
+  gap: 13px;
+  padding: 20px;
+  min-height: 320px;
+  align-content: start;
+}
+
+.msg { display: grid; gap: 4px; max-width: 82%; }
+.msg.from-user { justify-self: end; text-align: right; }
+
+.bubble {
+  padding: 10px 14px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.msg.from-user .bubble {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.msg .who {
+  font-size: 0.7rem;
+  font-weight: 640;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* The interpreter's correction and the teacher's breakdown read as asides
+   rather than as part of the conversation itself. */
+.bubble-corrected {
+  background: var(--learning-soft);
+  border-color: var(--learning-border);
+}
+
+.bubble-teach {
+  background: var(--surface);
+  border-style: dashed;
+  white-space: pre-wrap;
+}
+
+.bubble-error {
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
+}
+
+.explain-btn { justify-self: start; margin-top: 2px; }
+
+.chat-compose {
+  display: flex;
+  gap: 9px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.chat-compose .input { flex: 1; }
+
+/* ============================================================
+   Charts
+   ============================================================ */
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(330px, 1fr));
+  gap: 18px;
+}
+
+.chart-box { padding: 6px 6px 0; }
+.chart-box svg { display: block; width: 100%; height: auto; overflow: visible; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 18px 16px;
+  font-size: 0.79rem;
+  color: var(--text-muted);
+}
+
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 9px; height: 9px; border-radius: 3px; display: block; }
+
+/* ============================================================
+   Auth
+   ============================================================ */
+
+.auth-page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 30px 20px;
+  background:
+    radial-gradient(900px 460px at 50% -10%, var(--accent-soft), transparent 70%),
+    var(--bg);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 388px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  padding: 30px 28px 26px;
+}
+
+.auth-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 20px;
+  font-weight: 640;
+  letter-spacing: -0.02em;
+  font-size: 1.02rem;
+}
+
+.auth-card h1 { font-size: 1.3rem; text-align: center; }
+
+.auth-card .sub {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  margin: 5px 0 20px;
+}
+
+.auth-form { display: grid; gap: 13px; }
+.auth-foot { margin-top: 18px; text-align: center; font-size: 0.86rem; color: var(--text-muted); }
+
+/* ============================================================
+   Session summary
+   ============================================================ */
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.summary-cell { background: var(--surface); padding: 15px 16px; }
+
+.summary-cell .value {
+  font-size: 1.5rem;
+  font-weight: 660;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-cell .label {
+  color: var(--text-muted);
+  font-size: 0.73rem;
+  font-weight: 570;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.delta { font-size: 0.8rem; font-variant-numeric: tabular-nums; }
+.delta.up { color: var(--learnt); }
+.delta.down { color: var(--danger); }
+
+/* ============================================================
+   Mobile
+   ============================================================ */
+
+.mobile-bar { display: none; }
+
+@media (max-width: 860px) {
+  .app {
+    grid-template-columns: 1fr;
+    background: none;
+  }
+
+  .sidebar { display: none; }
+
+  .main { padding: 18px 16px 88px; }
+
+  .mobile-bar {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 20;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  }
+
+  .mobile-bar a {
+    flex: 1;
+    display: grid;
+    justify-items: center;
+    gap: 2px;
+    padding: 6px 2px;
+    border-radius: var(--radius-sm);
+    color: var(--text-faint);
+    font-size: 0.64rem;
+    font-weight: 570;
+  }
+
+  .mobile-bar a[aria-current="page"] { color: var(--accent); }
+  .mobile-bar a:hover { text-decoration: none; }
+  .mobile-bar svg { width: 19px; height: 19px; stroke-width: 1.8; }
+
+  .mobile-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 14px;
+    font-weight: 640;
+    letter-spacing: -0.02em;
+  }
+
+  h1 { font-size: 1.34rem; }
+  .quiz-prompt { font-size: 1.75rem; }
+  .quiz-card { padding: 26px 20px 22px; }
+
+  /* Everything below keeps the page from exceeding the viewport width. */
+  .form-grid { grid-template-columns: 1fr; }
+  .banner-top { gap: 14px; padding: 15px 16px; }
+  .banner-stats { margin-left: 0; gap: 18px; }
+  .banner-figure { gap: 12px; }
+  .type-cell { flex-basis: 132px; max-width: none; }
+  .card-head { padding: 14px 16px; }
+  .card-body { padding: 16px; }
+  .summary-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+  .chart-grid { grid-template-columns: 1fr; }
+
+  /* Search row in the vocabulary card: stack rather than overflow. */
+  .card-head form.row { width: 100%; }
+  .card-head form.row .input,
+  .card-head form.row .select { flex: 1 1 120px; width: auto; }
+
+  /* iOS Safari zooms the whole page when you focus a field whose font-size is
+     under 16px, then leaves you scrolled sideways. 16px exactly is the
+     threshold — this is the fix, not a preference. */
+  .input,
+  .select,
+  textarea.input,
+  .quiz-input {
+    font-size: 16px;
+  }
+
+  /* Touch targets: 44px is the accessibility floor, and these are all things
+     you tap repeatedly mid-session. */
+  .btn {
+    min-height: 44px;
+    padding-block: 10px;
+  }
+
+  .btn-sm {
+    min-height: 40px;
+    padding-block: 8px;
+  }
+
+  .input,
+  .select {
+    min-height: 44px;
+  }
+
+  .check {
+    min-height: 44px;
+    padding-block: 4px;
+  }
+
+  .check input {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* The row-level Edit link is small and easy to miss with a thumb. */
+  table.data .btn-sm {
+    min-height: 40px;
+    padding-inline: 14px;
+  }
+}
+
+@media (min-width: 861px) {
+  .mobile-head { display: none; }
+}
+
+/* On a phone the words table would otherwise push Status and Edit off behind a
+   horizontal scroll, which makes editing awkward. Category is already available
+   as a filter, and the mode flags are secondary — drop both so the columns you
+   act on stay reachable with a thumb. */
+@media (max-width: 620px) {
+  table.data .col-type,
+  table.data .col-modes,
+  table.data .col-seen,
+  table.data .col-score {
+    display: none;
+  }
+
+  table.data th,
+  table.data td {
+    padding-inline: 8px;
+  }
+
+  table.data .btn-sm { padding-inline: 10px; }
+
+  /* Stack the entry fields; the button goes full width under them. */
+  .add-row {
+    grid-template-columns: 1fr;
+  }
+
+  .add-row .btn { height: auto; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
