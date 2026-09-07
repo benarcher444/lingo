@@ -6,6 +6,8 @@ holding.
 
 Runs locally now; built to run on a Raspberry Pi behind a DNS name later.
 
+<https://github.com/benarcher444/lingo>
+
 ---
 
 ## Quick start
