@@ -43,8 +43,8 @@ is why completion files are named `written_nouns.csv` / `audio_nouns.csv`.
 
 ### CSV schemas
 
-**Vocabulary — `data/french/nouns.csv`** (french: 9 files, ~2,570 rows;
-spanish: 9 files, ~245 rows)
+**Vocabulary — `data/french/nouns.csv`** (french: 9 files, 2,531 words;
+spanish: 9 files, 248 words — counting rows that carry a term)
 
 | col | meaning |
 |---|---|
@@ -208,14 +208,16 @@ plotting one measure over time — the seed of what the new dashboard should do.
 
 ---
 
-## Part 2 — The new build (as it stands)
+## Part 2 — The new build
 
 A server-rendered TypeScript web app on Node + Fastify, SQLite via Drizzle,
 plain CSS and vanilla JS. No bundler and no build step at runtime — deliberate,
 because it has to run on a Raspberry Pi.
 
-See `README.md` for how to run it. This section is the reasoning behind the
-shape, which the README does not carry.
+`README.md` covers how to run it. This section is the reasoning behind the
+shape, and the traps that cost time.
+
+Repo: <https://github.com/benarcher444/lingo>
 
 ### Decisions and why
 
@@ -230,30 +232,29 @@ Postgres when this becomes multi-tenant is a driver change, not a rewrite. Not
 Prisma: its query engine ships as a native binary that has been a recurring
 problem on ARM, and the Pi is ARM.
 
-**Score is derived, never stored.** The original cached `score` in the CSV. But
-score depends on today's date via the neglect term, so a stored value is stale
-the next morning. `loadScoredWords` pulls a language's words in one query and
-scores them in TypeScript — under a millisecond at a few thousand words, and it
-eliminates a whole class of staleness bug.
-
-**Fresh database, no migration of the old CSVs.** Explicitly requested. The old
-French data stays in `old_code_repo/` if it is ever wanted.
+**Score is derived, never stored.** Score depends on today's date via the
+neglect term, so a stored value is stale the next morning. `loadScoredWords`
+pulls a language's words in one query and scores them in TypeScript — under a
+millisecond at a few thousand words, and it removes a whole class of staleness
+bug. It also means score cannot be an `ORDER BY`; the vocabulary list sorts by
+score in memory over the filtered set.
 
 **The AI provider is configuration, not a code decision.** `src/ai.ts` exposes
-one `complete()` interface; OpenAI and Anthropic are both implementations behind
-it, chosen by `AI_PROVIDER`. Default is OpenAI, which is what the original app
-used. I originally hard-coded Anthropic without asking — that was the wrong
-call, and the abstraction exists so the choice stays the user's. Adding a third
-provider means adding a class, not touching the tutor pipeline.
+one `complete()` interface; OpenAI and Anthropic are implementations behind it,
+chosen by `AI_PROVIDER`. Default is OpenAI, which is what the original app used.
+I hard-coded Anthropic at first without asking — that was the wrong call, and
+the abstraction exists so the choice stays the user's. A third provider is a new
+class, not a change to the tutor pipeline.
 
-**Browser speech synthesis, not gTTS.** The original called Google for every new
-word and cached mp3s. `speechSynthesis` needs no network, no cache directory and
-no dependency — which matters on a Pi that may be offline. Voice availability
+**Browser speech synthesis, not gTTS.** No network, no cache directory, no
+dependency — which matters on a Pi that may be offline. Voice availability
 varies by browser, which is the trade.
 
 **Email + password with a session cookie, argon2id.** No third-party identity
-provider: it works offline and adds no dependency. Every table hangs off
-`user_id`, so OAuth later is additive.
+provider: works offline, no dependency. Every table hangs off `user_id`, so
+OAuth later is additive. Passwords cannot be recovered, only replaced —
+`scripts/set-password.ts` exists because being locked out of a local install
+otherwise has no remedy.
 
 **Charts are hand-written inline SVG.** No charting library: nothing to fetch,
 nothing to bundle, works offline. Colours come from CSS custom properties so
@@ -265,7 +266,8 @@ both themes are handled by the stylesheet rather than duplicated in JS.
 - The 2.3 / 2.556 thresholds.
 - Exponential-odds weighted sampling.
 - "Answer until correct in both directions" as the written session loop.
-- De-accented, case-insensitive matching with a manual override.
+- De-accented, case-insensitive matching with a manual override — and `y` as
+  the override key, as it was at the terminal prompt.
 - Append-only long-format statistics.
 
 ### What changed on purpose
@@ -274,76 +276,210 @@ both themes are handled by the stylesheet rather than duplicated in JS.
 - `words.id` is globally unique; the per-file `index` collision is gone.
 - `written_enabled` / `audio_enabled` are real columns, so the filter the
   original crashed on now exists.
-- Snapshots are recorded at the **end** of a session as well as the start, so
-  history reflects work done.
-- `attempts` stores one row per answer, so the formula can be retuned against
-  real history rather than only aggregates.
-- Selection odds are clamped to a floor of 1 — the original could reach 0, which
-  made a well-known word unreachable rather than merely rare.
-- `deaccent` is Unicode-normalised rather than a hand-written character table,
-  so it works for languages beyond French and Spanish.
+- Snapshots are recorded at the **end** of a session as well as the start.
+- `attempts` stores one row per answer, which is what makes the per-word score
+  history replayable and the daily count possible.
+- Selection odds are clamped to a floor of 1 — the original could reach 0.
+- `deaccent` is Unicode-normalised rather than a hand-written character table.
+- **Listening asks for the English meaning**, not the target word spelled back.
+  It tests comprehension rather than transcription. Only `from_english` expects
+  the target language.
+- An empty answer is recorded as a miss rather than ignored: "I don't know" is
+  a real answer and forcing a guess only pollutes the history.
+
+### Answer matching
+
+`answersMatch` in `src/algorithm.ts` accepts any shared reading of the two
+sides. Three rules, all driven by how the vocabulary is actually written:
+
+1. **Accents are optional** — `etre` for `être`, via Unicode NFD stripping.
+2. **Parenthesised notes are optional** — `because` for `because (pq)`. The
+   notes disambiguate entries sharing a translation (`car` = "because (c)",
+   `parce que` = "because (pq)", `savoir` = "to know (facts)") and belong on the
+   card, but nobody types them.
+3. **A slash means "either reading"** — `finally` for `at last/finally`, and
+   `to make` for `to do/make`.
+
+Rule 3 has two shapes: whole alternatives (`at last/finally`) and a shared
+prefix (`to do/make` = "to do" or "to make"). There is no reliable way to tell
+them apart, so **both readings are generated**. That makes matching lenient —
+bare `make` is also accepted for `to do/make`. This is deliberate: wrongly
+rejecting a correct answer is worse than accepting a phrasing the learner
+plausibly meant. If it ever needs tightening, that is the decision to revisit.
+
+Speech strips both the notes and everything after the first slash, or it reads
+"because open bracket p q" and "to do slash make".
+
+An empty answer never matches, whatever the rules — that is the skip path.
+
+### Counting a day's practice
+
+Two different questions, both answered on the Progress page's Today card:
+
+- **Words tested** — counted once per session, so three sessions of 30, 30 and
+  40 total 100 even where a word recurred. This is the figure to set a daily
+  target against.
+- **Different words** — distinct words touched.
+
+This is why `attempts.sessionId` exists. `/api/practice/start` issues a UUID,
+the client returns it with every answer, and the count is
+`count(distinct sessionId || ':' || wordId)`. Rows from before session tracking
+have a null id and coalesce to the date, so each such day reads as one session —
+historical days therefore under-report. That was accepted rather than
+backfilled.
 
 ### Traps worth remembering
 
-- **Module scripts are deferred.** A `<script type="module">` that does
-  `window.X = ...` then `import "./thing.js"` runs the import *first*, because
-  imports are hoisted — the config is `undefined` when the module reads it.
-  `layout()` therefore emits a classic `<script>` for data and a separate
-  deferred module for code. This cost a debugging cycle; do not "simplify" it.
+- **`Number("")` is `0`, not `NaN`, and `Number.isInteger(0)` is `true`.** A
+  select whose default option has an empty value submits `type=`, which read as
+  a real category id of 0 and filtered everything away — vocabulary search
+  returned nothing through the form for a while. `optionalId()` in
+  `src/context.ts` is the fix; use it for every optional numeric query param.
+- **Test the form, not the query string.** The bug above was invisible to a
+  request that simply omitted `type`. `scripts/test-vocab-search.ts` submits the
+  real form for that reason.
+- **Module scripts are deferred.** `<script type="module">` that sets
+  `window.X` then `import`s runs the import *first*, because imports are
+  hoisted. `layout()` emits a classic `<script>` for data and a separate
+  deferred module for code. Do not "simplify" it.
 - **Grid and flex children default to `min-width: auto`.** They refuse to shrink
-  below their content, so a wide table's own `overflow-x` never engages and the
-  whole page scrolls sideways instead. `.stack > *`, `.container > *` and
-  `.card` all set `min-width: 0` for this reason.
-- **`npm run shot` flags horizontal overflow and console errors.** Keep it at
-  zero. `scripts/diagnose-overflow.ts` names the offending element.
-- **`fullPage` screenshots misplace `position: fixed`.** The mobile nav bar looks
-  like it floats mid-page; it does not. Check it with `--viewport`.
+  below their content, so a wide table's own `overflow-x` never engages.
+  `.stack > *`, `.container > *` and `.card` set `min-width: 0` for this.
+- **Filters must travel.** Edit, Cancel and every post-save redirect carry the
+  category, search and sort. Dropping them reloads the unfiltered list, which
+  reads to the user as the page refreshing and losing their place.
+- **Overlapping buckets look like a partition.** "Solid" is a subset of
+  "learnt", so showing solid / learning / untouched left a word between the
+  thresholds in no bucket and the tiles did not add up. `Summary.learntNotSolid`
+  makes the four counts sum to the total.
+- **"None selected" is not "show everything".** The progress filters need a
+  hidden `filtered=1` marker to tell a deliberate empty selection from a first
+  visit, or the overall line can never be shown alone.
+- **`waitForSelector` on an always-present element returns instantly.** The
+  quiz input is only *disabled* between questions, never removed, so waiting on
+  it read state too early and made a passing feature look broken. Wait for the
+  verdict to detach instead.
+- **`fullPage` screenshots misplace `position: fixed`.** The mobile nav bar
+  looks like it floats mid-page. Check it with `--viewport`.
 - **Two concurrent `npm install`s in one project clobber each other** and can
   leave `package.json` with no dependencies while still exiting 0.
 - **Git Bash rewrites a leading `/path` argument** into a Windows path. Prefix
   with `MSYS_NO_PATHCONV=1` when passing URL paths to a script.
+- **`tsx` compiles with esbuild's `keepNames`,** which injects a `__name` helper
+  that does not exist in the browser. A named inner function inside
+  `page.evaluate` makes the whole call throw. Keep those bodies free of them.
+- **PowerShell may be unavailable in a session.** Kill a stuck port with
+  `netstat -ano | grep :3000` plus `taskkill /PID <pid> /F`.
 
-**Accent entry is language-gated, and that gate is the whole point.**
-`src/accents.ts` only converts a letter+accent pair if the result appears in
-that language's alphabet. Without it, French `qu'est` would become `qú est` and
-`d'abord` would break — `u'` is a common French sequence but `ú` is not a French
-letter. Spanish does use `ú`, so there the same keystroke converts. Any change
-here must keep `scripts/test-accents.ts` green; the apostrophe cases are the
-ones that matter.
+### Accent entry
 
-Composition also carries its own reverse entries (`é` + `'` maps back to `e'`),
-so the browser needs no special case for "press twice to keep it literal".
+`src/accents.ts` only converts a letter+accent pair when the result is a letter
+that language actually uses. That gate is the whole point: without it, French
+`qu'est` becomes `qú est` and `d'abord` breaks, because `u'` is a common French
+sequence but `ú` is not a French letter. Spanish does use `ú`, so there the same
+keystroke converts. Keep `scripts/test-accents.ts` green; the apostrophe cases
+are the ones that matter.
 
-### Resetting
+The table carries its own reverse entries (`é` + `'` maps back to `e'`), so the
+browser needs no special case for "press twice to keep it literal".
 
-Two scripts, and the difference matters: `scripts/remove-demo-accounts.ts`
-clears only the seeded `demo@`/`empty@` accounts and leaves real data alone —
-use it after `npm run seed`. `scripts/reset-users.ts` clears every account and everything cascading from it.
-It is dry-run by default and takes a timestamped database backup before
-deleting, because there is no other way back. WAL is checkpointed first, or the
-backup misses recent writes.
+### Verification
+
+Everything below is expected to pass before calling a change done. `npm run
+test:all` chains the main ones; the browser suites need the server running and
+the demo account seeded.
+
+| Command | Covers |
+|---|---|
+| `npm test` | Scoring, decay, sampling, answer matching |
+| `npm run test:accents` | Accent composition, per language |
+| `npm run test:accents:browser` | Accent typing in a real browser |
+| `npm run test:ai` | Provider/model resolution, all permutations |
+| `npm run test:search` | Vocabulary search and category filter, via the form |
+| `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:entry` | Keyboard word entry |
+| `npm run test:daily` | Session-based daily counting |
+| `npm run audit:mobile` | Touch targets, iOS input zoom, overflow |
+| `npm run shot` | Every page, both widths, both themes |
+
+`npm run shot` flags console errors and horizontal overflow — keep both at zero.
+`scripts/diagnose-overflow.ts` names the offending element.
+
+### Data tooling
+
+Read-only checks and one-off fixes live in `scripts/`:
+
+- `check-accents-in-data.ts` — cross-references stored words against the
+  archived vocabulary in `old_code_repo/` to find missing accents. Evidence
+  rather than eyeballing.
+- `fix-verb-category.ts` — moves infinitives filed elsewhere into the verb
+  category. Dry-run by default.
+- `remove-demo-accounts.ts` — clears seeded `demo@`/`empty@` accounts and
+  nothing else. Use after `npm run seed`.
+- `reset-users.ts` — clears every account. Dry-run by default, takes a
+  timestamped database backup, checkpoints WAL first.
+- `set-password.ts` — replaces a password hash.
+- `clean-test-words.ts` — removes words left by the entry test.
+
+**`npm run seed` writes to the live database.** It only adds, so real data is
+safe, but always follow it with `npm run seed:clean`.
+
+### The archived vocabulary
+
+`old_code_repo/data/` holds **2,531 French** and **248 Spanish** words, counting
+only rows carrying a term. French: nouns 896, conjugations 523,
+verbs_infinitive 405, adjectives 252, adverbs 182, phrases 155, nadj 52,
+prepositions 36, conjunctives 30. It is correctly accented throughout — every
+word in the live database was checked against it and none were wrong.
+
+Not imported, deliberately: a fresh start was asked for. An importer would be
+small — map each CSV to a category, insert, leave progress empty. Note that
+`conjugations` (523) are inflected forms rather than dictionary entries, and
+`nadj` has no equivalent in the default category set.
 
 ### Not built yet
 
-- Importing the old French vocabulary (deliberately skipped; data is preserved).
-- Per-user configuration of the learner level and the learnt thresholds — both
-  are still constants.
-- Any deployment automation for the Pi, or the DNS setup.
+- Importing the archived vocabulary.
+- Per-user configuration of the learner level and the learnt thresholds.
+- Deployment automation for the Pi, or the DNS setup.
+- Backfilling session ids onto historical attempts (the timestamps would
+  support inferring sessions from gaps; judged not worth it).
 
 ---
 
 ## Working agreements
 
 - `old_code_repo/` is read-only reference. Never edit it, never import from it.
-- Run `npm run typecheck` and `npm test` before calling a change done; run
-  `npm run shot` when touching anything visual, and keep overflow warnings at zero.
+  Reading its CSVs as data for an audit is fine.
+- Run `npm run typecheck` and the relevant suites before calling a change done.
+  Run `npm run shot` when touching anything visual and keep the warnings at zero.
+- **Verify visually.** For UI work that means looking at real screenshots, not
+  asserting a 200 response.
 - Never commit API keys. Secrets go in `.env`, which is gitignored. The template
-  is `env.example` — note the missing leading dot, so it is not caught by the
-  `.env*` ignore rule.
-- **Unresolved:** there is an accidental git repository rooted at
-  `C:\Users\benar\Documents\GitHub` (remote `benarcher444/language_learning`, no
-  commits) that would swallow every project in that folder, and it makes this
-  project's `.gitignore` inert. Deal with it before the first commit.
-- The original repo still exists at
-  `C:\Users\benar\Documents\GitHub\learning_spanish` with its history and GitHub
-  remote, so nothing has been lost.
+  is `env.example` — no leading dot, so the `.env*` ignore rule does not catch it.
+- The database at `data/app.db` holds real vocabulary and learning history.
+  Back it up before destructive scripts; they take their own backups too.
+- Say plainly when something was my error. Several bugs this session were mine,
+  and a couple of "failures" were bad tests rather than broken features — report
+  which it was.
+
+### Environment notes
+
+- Windows 11, Git Bash available; PowerShell is not always enabled.
+- The dev server is a child of the session and dies with it. On the Pi it wants
+  a process manager pointed at `npm start`.
+- `HOST` defaults to `0.0.0.0` so a phone on the same Wi-Fi can reach it. That
+  is the bind address, **not** browsable — the startup log prints the real LAN
+  URL, which changes with the network.
+
+### Outstanding
+
+- **Folder rename.** The project still lives in `learning_languages` and should
+  be `lingo`. Windows will not rename a directory that is a running process's
+  working directory, and VS Code holds it open too, so this is a user action:
+  close both, `mv learning_languages lingo`, reopen. Git travels with it.
+- **Accidental outer repo** at `C:\Users\benar\Documents\GitHub` (remote
+  `benarcher444/language_learning`, no commits). Harmless day to day, but
+  `git add .` from there would stage every project in that folder.
+- **The old OpenAI key** in `old_code_repo/config.yaml` and `.env` was pushed to
+  GitHub and should be rotated.
