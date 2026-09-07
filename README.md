@@ -135,6 +135,7 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:ai` | Check AI_PROVIDER / AI_MODEL resolve correctly |
 | `npm run ai:check` | Send one real message to the configured provider |
 | `npm run reset:users` | Delete all accounts and their data (`--yes` to confirm) |
+| `npm run set-password` | Set a new password for an account (run bare to list them) |
 | `npm run db:generate` | Generate a migration after changing the schema |
 | `npm run db:studio` | Browse the database |
 
@@ -212,6 +213,18 @@ process manager (systemd, pm2) at `npm start` to survive reboots.
 
 **Back up `data/app.db`.** It is the vocabulary and the entire learning history,
 and it is gitignored deliberately.
+
+### Locked out
+
+Passwords are argon2id hashes and cannot be read back, so there is no recovery —
+only replacement:
+
+```bash
+npm run set-password                                    # list accounts
+npm run set-password -- you@example.com newpassword123
+```
+
+Existing sessions are signed out; vocabulary and progress are untouched.
 
 ### Resetting
 

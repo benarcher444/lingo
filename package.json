@@ -20,7 +20,8 @@
     "test:ai": "tsx scripts/test-ai-config.ts",
     "test:accents": "tsx scripts/test-accents.ts",
     "test:accents:browser": "tsx scripts/test-accents-browser.ts",
-    "seed:clean": "tsx scripts/remove-demo-accounts.ts"
+    "seed:clean": "tsx scripts/remove-demo-accounts.ts",
+    "set-password": "tsx scripts/set-password.ts"
   },
   "author": "",
   "license": "ISC",
