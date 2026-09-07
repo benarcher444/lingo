@@ -909,6 +909,202 @@ table.data tbody tr:hover { background: var(--surface-2); }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 
 /* ============================================================
+   Progress controls
+   ============================================================ */
+
+.chart-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 14px;
+  padding: 12px 18px 15px;
+  border-top: 1px solid var(--border);
+}
+
+.chart-filters-label {
+  font-size: 0.72rem;
+  font-weight: 640;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+.chart-filters .check { font-size: 0.83rem; }
+.chart-filters .check .hint { font-size: 0.72rem; }
+
+/* Where every word sits — the four bands sum to the whole vocabulary. */
+.split-bar {
+  display: flex;
+  height: 22px;
+  border-radius: 99px;
+  overflow: hidden;
+  background: var(--surface-sunken);
+}
+
+.split-bar i { display: block; height: 100%; }
+
+.split-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  margin-top: 14px;
+}
+
+.split-item {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  font-size: 0.86rem;
+}
+
+.split-item i {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  display: block;
+  align-self: center;
+}
+
+.split-count {
+  font-weight: 660;
+  font-size: 1.02rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.split-label { color: var(--text-muted); }
+
+/* ============================================================
+   Word detail
+   ============================================================ */
+
+/* Block, not inline: the link then fills its cell, so the whole row height is
+   tappable rather than just the ~19px of text. */
+.term-link {
+  display: block;
+  padding-block: 4px;
+  color: inherit;
+  text-decoration: none;
+}
+
+.term-link:hover { color: var(--accent); text-decoration: underline; }
+
+.detail-card { border-color: var(--accent-border); }
+
+.detail-modes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 14px;
+}
+
+.detail-mode {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  background: var(--surface-2);
+  min-width: 0;
+}
+
+.detail-mode-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.detail-score {
+  font-size: 1.15rem;
+  font-weight: 660;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+.detail-direction + .detail-direction { margin-top: 12px; }
+
+.detail-direction-name {
+  font-size: 0.79rem;
+  font-weight: 640;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.detail-direction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 4px 14px;
+}
+
+.detail-stat {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.84rem;
+  padding: 2px 0;
+  border-bottom: 1px dotted var(--border);
+}
+
+.detail-stat-label { color: var(--text-muted); }
+.detail-stat-value { font-variant-numeric: tabular-nums; font-weight: 570; }
+
+.detail-breakdown { margin-top: 14px; }
+
+.detail-breakdown-title {
+  font-size: 0.79rem;
+  font-weight: 640;
+  color: var(--text-muted);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.detail-formula {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 7px;
+  font-size: 0.84rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.term-add { color: var(--learnt); font-weight: 620; }
+.term-sub { color: var(--danger); font-weight: 620; }
+
+.detail-formula-total {
+  margin-left: auto;
+  font-weight: 680;
+  font-size: 0.95rem;
+}
+
+.attempt-list { display: grid; gap: 3px; }
+
+.attempt {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 5px 9px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 0.83rem;
+  flex-wrap: wrap;
+}
+
+.attempt-mark { font-weight: 700; width: 13px; }
+.attempt-right .attempt-mark { color: var(--learnt); }
+.attempt-wrong .attempt-mark { color: var(--danger); }
+
+.attempt-dir {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  min-width: 96px;
+}
+
+.attempt-given { font-family: var(--serif); min-width: 0; overflow-wrap: anywhere; }
+.attempt-when { margin-left: auto; white-space: nowrap; }
+
+/* ============================================================
    Pills
    ============================================================ */
 
@@ -998,19 +1194,106 @@ table.data tbody tr:hover { background: var(--surface-2); }
   text-align: center;
 }
 
+/* ------------------------------------------------------------------
+   Direction colour
+   Each direction gets its own hue so which way you are translating is
+   obvious before you read anything. Colour is the fast signal; the badge
+   still spells it out, so nothing depends on colour alone.
+   ------------------------------------------------------------------ */
+
+.quiz-card {
+  --dir: var(--accent);
+  --dir-soft: var(--accent-soft);
+  --dir-border: var(--accent-border);
+}
+
+/* Target language shown, English wanted. */
+.quiz-card[data-direction="to_english"] {
+  --dir: #0f8b7e;
+  --dir-soft: #e2f5f2;
+  --dir-border: #a9ded7;
+}
+
+/* English shown, target language wanted. */
+.quiz-card[data-direction="from_english"] {
+  --dir: #7a4fd0;
+  --dir-soft: #f0eafc;
+  --dir-border: #d5c4f2;
+}
+
+.quiz-card[data-direction="listen"] {
+  --dir: #2f7dc4;
+  --dir-soft: #e4f0fa;
+  --dir-border: #b3d6ef;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .quiz-card[data-direction="to_english"] {
+    --dir: #3ecfbc;
+    --dir-soft: #10322e;
+    --dir-border: #1d564e;
+  }
+  :root:not([data-theme="light"]) .quiz-card[data-direction="from_english"] {
+    --dir: #b39bff;
+    --dir-soft: #251f45;
+    --dir-border: #423577;
+  }
+  :root:not([data-theme="light"]) .quiz-card[data-direction="listen"] {
+    --dir: #6ab4ea;
+    --dir-soft: #14283a;
+    --dir-border: #27506f;
+  }
+}
+
+:root[data-theme="dark"] .quiz-card[data-direction="to_english"] {
+  --dir: #3ecfbc;
+  --dir-soft: #10322e;
+  --dir-border: #1d564e;
+}
+:root[data-theme="dark"] .quiz-card[data-direction="from_english"] {
+  --dir: #b39bff;
+  --dir-soft: #251f45;
+  --dir-border: #423577;
+}
+:root[data-theme="dark"] .quiz-card[data-direction="listen"] {
+  --dir: #6ab4ea;
+  --dir-soft: #14283a;
+  --dir-border: #27506f;
+}
+
+/* A band across the top of the card — visible from across the room. */
+.quiz-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.quiz-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 4px;
+  background: var(--dir);
+}
+
 .quiz-direction {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   padding: 3px 11px;
   border-radius: 99px;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-border);
-  color: var(--accent);
+  background: var(--dir-soft);
+  border: 1px solid var(--dir-border);
+  color: var(--dir);
   font-size: 0.745rem;
   font-weight: 620;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+/* The focus ring picks up the direction colour too. */
+.quiz-card .quiz-input:focus {
+  border-color: var(--dir);
+  box-shadow: 0 0 0 4px var(--dir-soft);
 }
 
 .quiz-prompt {
@@ -1079,6 +1362,17 @@ table.data tbody tr:hover { background: var(--surface-2); }
   color: var(--text-muted);
   font-size: 0.85rem;
   text-decoration: line-through;
+}
+
+/* The key hint inside the override button. */
+.btn kbd {
+  margin-left: 2px;
+  padding: 0 4px;
+  font-size: 0.68rem;
+  border-color: currentColor;
+  opacity: 0.6;
+  background: transparent;
+  color: inherit;
 }
 
 .audio-btn {
@@ -1387,6 +1681,19 @@ table.data tbody tr:hover { background: var(--surface-2); }
     min-height: 40px;
     padding-inline: 14px;
   }
+
+  /* Opening a word's record is a primary action on the list. */
+  .term-link { padding-block: 13px; }
+
+  /* Accent keys are tapped constantly while adding words, so they get a full
+     thumb-sized target. They wrap onto more rows, which is the better trade. */
+  .accent-key {
+    min-width: 44px;
+    height: 44px;
+    font-size: 1.15rem;
+  }
+
+  .accent-bar { gap: 6px; }
 }
 
 @media (min-width: 861px) {

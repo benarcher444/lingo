@@ -1,12 +1,15 @@
 import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 
 import { accentConfigFor } from "../accents.js";
+import { loadWordDetail } from "../word-detail.js";
+import { wordDetailPanel } from "../views/word-detail-view.js";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import {
   DEFAULT_WORD_TYPES,
   guessTtsCode,
+  optionalId,
   requireContext,
   typesFor,
 } from "../context.js";
@@ -29,6 +32,43 @@ const wordInput = z.object({
   audioEnabled: z.coerce.boolean().optional().default(true),
   notes: z.string().trim().max(500).optional(),
 });
+
+/**
+ * The filters currently applied to the word list. Carried through Edit, Cancel
+ * and the post-save redirect — without it, editing a word you found by
+ * searching dumps you back on the unfiltered list, which reads as the page
+ * refreshing and losing your place.
+ */
+interface ListFilters {
+  type?: number | null;
+  q?: string;
+  sort?: SortKey;
+}
+
+/** Sort orders offered on the word list. */
+const SORTS = {
+  added_desc: "Newest first",
+  added_asc: "Oldest first",
+  score_desc: "Score: high to low",
+  score_asc: "Score: low to high",
+  alpha: "A–Z",
+} as const;
+
+type SortKey = keyof typeof SORTS;
+
+function vocabUrl(
+  languageId: number | undefined,
+  filters: ListFilters,
+  extra: Record<string, string | number> = {},
+): string {
+  const params = new URLSearchParams();
+  if (languageId) params.set("language", String(languageId));
+  if (filters.type) params.set("type", String(filters.type));
+  if (filters.q) params.set("q", filters.q);
+  if (filters.sort && filters.sort !== "added_desc") params.set("sort", filters.sort);
+  for (const [key, value] of Object.entries(extra)) params.set(key, String(value));
+  return `/vocab?${params.toString()}`;
+}
 
 /** Confirm a word type belongs to the signed-in user before writing to it. */
 function ownsWordType(userId: number, wordTypeId: number): boolean {
@@ -244,10 +284,17 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
     const body = request.body as Record<string, unknown>;
 
+    // The edit form echoes the active filters back so the redirect can return
+    // you to the same filtered view rather than the whole list.
+    const filters: ListFilters = {
+      type: optionalId(typeof body["_type"] === "string" ? body["_type"] : undefined),
+      q: typeof body["_q"] === "string" ? body["_q"] : "",
+    };
+
     if (body["_action"] === "delete") {
       db.delete(words).where(eq(words.id, id)).run();
       return reply.redirect(
-        `/vocab?language=${ctx.currentLanguage?.id}&deleted=1`,
+        vocabUrl(ctx.currentLanguage?.id, filters, { deleted: 1 }),
       );
     }
 
@@ -258,7 +305,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!parsed.success || !ownsWordType(ctx.user.id, parsed.data.wordTypeId)) {
-      return reply.redirect(`/vocab?language=${ctx.currentLanguage?.id}&error=word`);
+      return reply.redirect(vocabUrl(ctx.currentLanguage?.id, filters, { error: "word" }));
     }
 
     db.update(words)
@@ -273,7 +320,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(words.id, id))
       .run();
 
-    return reply.redirect(`/vocab?language=${ctx.currentLanguage?.id}&saved=1`);
+    return reply.redirect(vocabUrl(ctx.currentLanguage?.id, filters, { saved: 1 }));
   });
 
   /* ---------------------------------------------------------------
@@ -305,14 +352,23 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     const summary = summarise(scored, "written");
     const typeSummaries = summariseByType(scored, "written");
 
-    const selectedType = Number(query["type"] ?? NaN);
+    // The "All types" option submits an empty value, so these must treat "" as
+    // absent rather than as the number 0.
+    const selectedType = optionalId(query["type"]);
     const search = (query["q"] ?? "").trim();
-    const editId = Number(query["edit"] ?? NaN);
+    const editId = optionalId(query["edit"]);
+
+    const requestedSort = query["sort"] ?? "";
+    const sort: SortKey = requestedSort in SORTS ? (requestedSort as SortKey) : "added_desc";
+    const detailId = optionalId(query["word"]);
+
+    /** Carried through Edit, Cancel and the post-save redirect. */
+    const listFilters: ListFilters = { type: selectedType, q: search, sort };
 
     const scoreByWord = new Map(scored.map((s) => [s.wordId, s.score]));
 
     const conditions = [eq(wordTypes.languageId, language.id)];
-    if (Number.isInteger(selectedType)) {
+    if (selectedType !== null) {
       conditions.push(eq(words.wordTypeId, selectedType));
     }
     if (search) {
@@ -336,9 +392,34 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       .from(words)
       .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
       .where(and(...conditions))
+      // Score is derived rather than stored, so it cannot be an ORDER BY.
+      // Sorting happens below, in memory, over the filtered set.
       .orderBy(desc(words.createdAt), asc(words.term))
-      .limit(300)
       .all();
+
+    const scoreOf = (id: number) => scoreByWord.get(id) ?? 0;
+
+    switch (sort) {
+      case "added_asc":
+        rows.reverse();
+        break;
+      case "score_desc":
+        rows.sort((a, b) => scoreOf(b.id) - scoreOf(a.id) || a.term.localeCompare(b.term));
+        break;
+      case "score_asc":
+        rows.sort((a, b) => scoreOf(a.id) - scoreOf(b.id) || a.term.localeCompare(b.term));
+        break;
+      case "alpha":
+        rows.sort((a, b) => a.term.localeCompare(b.term));
+        break;
+      default:
+        break; // added_desc — already newest first from the query
+    }
+
+    const shown = rows.slice(0, 300);
+
+    // Clicking a word opens its full record in place of the add form.
+    const detail = detailId ? loadWordDetail(ctx.user.id, detailId) : null;
 
     const flash = flashMessage(query);
 
@@ -359,20 +440,32 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
         ${flash}
 
-        ${addWordCard(language.id, types, selectedType)}
+        ${
+          detail
+            ? wordDetailPanel(detail, vocabUrl(language.id, listFilters))
+            : addWordCard(language.id, types, selectedType)
+        }
 
         <div class="card">
           <div class="card-head">
             <div>
               <h2>Your words</h2>
-              <div class="sub">${rows.length} shown${rows.length === 300 ? " (first 300)" : ""}${
-                Number.isInteger(selectedType)
+              <div class="sub">${shown.length} of ${rows.length}${rows.length > 300 ? " (first 300)" : ""}${
+                selectedType !== null
                   ? ` · ${esc(types.find((t) => t.id === selectedType)?.name ?? "")}`
                   : ""
               }</div>
             </div>
             <form class="row" method="get" action="/vocab">
               <input type="hidden" name="language" value="${language.id}">
+              <select class="select" name="sort" onchange="this.form.submit()" aria-label="Sort by">
+                ${Object.entries(SORTS)
+                  .map(
+                    ([key, label]) =>
+                      `<option value="${key}"${key === sort ? " selected" : ""}>${esc(label)}</option>`,
+                  )
+                  .join("")}
+              </select>
               <select class="select" name="type" onchange="this.form.submit()">
                 <option value="">All types</option>
                 ${types
@@ -388,12 +481,12 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
             </form>
           </div>
           ${
-            rows.length === 0
+            shown.length === 0
               ? `<div class="empty">
                    <div class="empty-icon">${icons.book}</div>
-                   <h2>${search || Number.isInteger(selectedType) ? "Nothing matches" : "No words yet"}</h2>
+                   <h2>${search || selectedType !== null ? "Nothing matches" : "No words yet"}</h2>
                    <p>${
-                     search || Number.isInteger(selectedType)
+                     search || selectedType !== null
                        ? "Try a different search or category."
                        : "Add your first word using the form above and it will appear here."
                    }</p>
@@ -404,11 +497,11 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                     <th class="col-modes">Modes</th><th style="width:1%"></th>
                   </tr></thead>
                   <tbody>
-                    ${rows
+                    ${shown
                       .map((row) =>
                         row.id === editId
-                          ? editRow(row, types, language.id)
-                          : displayRow(row, scoreByWord.get(row.id) ?? 0, language.id),
+                          ? editRow(row, types, language.id, listFilters)
+                          : displayRow(row, scoreByWord.get(row.id) ?? 0, language.id, listFilters),
                       )
                       .join("\n")}
                   </tbody>
@@ -462,7 +555,7 @@ function firstLanguageCard(): string {
 function addWordCard(
   languageId: number,
   types: { id: number; name: string }[],
-  selectedType: number,
+  selectedType: number | null,
 ): string {
   if (types.length === 0) {
     return `<div class="card"><div class="card-body">
@@ -532,6 +625,7 @@ function displayRow(
   },
   score: number,
   languageId: number,
+  filters: ListFilters,
 ): string {
   const modes = [
     row.writtenEnabled ? `<span class="pill pill-plain">Written</span>` : "",
@@ -541,14 +635,14 @@ function displayRow(
     .join(" ");
 
   return `<tr>
-    <td class="term">${esc(row.term)}${
+    <td class="term"><a class="term-link" href="${esc(vocabUrl(languageId, filters, { word: row.id }))}">${esc(row.term)}</a>${
       row.notes ? `<div class="hint">${esc(row.notes)}</div>` : ""
     }</td>
     <td>${esc(row.english)}</td>
     <td class="col-type"><span class="pill pill-plain">${esc(row.wordTypeName)}</span></td>
     <td>${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span></td>
     <td class="col-modes">${modes || `<span class="hint">none</span>`}</td>
-    <td><a class="btn btn-sm btn-ghost" href="/vocab?language=${languageId}&edit=${row.id}">Edit</a></td>
+    <td><a class="btn btn-sm btn-ghost" href="${esc(vocabUrl(languageId, filters, { edit: row.id }))}">Edit</a></td>
   </tr>`;
 }
 
@@ -564,10 +658,13 @@ function editRow(
   },
   types: { id: number; name: string }[],
   languageId: number,
+  filters: ListFilters,
 ): string {
   return `<tr style="background:var(--accent-soft)">
     <td colspan="6" style="padding:14px 16px">
       <form method="post" action="/words/${row.id}" class="stack-sm">
+        <input type="hidden" name="_type" value="${filters.type ?? ""}">
+        <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
         <div class="form-grid">
           <div class="field"><label>Word</label>
             <input class="input" name="term" required value="${esc(row.term)}"></div>
@@ -589,7 +686,7 @@ function editRow(
           <label class="check"><input type="checkbox" name="writtenEnabled"${row.writtenEnabled ? " checked" : ""}> Written</label>
           <label class="check"><input type="checkbox" name="audioEnabled"${row.audioEnabled ? " checked" : ""}> Listening</label>
           <span class="spacer"></span>
-          <a class="btn btn-sm" href="/vocab?language=${languageId}">Cancel</a>
+          <a class="btn btn-sm" href="${esc(vocabUrl(languageId, filters))}">Cancel</a>
           <button class="btn btn-sm btn-primary" type="submit">${icons.check}Save</button>
         </div>
       </form>
@@ -597,6 +694,8 @@ function editRow(
             onsubmit="return confirm('Delete this word and its progress? This cannot be undone.')"
             style="margin-top:10px">
         <input type="hidden" name="_action" value="delete">
+        <input type="hidden" name="_type" value="${filters.type ?? ""}">
+        <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
         <button class="btn btn-sm btn-danger" type="submit">${icons.trash}Delete word</button>
       </form>
     </td>

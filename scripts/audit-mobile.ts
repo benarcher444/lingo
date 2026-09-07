@@ -64,6 +64,18 @@ async function auditPage(page: Page, path: string): Promise<void> {
     for (const el of document.querySelectorAll("a, button, [role=button], input[type=checkbox]")) {
       if (el.closest(".mobile-bar")) continue; // measured separately
 
+      // A link inside a sentence is read, not aimed at — sizing it to 44px
+      // would wreck the prose. Only standalone controls are held to the floor.
+      const parent = el.parentElement;
+      if (
+        el.tagName === "A" &&
+        !el.classList.contains("btn") &&
+        parent &&
+        (parent.textContent ?? "").trim().length > (el.textContent ?? "").trim().length + 8
+      ) {
+        continue;
+      }
+
       // A checkbox inside a label is tapped via the label, so that wrapper is
       // the real target — measuring the 20px box would be a false positive.
       const target = el.closest("label") ?? el;

@@ -85,8 +85,15 @@ Defaults are `gpt-4o-mini` for OpenAI and `claude-opus-5` for Anthropic. Leave
 Run `npm run ai:check` to confirm it works before relying on it. Without a
 provider the page says so and everything else still works.
 
-**Progress** — percentage learnt over time, completion by category, practice
-activity, and the words most in need of work.
+**Progress** — the chart leads: pick any recorded measure (percentage learnt,
+words solid, average accuracy, longest neglect…) and choose which categories to
+plot. Below it, where every word currently stands — solid, learnt, learning,
+untouched — as four bands that add up to the whole vocabulary.
+
+Clicking a word on the vocabulary page opens its full record: times tested,
+correct and wrong per direction, accuracy, streak, when it was last seen, an
+itemised breakdown of how its score is composed, and its score replayed over
+time from every answer ever given.
 
 ---
 
@@ -131,6 +138,9 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:entry` | Drive the keyboard word-entry flow |
 | `npm run test:accents` | Accent composition rules |
 | `npm run test:accents:browser` | Accent typing in a real browser |
+| `npm run test:search` | Vocabulary search and category filter |
+| `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:all` | Every suite in sequence |
 | `npm run seed:clean` | Remove seeded demo accounts, keep your own |
 | `npm run test:ai` | Check AI_PROVIDER / AI_MODEL resolve correctly |
 | `npm run ai:check` | Send one real message to the configured provider |

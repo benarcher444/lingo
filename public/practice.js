@@ -20,12 +20,60 @@ let rightFirstTime = 0;
 let wrong = 0;
 let learntNow = 0;
 let awaitingContinue = false;
+/** Active while a miss is on screen, so `y` can override it. Removed after. */
+let overrideKeyHandler = null;
 
+/**
+ * Naming the languages both ways round says which direction you are going
+ * faster than "to"/"from" does. Each also gets its own colour (see the
+ * data-direction rules in styles.css), so the card reads before you do.
+ */
 const DIRECTION_LABEL = {
-  to_english: "To English",
-  from_english: "From English",
+  to_english: `${config.languageName ?? "Target"} → English`,
+  from_english: `English → ${config.languageName ?? "Target"}`,
   listen: "Listening",
 };
+
+/* ------------------------------------------------------------------
+   Session size
+   ------------------------------------------------------------------ */
+
+const countInput = document.getElementById("count");
+const countHint = document.getElementById("count-hint");
+const typeSelect = document.getElementById("wordType");
+
+/** Words available for whichever category is currently chosen. */
+function availableCount() {
+  const chosen = typeSelect?.value;
+  if (!chosen) return config.total;
+  return config.countsByType?.[chosen] ?? config.total;
+}
+
+function refreshCountHint() {
+  if (!countInput || !countHint) return;
+
+  const available = availableCount();
+  countInput.max = String(available);
+
+  const asked = Number(countInput.value);
+
+  if (!countInput.value.trim() || asked === 0) {
+    countHint.textContent = `All ${available} words`;
+  } else if (asked >= available) {
+    countHint.textContent = `All ${available} available`;
+  } else {
+    countHint.textContent = `${available} available`;
+  }
+}
+
+countInput?.addEventListener("input", refreshCountHint);
+typeSelect?.addEventListener("change", () => {
+  // Keep the number sensible when switching to a smaller category.
+  const available = availableCount();
+  if (Number(countInput?.value) > available) countInput.value = String(available);
+  refreshCountHint();
+});
+refreshCountHint();
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -40,7 +88,8 @@ form?.addEventListener("submit", async (event) => {
       languageId: config.languageId,
       mode: config.mode,
       wordTypeId: wordTypeId ? Number(wordTypeId) : null,
-      count: Number(data.get("count")),
+      // Blank or a non-number means "everything"; the server treats 0 that way.
+      count: Math.max(0, Math.floor(Number(data.get("count")) || 0)),
     }),
   });
 
@@ -113,7 +162,7 @@ function render() {
         <span>${remainingQuestions()} left</span>
       </div>
 
-      <div class="quiz-card">
+      <div class="quiz-card" data-direction="${direction}">
         <span class="quiz-direction">${DIRECTION_LABEL[direction]}</span>
 
         ${
@@ -164,8 +213,9 @@ async function onAnswer(event) {
   }
 
   const input = document.getElementById("answer");
+  // An empty answer is a legitimate "I don't know" — it is sent and recorded as
+  // a miss rather than ignored. Forcing a guess would only pollute the history.
   const answer = input.value;
-  if (!answer.trim()) return;
 
   const response = await fetch("/api/practice/answer", {
     method: "POST",
@@ -208,17 +258,40 @@ function showVerdict(result, given) {
         ${result.justLearnt ? `<div class="delta up">Now counted as learnt</div>` : ""}
       </div>`;
   } else {
+    const skipped = given.trim() === "";
+
     verdict.innerHTML = `
       <div class="verdict verdict-wrong">
-        <div class="headline">Not quite</div>
+        <div class="headline">${skipped ? "Skipped" : "Not quite"}</div>
         <div class="answer">${escapeHtml(result.expected)}</div>
-        <div class="given">${escapeHtml(given)}</div>
+        ${skipped ? "" : `<div class="given">${escapeHtml(given)}</div>`}
       </div>
-      <div class="row" style="justify-content:center;margin-top:12px">
-        <button class="btn btn-sm" id="override" type="button">I was right — count it</button>
-      </div>`;
+      ${
+        // "I was right" makes no sense when nothing was entered.
+        skipped
+          ? ""
+          : `<div class="row" style="justify-content:center;margin-top:12px">
+               <button class="btn btn-sm" id="override" type="button">
+                 I was right — count it <kbd>Y</kbd>
+               </button>
+             </div>`
+      }`;
 
     document.getElementById("override")?.addEventListener("click", () => override(given));
+
+    // `y` overrides a miss, as it did in the original terminal app. Only bound
+    // while a miss is on screen, and never for a deliberate skip.
+    if (!skipped) {
+      overrideKeyHandler = (event) => {
+        if (event.key !== "y" && event.key !== "Y") return;
+        if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (!awaitingContinue) return;
+
+        event.preventDefault();
+        override(given);
+      };
+      document.addEventListener("keydown", overrideKeyHandler);
+    }
   }
 
   awaitingContinue = true;
@@ -229,6 +302,11 @@ function showVerdict(result, given) {
 }
 
 async function override(given) {
+  // Unbind immediately: the request is in flight, and a second `y` would
+  // record the override twice.
+  releaseOverrideKey();
+  awaitingContinue = false;
+
   await fetch("/api/practice/answer", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -247,12 +325,20 @@ async function override(given) {
   proceed();
 }
 
+function releaseOverrideKey() {
+  if (!overrideKeyHandler) return;
+  document.removeEventListener("keydown", overrideKeyHandler);
+  overrideKeyHandler = null;
+}
+
 function proceed() {
+  releaseOverrideKey();
   awaitingContinue = false;
   nextQuestion();
 }
 
 async function finish() {
+  releaseOverrideKey();
   awaitingContinue = false;
 
   const response = await fetch("/api/practice/finish", {

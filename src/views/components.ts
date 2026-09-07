@@ -51,9 +51,14 @@ export function progressBanner(opts: {
       </div>
     </div>
     <div class="banner-stats">
-      <div class="mini-stat"><div class="value learnt">${summary.completelyLearnt}</div><div class="label">Solid</div></div>
-      <div class="mini-stat"><div class="value learning">${summary.inProgress}</div><div class="label">Learning</div></div>
-      <div class="mini-stat"><div class="value new">${summary.untouched}</div><div class="label">Untouched</div></div>
+      <div class="mini-stat" title="Score above 2.556">
+        <div class="value learnt">${summary.completelyLearnt}</div><div class="label">Solid</div></div>
+      <div class="mini-stat" title="Score above 2.3 but not yet solid">
+        <div class="value learnt" style="opacity:0.75">${summary.learntNotSolid}</div><div class="label">Learnt</div></div>
+      <div class="mini-stat" title="Practised, still below the learnt line">
+        <div class="value learning">${summary.inProgress}</div><div class="label">Learning</div></div>
+      <div class="mini-stat" title="Never tested">
+        <div class="value new">${summary.untouched}</div><div class="label">Untouched</div></div>
       <div class="mini-stat"><div class="value">${summary.averageScore.toFixed(2)}</div><div class="label">Avg score</div></div>
     </div>
   </div>

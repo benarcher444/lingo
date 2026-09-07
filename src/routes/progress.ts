@@ -1,4 +1,4 @@
-import { and, eq, gte, sql } from "drizzle-orm";
+import { and, eq, gte, inArray, sql } from "drizzle-orm";
 import type { FastifyInstance } from "fastify";
 
 import type { Mode } from "../algorithm.js";
@@ -17,7 +17,24 @@ const SERIES_COLOURS = [
   "#d9679a",
   "#4aa3d9",
   "#9b7bd4",
+  "#d98d4a",
+  "#4ac0a8",
 ];
+
+/** Measures you can plot, in the order they are offered. */
+const MEASURES = {
+  percentage_learnt: { label: "Percentage learnt", suffix: "%" },
+  words_learnt: { label: "Words learnt", suffix: "" },
+  words_completely_learnt: { label: "Words solid", suffix: "" },
+  words_learning: { label: "Words still learning", suffix: "" },
+  new_words: { label: "Words untouched", suffix: "" },
+  average_score: { label: "Average score", suffix: "" },
+  average_accuracy: { label: "Average accuracy", suffix: "%" },
+  total_words: { label: "Total words", suffix: "" },
+  highest_days_since_last_tested: { label: "Longest neglect (days)", suffix: "" },
+} as const;
+
+type MeasureKey = keyof typeof MEASURES;
 
 export async function progressRoutes(app: FastifyInstance): Promise<void> {
   app.get("/progress", async (request, reply) => {
@@ -47,7 +64,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const language = ctx.currentLanguage;
-    const query = request.query as Record<string, string | undefined>;
+    const query = request.query as Record<string, string | string[] | undefined>;
     const mode: Mode = query["mode"] === "audio" ? "audio" : "written";
 
     const scored = loadScoredWords(language.id, mode);
@@ -72,7 +89,29 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const summary = summarise(scored, mode);
     const types = summariseByType(scored, mode);
 
-    /* ---- Words learnt over time, per category ---- */
+    /* ---- What to plot ---- */
+
+    const requestedMeasure = String(query["measure"] ?? "");
+    const measure: MeasureKey =
+      requestedMeasure in MEASURES ? (requestedMeasure as MeasureKey) : "percentage_learnt";
+
+    // Categories are checkboxes, so this arrives as a string, an array, or not
+    // at all. Absent means "everything", which is the useful default.
+    const rawCats = query["cats"];
+    const requestedCats = (
+      Array.isArray(rawCats) ? rawCats : rawCats === undefined ? [] : [rawCats]
+    )
+      .map((v) => Number(v))
+      .filter((n) => Number.isInteger(n));
+
+    const showAllCategories = requestedCats.length === 0;
+    const selectedCats = new Set(
+      showAllCategories ? types.map((t) => t.wordTypeId) : requestedCats,
+    );
+
+    const includeOverall = query["overall"] !== "0";
+
+    /* ---- The series ---- */
 
     const history = db
       .select({
@@ -85,7 +124,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         and(
           eq(statSnapshots.languageId, language.id),
           eq(statSnapshots.mode, mode),
-          eq(statSnapshots.measure, "percentage_learnt"),
+          eq(statSnapshots.measure, measure),
         ),
       )
       .orderBy(statSnapshots.takenAt)
@@ -95,28 +134,42 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const grouped = new Map<string, { x: number; y: number }[]>();
 
     for (const row of history) {
+      if (row.wordTypeId === null) {
+        if (!includeOverall) continue;
+      } else if (!selectedCats.has(row.wordTypeId)) {
+        continue;
+      }
+
       const key =
         row.wordTypeId === null
           ? "All categories"
           : (typeNames.get(row.wordTypeId) ?? "Removed category");
+
       const bucket = grouped.get(key) ?? [];
       bucket.push({ x: Date.parse(row.takenAt), y: row.value });
       grouped.set(key, bucket);
     }
 
     const series: Series[] = [...grouped.entries()]
-      // "All categories" first so it takes the accent colour.
       .sort((a, b) => (a[0] === "All categories" ? -1 : b[0] === "All categories" ? 1 : 0))
-      .slice(0, 6)
       .map(([name, points], i) => ({
         name,
         colour: SERIES_COLOURS[i % SERIES_COLOURS.length]!,
         points,
       }));
 
-    /* ---- Answers per day, last 30 days ---- */
+    /* ---- Activity, honouring the same category selection ---- */
 
     const since = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
+
+    const activityConditions = [
+      eq(wordTypes.languageId, language.id),
+      eq(attempts.mode, mode),
+      gte(sql`substr(${attempts.answeredAt}, 1, 10)`, since),
+    ];
+    if (!showAllCategories) {
+      activityConditions.push(inArray(words.wordTypeId, [...selectedCats]));
+    }
 
     const activityRows = db
       .select({
@@ -126,13 +179,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       .from(attempts)
       .innerJoin(words, eq(words.id, attempts.wordId))
       .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
-      .where(
-        and(
-          eq(wordTypes.languageId, language.id),
-          eq(attempts.mode, mode),
-          gte(sql`substr(${attempts.answeredAt}, 1, 10)`, since),
-        ),
-      )
+      .where(and(...activityConditions))
       .groupBy(sql`substr(${attempts.answeredAt}, 1, 10)`)
       .all();
 
@@ -145,12 +192,37 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const totalAnswers = days.reduce((sum, d) => sum + d.count, 0);
     const activeDays = days.filter((d) => d.count > 0).length;
 
-    /* ---- Weakest words ---- */
+    /* ---- Status split ---- */
 
-    const weakest = [...scored]
-      .filter((w) => Object.keys(w.directions).length > 0)
-      .sort((a, b) => a.score - b.score)
-      .slice(0, 8);
+    const statusBands = [
+      { label: "Solid", count: summary.completelyLearnt, colour: "var(--learnt)" },
+      {
+        label: "Learnt",
+        count: summary.learntNotSolid,
+        colour: "color-mix(in srgb, var(--learnt) 55%, var(--surface))",
+      },
+      { label: "Learning", count: summary.inProgress, colour: "var(--learning)" },
+      { label: "Untouched", count: summary.untouched, colour: "var(--new)" },
+    ];
+
+    const splitBar = statusBands
+      .filter((b) => b.count > 0)
+      .map(
+        (b) =>
+          `<i style="width:${((100 * b.count) / summary.total).toFixed(2)}%;background:${b.colour}"
+             title="${esc(b.label)}: ${b.count}"></i>`,
+      )
+      .join("");
+
+    const measureUrl = (key: string) => {
+      const params = new URLSearchParams();
+      params.set("language", String(language.id));
+      params.set("mode", mode);
+      params.set("measure", key);
+      if (!includeOverall) params.set("overall", "0");
+      if (!showAllCategories) for (const id of selectedCats) params.append("cats", String(id));
+      return `/progress?${params.toString()}`;
+    };
 
     const body = `
       ${pageHead({
@@ -162,6 +234,111 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       })}
 
       <div class="stack">
+
+        <!-- The chart leads: it is the reason to open this page. -->
+        <div class="card">
+          <div class="card-head">
+            <div>
+              <h2>${esc(MEASURES[measure].label)} over time</h2>
+              <div class="sub">Recorded at the start and end of every session.</div>
+            </div>
+            <form method="get" action="/progress" class="row" id="measure-form">
+              <input type="hidden" name="language" value="${language.id}">
+              <input type="hidden" name="mode" value="${mode}">
+              <select class="select" name="measure" onchange="this.form.submit()" aria-label="Measure">
+                ${Object.entries(MEASURES)
+                  .map(
+                    ([key, m]) =>
+                      `<option value="${key}"${key === measure ? " selected" : ""}>${esc(m.label)}</option>`,
+                  )
+                  .join("")}
+              </select>
+            </form>
+          </div>
+
+          <div class="card-body chart-box" style="padding-top:14px">
+            ${lineChart(series, { yLabel: MEASURES[measure].label })}
+          </div>
+
+          ${series.length > 0 ? legend(series.map((s) => ({ name: s.name, colour: s.colour }))) : ""}
+
+          <form method="get" action="/progress" class="chart-filters">
+            <input type="hidden" name="language" value="${language.id}">
+            <input type="hidden" name="mode" value="${mode}">
+            <input type="hidden" name="measure" value="${measure}">
+
+            <span class="chart-filters-label">Show</span>
+
+            <label class="check">
+              <input type="checkbox" name="overall" value="1" ${includeOverall ? "checked" : ""}
+                     onchange="this.form.submit()"> All categories
+            </label>
+
+            ${types
+              .map(
+                (t) => `
+              <label class="check">
+                <input type="checkbox" name="cats" value="${t.wordTypeId}"
+                       ${!showAllCategories && selectedCats.has(t.wordTypeId) ? "checked" : ""}
+                       onchange="this.form.submit()"> ${esc(t.wordTypeName)}
+                <span class="hint">${t.total}</span>
+              </label>`,
+              )
+              .join("")}
+
+            <a class="btn btn-sm btn-ghost" href="${esc(measureUrl(measure).replace(/&cats=\d+/g, "").replace("&overall=0", ""))}">Reset</a>
+          </form>
+        </div>
+
+        <!-- Where every word currently sits. These four sum to the total. -->
+        <div class="card">
+          <div class="card-head">
+            <div><h2>Where your ${esc(language.name)} stands</h2>
+              <div class="sub">${summary.total} words · ${summary.pctLearnt.toFixed(1)}% learnt</div></div>
+          </div>
+          <div class="card-body">
+            <div class="split-bar">${splitBar}</div>
+            <div class="split-legend">
+              ${statusBands
+                .map(
+                  (b) => `
+                <div class="split-item">
+                  <i style="background:${b.colour}"></i>
+                  <span class="split-count">${b.count}</span>
+                  <span class="split-label">${esc(b.label)}</span>
+                  <span class="hint">${((100 * b.count) / summary.total).toFixed(0)}%</span>
+                </div>`,
+                )
+                .join("")}
+            </div>
+            <div class="hint" style="margin-top:12px">
+              Solid is above ${(2.556).toFixed(3)}, learnt above ${(2.3).toFixed(1)}.
+              Scores decay about 0.01 a day, so words move back down if left alone.
+            </div>
+          </div>
+        </div>
+
+        <div class="chart-grid">
+          <div class="card">
+            <div class="card-head"><div><h2>Completion by category</h2>
+              <div class="sub">Where your vocabulary is strong and where it is thin.</div></div></div>
+            <div class="card-body chart-box">
+              ${barChart(types.map((t) => ({ label: t.wordTypeName, value: t.learnt, total: t.total })))}
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days.</div></div>
+              <div class="row">
+                <span class="pill pill-plain">${totalAnswers} answers</span>
+                <span class="pill pill-plain">${activeDays} active days</span>
+              </div>
+            </div>
+            <div class="card-body chart-box">${activityChart(days)}</div>
+          </div>
+        </div>
+
         <div class="summary-grid">
           <div class="summary-cell">
             <div class="value">${summary.total}</div><div class="label">Words</div>
@@ -171,74 +348,17 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
             <div class="label">Learnt</div>
           </div>
           <div class="summary-cell">
-            <div class="value" style="color:var(--learnt)">${summary.completelyLearnt}</div>
-            <div class="label">Solid</div>
-          </div>
-          <div class="summary-cell">
-            <div class="value" style="color:var(--learning)">${summary.inProgress}</div>
-            <div class="label">Learning</div>
-          </div>
-          <div class="summary-cell">
-            <div class="value" style="color:var(--new)">${summary.untouched}</div>
-            <div class="label">Untouched</div>
-          </div>
-          <div class="summary-cell">
             <div class="value">${summary.averageScore.toFixed(2)}</div>
             <div class="label">Avg score</div>
           </div>
-        </div>
-
-        <div class="chart-grid">
-          <div class="card">
-            <div class="card-head"><div><h2>Percentage learnt over time</h2>
-              <div class="sub">Recorded at the start and end of every session.</div></div></div>
-            <div class="card-body chart-box">${lineChart(series, { yLabel: "Percent learnt" })}</div>
-            ${series.length > 0 ? legend(series.map((s) => ({ name: s.name, colour: s.colour }))) : ""}
+          <div class="summary-cell">
+            <div class="value">${summary.averageAccuracy.toFixed(0)}%</div>
+            <div class="label">Avg accuracy</div>
           </div>
-
-          <div class="card">
-            <div class="card-head"><div><h2>Completion by category</h2>
-              <div class="sub">Where your vocabulary is strong and where it is thin.</div></div></div>
-            <div class="card-body chart-box">
-              ${barChart(types.map((t) => ({ label: t.wordTypeName, value: t.learnt, total: t.total })))}
-            </div>
+          <div class="summary-cell">
+            <div class="value">${summary.staleDays}</div>
+            <div class="label">Longest neglect</div>
           </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">
-            <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days.</div></div>
-            <div class="row">
-              <span class="pill pill-plain">${totalAnswers} answers</span>
-              <span class="pill pill-plain">${activeDays} active days</span>
-            </div>
-          </div>
-          <div class="card-body chart-box">${activityChart(days)}</div>
-        </div>
-
-        <div class="card">
-          <div class="card-head"><div><h2>Needs the most work</h2>
-            <div class="sub">Lowest-scoring words you have already seen at least once.</div></div></div>
-          ${
-            weakest.length === 0
-              ? `<div class="empty" style="padding:34px"><p>Nothing practised yet — do a session and the weak spots show up here.</p></div>`
-              : `<div class="table-wrap"><table class="data">
-                  <thead><tr><th>Word</th><th>English</th><th class="col-type">Category</th><th class="num">Score</th><th class="col-seen">Last seen</th></tr></thead>
-                  <tbody>
-                    ${weakest
-                      .map(
-                        (w) => `<tr>
-                          <td class="term">${esc(w.term)}</td>
-                          <td>${esc(w.english)}</td>
-                          <td class="col-type"><span class="pill pill-plain">${esc(w.wordTypeName)}</span></td>
-                          <td class="num">${w.score.toFixed(2)}</td>
-                          <td class="hint col-seen">${w.lastTested ? esc(w.lastTested) : "never"}</td>
-                        </tr>`,
-                      )
-                      .join("")}
-                  </tbody>
-                </table></div>`
-          }
         </div>
       </div>`;
 

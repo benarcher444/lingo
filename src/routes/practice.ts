@@ -79,8 +79,14 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       const config = {
         languageId: language.id,
         languageCode: language.code,
+        languageName: language.name,
         mode,
         total: scored.length,
+        // How many words each category holds, so the "how many" hint can react
+        // to the category picker without another request.
+        countsByType: Object.fromEntries(
+          typeSummaries.map((t) => [t.wordTypeId, t.total]),
+        ) as Record<string, number>,
       };
 
       const body = `
@@ -114,12 +120,17 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
                 </div>
                 <div class="field" style="width:150px">
                   <label for="count">How many</label>
-                  <select class="select" id="count" name="count">
-                    <option value="10">10 words</option>
-                    <option value="20" selected>20 words</option>
-                    <option value="40">40 words</option>
-                    <option value="0">Everything</option>
-                  </select>
+                  <input class="input" id="count" name="count" type="number"
+                         inputmode="numeric" min="0" max="${scored.length}"
+                         value="${Math.min(20, scored.length)}" list="count-presets"
+                         autocomplete="off">
+                  <datalist id="count-presets">
+                    <option value="10"></option>
+                    <option value="20"></option>
+                    <option value="40"></option>
+                    <option value="${scored.length}"></option>
+                  </datalist>
+                  <div class="hint" id="count-hint"></div>
                 </div>
                 <button class="btn btn-primary btn-lg" type="submit" style="align-self:end">
                   ${icons.arrowRight}Start
@@ -255,7 +266,9 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
         languageId: z.coerce.number().int().positive(),
         mode: z.enum(["written", "audio"]),
         wordTypeId: z.coerce.number().int().positive().nullable().optional(),
-        count: z.coerce.number().int().min(0).max(2000),
+        // 0 means "everything", and anything above the pool size is clamped by
+        // weightedSample, so a generous ceiling is safe.
+        count: z.coerce.number().int().min(0).max(100_000),
       })
       .safeParse(request.body);
 

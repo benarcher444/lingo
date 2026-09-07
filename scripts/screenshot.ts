@@ -60,6 +60,15 @@ const SHOTS: Shot[] = [
       await page.waitForSelector(".verdict", { timeout: 10_000 });
     },
   },
+  {
+    key: "word-detail",
+    path: "/vocab",
+    authenticated: true,
+    prepare: async (page) => {
+      await page.click("a.term-link");
+      await page.waitForSelector(".detail-card", { timeout: 10_000 });
+    },
+  },
   { key: "audio", path: "/practice/audio", authenticated: true },
   { key: "chat", path: "/practice/chat", authenticated: true },
   { key: "progress", path: "/progress", authenticated: true },

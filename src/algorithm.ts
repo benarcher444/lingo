@@ -120,6 +120,62 @@ function round(n: number): number {
   return Math.round(n * 10_000) / 10_000;
 }
 
+export interface ScoreBreakdown {
+  accuracy: number;
+  volume: number;
+  streak: number;
+  neglect: number;
+  total: number;
+  daysSinceTested: number;
+}
+
+/**
+ * The same score, itemised — so a word's number can be explained rather than
+ * just asserted. `neglect` is reported as the positive amount subtracted.
+ */
+export function explainScore(
+  progress: WordProgress,
+  mode: Mode,
+  now?: Date,
+): ScoreBreakdown {
+  const days = daysSinceTested(progress.lastTested, now);
+  const neglect = days / 100;
+
+  if (mode === "audio") {
+    const listen = direction(progress, "listen");
+    const accuracyPart = (accuracy(listen.correct, listen.tested) * 2) / 100;
+    const volumePart = listen.correct / 10;
+    const streakPart = listen.streak >= STREAK_TARGET ? 0.5 : 0;
+
+    return {
+      accuracy: round(accuracyPart),
+      volume: round(volumePart),
+      streak: streakPart,
+      neglect: round(neglect),
+      total: round(accuracyPart + volumePart + streakPart - neglect),
+      daysSinceTested: days,
+    };
+  }
+
+  const to = direction(progress, "to_english");
+  const from = direction(progress, "from_english");
+
+  const accuracyPart =
+    accuracy(to.correct, to.tested) / 100 + accuracy(from.correct, from.tested) / 100;
+  const volumePart = to.correct / 20 + from.correct / 20;
+  const streakPart =
+    to.streak >= STREAK_TARGET && from.streak >= STREAK_TARGET ? 0.5 : 0;
+
+  return {
+    accuracy: round(accuracyPart),
+    volume: round(volumePart),
+    streak: streakPart,
+    neglect: round(neglect),
+    total: round(accuracyPart + volumePart + streakPart - neglect),
+    daysSinceTested: days,
+  };
+}
+
 export function isLearnt(score: number): boolean {
   return score > LEARNT_THRESHOLD;
 }

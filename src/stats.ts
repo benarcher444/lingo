@@ -101,11 +101,27 @@ export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
   return [...byWord.values()];
 }
 
+/**
+ * The four count fields form a true partition of `total`:
+ *
+ *   completelyLearnt + learntNotSolid + inProgress + untouched === total
+ *
+ * `learnt` is the inclusive figure (solid words included) used for the headline
+ * and percentages. Showing `completelyLearnt` next to `inProgress` without
+ * `learntNotSolid` made the tiles appear not to add up, because a word sitting
+ * between the two thresholds belonged to neither.
+ */
 export interface Summary {
   total: number;
+  /** score > 2.3, including solid words. */
   learnt: number;
+  /** score > 2.556. */
   completelyLearnt: number;
+  /** Above the learnt line but not yet solid. */
+  learntNotSolid: number;
+  /** Practised at least once, still below the learnt line. */
   inProgress: number;
+  /** Never tested in this mode. */
   untouched: number;
   pctLearnt: number;
   pctCompletelyLearnt: number;
@@ -121,6 +137,7 @@ export function summarise(rows: ScoredWord[], mode: Mode): Summary {
       total: 0,
       learnt: 0,
       completelyLearnt: 0,
+      learntNotSolid: 0,
       inProgress: 0,
       untouched: 0,
       pctLearnt: 0,
@@ -176,6 +193,7 @@ export function summarise(rows: ScoredWord[], mode: Mode): Summary {
     total,
     learnt,
     completelyLearnt,
+    learntNotSolid: learnt - completelyLearnt,
     inProgress: total - learnt - untouched,
     untouched,
     pctLearnt: round2((100 * learnt) / total),
@@ -232,6 +250,8 @@ export function recordSnapshot(languageId: number, mode: Mode): void {
     const measures: Record<string, number> = {
       total_words: summary.total,
       words_learnt: summary.learnt,
+      words_learnt_not_solid: summary.learntNotSolid,
+      words_learning: summary.inProgress,
       words_completely_learnt: summary.completelyLearnt,
       percentage_learnt: summary.pctLearnt,
       percentage_completely_learnt: summary.pctCompletelyLearnt,

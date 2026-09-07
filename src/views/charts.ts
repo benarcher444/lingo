@@ -18,7 +18,16 @@ const W = 560;
 const H = 220;
 const PAD = { top: 14, right: 14, bottom: 26, left: 38 };
 
-export function lineChart(series: Series[], opts: { yLabel?: string } = {}): string {
+export interface Threshold {
+  value: number;
+  label: string;
+  colour: string;
+}
+
+export function lineChart(
+  series: Series[],
+  opts: { yLabel?: string; thresholds?: Threshold[] } = {},
+): string {
   const all = series.flatMap((s) => s.points);
   if (all.length === 0) return emptyChart("Not enough history yet");
 
@@ -28,7 +37,9 @@ export function lineChart(series: Series[], opts: { yLabel?: string } = {}): str
   const minX = Math.min(...xs);
   const maxX = Math.max(...xs);
   const minY = 0;
-  const maxY = Math.max(...ys, 1);
+  // Leave headroom for a threshold line sitting above every plotted point.
+  const thresholdMax = Math.max(0, ...(opts.thresholds ?? []).map((t) => t.value));
+  const maxY = Math.max(...ys, thresholdMax * 1.1, 1);
 
   const spanX = maxX - minX || 1;
   const spanY = maxY - minY || 1;
@@ -76,8 +87,24 @@ export function lineChart(series: Series[], opts: { yLabel?: string } = {}): str
     })
     .join("");
 
+  const thresholdLines = (opts.thresholds ?? [])
+    .filter((t) => t.value <= maxY)
+    .map((t, i) => {
+      const y = py(t.value);
+      // Alternate sides: two thresholds close together (learnt at 2.3, solid at
+      // 2.556) would otherwise print their labels on top of each other.
+      const onLeft = i % 2 === 1;
+      const x = onLeft ? PAD.left + 3 : W - PAD.right - 3;
+
+      return `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}"
+                stroke="${t.colour}" stroke-width="1.5" stroke-dasharray="5 4" opacity="0.8" />
+              <text x="${x}" y="${(y - 5).toFixed(1)}" text-anchor="${onLeft ? "start" : "end"}"
+                font-size="12" fill="${t.colour}">${esc(t.label)}</text>`;
+    })
+    .join("");
+
   return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(opts.yLabel ?? "Chart")} over time">
-    ${gridLines}${paths}${dateLabels}
+    ${gridLines}${thresholdLines}${paths}${dateLabels}
   </svg>`;
 }
 

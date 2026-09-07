@@ -57,6 +57,21 @@ export function requireContext(
   return ctx;
 }
 
+/**
+ * Read a positive integer from a query string, treating absent, empty and
+ * non-numeric values alike as "not given".
+ *
+ * Written because `Number("")` is `0`, not `NaN`, and `Number.isInteger(0)` is
+ * true — so an empty `?type=` from a select whose default option has an empty
+ * value read as a real id of 0 and filtered everything away.
+ */
+export function optionalId(value: string | undefined): number | null {
+  if (value === undefined || value.trim() === "") return null;
+
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+}
+
 export function typesFor(language: Language | null) {
   if (!language) return [];
   return db
