@@ -9,7 +9,7 @@
  * key on strangers.
  *
  * The file is gitignored: the repository is public, and these are people's
- * email addresses. allowed_emails.example.csv is the template.
+ * email addresses.
  */
 
 import { readFileSync } from "node:fs";

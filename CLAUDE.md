@@ -270,7 +270,7 @@ is meant to be reachable from anywhere, so:
 - **Sign-up by invitation.** `allowed_emails.csv` at the root, one address per
   line, read on every sign-up (edits apply without a restart), fail-closed when
   missing. It is **gitignored** — the repo is public and these are people's
-  addresses; `allowed_emails.example.csv` is the template. Only sign-up checks
+  addresses. There is deliberately no template file. Only sign-up checks
   it, not sign-in, so the seeded demo accounts still work for tests.
 - **Five wrong passwords lock the account** (`users.failed_logins`,
   `users.locked_at`), and it stays locked even for the right password until

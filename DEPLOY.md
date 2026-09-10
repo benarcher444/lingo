@@ -85,8 +85,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 Then the invite list, one address per line:
 
 ```bash
-sudo -u lingo cp allowed_emails.example.csv allowed_emails.csv
-nano allowed_emails.csv
+sudo -u lingo nano allowed_emails.csv    # an "email" header line, then one address per line
 ```
 
 Edits to this list take effect immediately, with no restart. It is gitignored:

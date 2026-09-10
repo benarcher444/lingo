@@ -18,8 +18,8 @@ cp env.example .env      # optional — sensible defaults without it
 npm run dev              # http://localhost:3000
 ```
 
-Sign-up is by invitation. Copy `allowed_emails.example.csv` to
-`allowed_emails.csv` and put your email address in it, then register at
+Sign-up is by invitation. Create `allowed_emails.csv` with an `email` header
+line and your email address beneath it, then register at
 `/register` and add your first language. A starter set of categories (nouns,
 verbs, adjectives, …) is created with it.
 
