@@ -4,6 +4,8 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 
 import { provider } from "../ai.js";
+import { mayUseAI } from "../allowlist.js";
+import { LEVELS, SCENES, SCENE_KEYS } from "../chat-scenarios.js";
 import type { Mode } from "../algorithm.js";
 import { requireContext, typesFor } from "../context.js";
 import { buildSession, recordAnswer } from "../practice.js";
@@ -167,7 +169,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
 
     const head = pageHead({
       title: "Conversation",
-      sub: "Chat in the language you are learning. Your message is corrected first, then answered, and you can ask for a breakdown of anything.",
+      sub: "The tutor starts the conversation and keeps it going. What you write is corrected first, then answered, and you can ask the teacher about anything.",
     });
 
     if (!ctx.currentLanguage) {
@@ -207,7 +209,31 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       );
     }
 
+    // The AI costs money, so only accounts marked "yes" in allowed_emails.csv get it.
+    if (!mayUseAI(ctx.user.email)) {
+      return reply.type("text/html").send(
+        layout(ctx, {
+          title: "Conversation",
+          body:
+            head +
+            emptyState({
+              title: "Conversation isn't switched on for your account",
+              body: "The AI tutor costs money to run, so the site owner switches it on for each person. Ask them to turn it on for you. Everything else here is yours to use.",
+              icon: icons.chat,
+            }),
+        }),
+      );
+    }
+
     const hasKey = provider !== null;
+
+    const sceneOptions = SCENE_KEYS.map(
+      (key) =>
+        `<option value="${key}"${key === "general" ? " selected" : ""}>${esc(SCENES[key].label)}</option>`,
+    ).join("");
+    const levelOptions = LEVELS.map(
+      (level) => `<option value="${level}"${level === "A1" ? " selected" : ""}>${level}</option>`,
+    ).join("");
 
     const body = `
       ${head}
@@ -219,22 +245,35 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
         }
         <div class="card">
           <div class="card-head">
-            <div><h2>${esc(language.name)} conversation</h2><div class="sub">Write as best you can — mistakes are expected and corrected.</div></div>
-            <span class="pill pill-accent">${icons.sparkle}Level A1</span>
+            <div><h2>${esc(language.name)} conversation</h2>
+              <div class="sub" id="chat-sub">Choose what to talk about. The tutor opens, keeps it moving, and corrects what you write.</div></div>
+            <button class="btn btn-sm btn-ghost" id="chat-mute" type="button" aria-pressed="false">${icons.speaker}<span>Sound on</span></button>
           </div>
-          <div class="chat-log" id="chat-log">
-            <div class="msg">
-              <div class="who">Tutor</div>
-              <div class="bubble">${
-                hasKey
-                  ? "Bonjour ! Ready when you are — say anything and I will reply in your target language."
-                  : "I am not connected yet. Once an API key is configured I will chat with you here, correct what you write, and explain anything you ask about."
-              }</div>
+
+          <!-- Before you start: what about, and at what level. The AI then opens. -->
+          <form class="chat-setup" id="chat-setup">
+            <div class="field chat-setup-scene">
+              <label for="chat-scene">Conversation</label>
+              <select class="select" id="chat-scene">${sceneOptions}</select>
             </div>
-          </div>
-          <form class="chat-compose" id="chat-form">
-            <input class="input" id="chat-input" placeholder="Write something…" autocomplete="off" ${hasKey ? "" : "disabled"}>
-            <button class="btn btn-primary" type="submit" ${hasKey ? "" : "disabled"}>Send</button>
+            <div class="field chat-setup-level">
+              <label for="chat-level">Level</label>
+              <select class="select" id="chat-level">${levelOptions}</select>
+            </div>
+            <div class="field chat-setup-custom" id="chat-custom-field" hidden>
+              <label for="chat-custom">Your scene</label>
+              <input class="input" id="chat-custom" maxlength="200" autocomplete="off"
+                     placeholder="e.g. returning a jacket that doesn't fit">
+            </div>
+            <button class="btn btn-primary btn-lg" type="submit" ${hasKey ? "" : "disabled"}>${icons.arrowRight}Start</button>
+          </form>
+
+          <div class="chat-log" id="chat-log" hidden></div>
+
+          <form class="chat-compose" id="chat-form" hidden>
+            <input class="input" id="chat-input" placeholder="Write your reply…" autocomplete="off">
+            <button class="btn btn-primary" type="submit">Send</button>
+            <button class="btn btn-ghost" id="chat-restart" type="button">New</button>
           </form>
         </div>
       </div>`;
@@ -248,6 +287,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           value: {
             languageId: language.id,
             languageName: language.name,
+            languageCode: language.code,
             enabled: hasKey,
           },
         },

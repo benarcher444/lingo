@@ -19,7 +19,7 @@
  * Any key here is API billing, separate from a Claude or ChatGPT subscription.
  */
 
-export type ProviderName = "openai" | "anthropic" | "none";
+export type ProviderName = "openai" | "anthropic" | "mock" | "none";
 
 export interface ChatTurn {
   role: "user" | "assistant";
@@ -32,6 +32,8 @@ export interface CompletionRequest {
   /** Rough steer on how much thought the task deserves. */
   effort: "low" | "medium";
   maxTokens?: number;
+  /** Which tutor role is asking. Lets the test stand-in answer in kind. */
+  purpose?: "interpreter" | "partner" | "teacher";
 }
 
 export interface Provider {
@@ -40,7 +42,7 @@ export interface Provider {
   complete(request: CompletionRequest): Promise<string>;
 }
 
-const DEFAULT_MODELS: Record<Exclude<ProviderName, "none">, string> = {
+const DEFAULT_MODELS: Record<"openai" | "anthropic", string> = {
   // What the original app used, modernised — 3.5-turbo is long superseded.
   openai: "gpt-4o-mini",
   anthropic: "claude-opus-5",
@@ -50,7 +52,7 @@ const DEFAULT_MODELS: Record<Exclude<ProviderName, "none">, string> = {
 function resolveProviderName(): ProviderName {
   const configured = (process.env.AI_PROVIDER ?? "").trim().toLowerCase();
 
-  if (configured === "openai" || configured === "anthropic" || configured === "none") {
+  if (configured === "openai" || configured === "anthropic" || configured === "mock" || configured === "none") {
     return configured;
   }
 
@@ -153,12 +155,90 @@ class AnthropicProvider implements Provider {
 }
 
 /* ------------------------------------------------------------------
+   Mock — for tests only
+   ------------------------------------------------------------------ */
+
+/**
+ * AI_PROVIDER=mock: no network and no cost, and a predictable answer for each
+ * role, so the conversation page can be driven end to end (scripts/test-chat.ts).
+ * "!nocredit" in the latest message fails the way an account out of credit
+ * does. Never set on the server.
+ */
+class MockProvider implements Provider {
+  readonly name = "mock" as const;
+  readonly model = "mock";
+
+  async complete(request: CompletionRequest): Promise<string> {
+    const latest = request.messages[request.messages.length - 1]?.content ?? "";
+    if (latest.includes("!nocredit")) {
+      throw Object.assign(new Error("You have no credits remaining."), {
+        status: 429,
+        code: "credit_balance_exhausted",
+        type: "insufficient_quota",
+      });
+    }
+
+    const turn = request.messages.filter((m) => m.role === "user").length;
+    const scene = request.system.match(/^Scene: (.+?)\.?$/m)?.[1] ?? "none";
+    const level = request.system.match(/level ([ABC][12])/)?.[1] ?? "?";
+
+    switch (request.purpose) {
+      case "interpreter":
+        return `Corrigé : ${latest}`;
+      case "teacher":
+        return `Explication ${turn} : ${latest.slice(0, 60)}`;
+      default:
+        return `[${scene} · ${level}] Réponse ${turn} ?`;
+    }
+  }
+}
+
+/* ------------------------------------------------------------------
+   Errors
+   ------------------------------------------------------------------ */
+
+/** How an AI request failed, in terms the learner can act on. */
+export type AIErrorKind = "no_credit" | "bad_key" | "rate_limited" | "upstream";
+
+/**
+ * Sorts a provider error. Out of credit matters most: it is the one the owner
+ * must act on. OpenAI reports it as a 429 that looks like rate limiting
+ * (insufficient_quota / credit_balance_exhausted); Anthropic as a 400 whose
+ * message mentions the credit balance.
+ */
+export function classifyAIError(error: unknown): AIErrorKind {
+  const e = (error ?? {}) as {
+    status?: number;
+    code?: string;
+    type?: string;
+    message?: string;
+    error?: { code?: string; type?: string; message?: string; error?: { type?: string; message?: string } };
+  };
+  const code = e.code ?? e.error?.code;
+  const type = e.type ?? e.error?.type;
+  const text = `${e.message ?? ""} ${e.error?.message ?? ""} ${e.error?.error?.message ?? ""}`.toLowerCase();
+
+  if (
+    code === "insufficient_quota" ||
+    code === "credit_balance_exhausted" ||
+    type === "insufficient_quota" ||
+    /credit balance|no credits|insufficient.quota|billing details/.test(text)
+  ) {
+    return "no_credit";
+  }
+  if (e.status === 401 || e.status === 403) return "bad_key";
+  if (e.status === 429) return "rate_limited";
+  return "upstream";
+}
+
+/* ------------------------------------------------------------------
    Selection
    ------------------------------------------------------------------ */
 
 function build(): Provider | null {
   const name = resolveProviderName();
   if (name === "none") return null;
+  if (name === "mock") return new MockProvider();
 
   const model = (process.env.AI_MODEL ?? "").trim() || DEFAULT_MODELS[name];
 
@@ -176,6 +256,6 @@ export const provider: Provider | null = build();
 
 export function providerLabel(): string {
   if (!provider) return "Not configured";
-  const vendor = provider.name === "openai" ? "OpenAI" : "Anthropic";
+  const vendor = provider.name === "openai" ? "OpenAI" : provider.name === "anthropic" ? "Anthropic" : "Mock";
   return `${vendor} · ${provider.model}`;
 }

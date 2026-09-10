@@ -18,8 +18,9 @@ cp env.example .env      # optional — sensible defaults without it
 npm run dev              # http://localhost:3000
 ```
 
-Sign-up is by invitation. Create `allowed_emails.csv` with an `email` header
-line and your email address beneath it, then register at
+Sign-up is by invitation. Create `allowed_emails.csv` with an `email,ai` header
+line and `your@address,yes` beneath it (the `ai` column says who may use the
+AI tutor), then register at
 `/register` and add your first language. A starter set of categories (nouns,
 verbs, adjectives, …) is created with it.
 
@@ -69,7 +70,7 @@ for the common ones.
 **Written practice** — each word is tested in both directions and keeps coming
 back until you get both right. Answers are matched case- and accent-insensitively
 (`etre` is accepted for `être`), with a manual override when you were right and
-the checker disagreed.
+the checker disagreed. Leave the page mid-session and it picks up where you were.
 
 **Listening practice** — the word is spoken in the target language and you type
 what it *means* in English, so it tests comprehension rather than spelling back
@@ -78,9 +79,13 @@ once you've answered. Speech uses the browser's own voices, so there is no audio
 to download or cache. But voices vary by browser, and Chrome's French and
 Spanish ones are synthesised online, so they need a connection.
 
-**Conversation** — write in the language you are learning. Your sentence is
-quietly corrected into fluent text first, then answered in that language, and you
-can ask for an English breakdown of anything.
+**Conversation** — pick general conversation, a scene (restaurant, hotel, train
+station…), "Surprise me", or describe your own, and a level from A1 to C1. The
+tutor opens in the language you are learning and keeps the conversation moving.
+What you write is corrected first, then answered, and replies are read aloud,
+with replay and slow buttons. Ask the teacher about any message for an English
+breakdown, then keep asking follow-ups. Only accounts marked `yes` in the `ai`
+column of `allowed_emails.csv` can use it, because every message costs money.
 
 Which AI answers is configuration, not code. In `.env`:
 

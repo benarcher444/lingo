@@ -117,6 +117,8 @@ check("capital R too", (await audible()).length === beforeBare + 2);
 
 console.log("\nNext card\n");
 
+// A session in progress now resumes on return, so clear this one first.
+await page.evaluate("localStorage.clear()");
 await page.goto(`${BASE}/practice/audio`, { waitUntil: "networkidle" });
 await page.fill("#count", "3");
 await page.click('#setup-form button[type="submit"]');

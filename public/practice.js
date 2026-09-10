@@ -25,6 +25,87 @@ let sessionId = null;
 /** Active while a miss is on screen, so `y` can override it. Removed after. */
 let overrideKeyHandler = null;
 
+/* ------------------------------------------------------------------
+   Coming back to a session
+   ------------------------------------------------------------------ */
+
+// Switching tabs, a phone reloading a page it had put to sleep, or a stray tap
+// on the tab bar used to throw the whole session away. It is saved after every
+// question and answer, and picked up again on return. This browser only, and
+// for 12 hours at most, so a forgotten session does not linger.
+const SAVE_KEY = `lingo:practice:${config.mode}:${config.languageId}`;
+const SAVE_FOR_MS = 12 * 60 * 60 * 1000;
+
+function saveSession() {
+  try {
+    localStorage.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        savedAt: Date.now(),
+        cards,
+        current: current ? { wordId: current.card.wordId, direction: current.direction } : null,
+        // Answered but not yet continued: the next visit moves on, rather than
+        // asking the same question again and recording it twice.
+        answeredCurrent: awaitingContinue,
+        totalQuestions,
+        answered,
+        rightFirstTime,
+        wrong,
+        learntNow,
+        sessionId,
+      }),
+    );
+  } catch {
+    // Storage blocked: the session just will not survive a reload.
+  }
+}
+
+function clearSession() {
+  try {
+    localStorage.removeItem(SAVE_KEY);
+  } catch {
+    // As above.
+  }
+}
+
+function resumeSession() {
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null");
+  } catch {
+    saved = null;
+  }
+  if (!saved || !Array.isArray(saved.cards) || saved.cards.length === 0) return;
+  if (Date.now() - saved.savedAt > SAVE_FOR_MS) {
+    clearSession();
+    return;
+  }
+
+  cards = saved.cards;
+  totalQuestions = saved.totalQuestions;
+  answered = saved.answered;
+  rightFirstTime = saved.rightFirstTime;
+  wrong = saved.wrong;
+  learntNow = saved.learntNow;
+  sessionId = saved.sessionId;
+
+  setupEl.hidden = true;
+  if (overviewEl) overviewEl.hidden = true;
+  summaryEl.hidden = true;
+  quizEl.hidden = false;
+
+  const card = saved.current && cards.find((c) => c.wordId === saved.current.wordId);
+  if (card && !saved.answeredCurrent && card.pending.includes(saved.current.direction)) {
+    current = { card, direction: saved.current.direction, revealed: false };
+    render();
+  } else {
+    nextQuestion();
+  }
+}
+
+// After the whole module has run, so everything render() needs exists.
+queueMicrotask(resumeSession);
+
 /**
  * Naming the languages both ways round says which direction you are going
  * faster than "to"/"from" does. Each also gets its own colour (see the
@@ -207,6 +288,7 @@ function render() {
   }
 
   document.getElementById("answer").focus();
+  saveSession();
 }
 
 async function onAnswer(event) {
@@ -255,6 +337,7 @@ async function onAnswer(event) {
   if (result.justLearnt) learntNow += 1;
 
   showVerdict(result, answer);
+  saveSession();
 }
 
 function showVerdict(result, given) {
@@ -367,6 +450,7 @@ function proceed() {
 }
 
 async function finish() {
+  clearSession();
   releaseOverrideKey();
   awaitingContinue = false;
 

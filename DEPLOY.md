@@ -85,7 +85,7 @@ ANTHROPIC_API_KEY=sk-ant-...
 Then the invite list, one address per line:
 
 ```bash
-sudo -u lingo nano allowed_emails.csv    # an "email" header line, then one address per line
+sudo -u lingo nano allowed_emails.csv    # "email,ai" header, then e.g. you@example.com,yes
 ```
 
 Edits to this list take effect immediately, with no restart. It is gitignored:
@@ -173,7 +173,7 @@ finish with "✓ Lingo is up".
 |---|---|
 | Update to the latest code | Push to `main`: GitHub Actions deploys it (step 9). By hand: **laptop:** `ssh root@<server-ip> lingo-deploy` |
 | Change `deploy/deploy.sh` itself | **server:** `install -m 755 /opt/lingo/deploy/deploy.sh /usr/local/bin/lingo-deploy` — the installed copy is what runs |
-| Invite someone | **laptop:** `ssh root@<server-ip> nano /opt/lingo/allowed_emails.csv` |
+| Invite someone | **laptop:** `ssh root@<server-ip> nano /opt/lingo/allowed_emails.csv`. Add `them@example.com,yes` to let them use Conversation, or `,no` for everything but. |
 | Unlock an account (5 wrong passwords) | **server:** `cd /opt/lingo && sudo -u lingo -H npm run unlock -- them@example.com` |
 | Reset a forgotten password (also unlocks) | **server:** `cd /opt/lingo && sudo -u lingo -H npm run set-password -- them@example.com 'new password'` |
 | Watch the logs | **server:** `journalctl -u lingo -f` |

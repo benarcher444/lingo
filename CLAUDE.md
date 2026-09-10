@@ -267,9 +267,11 @@ otherwise has no remedy.
 **Sign-in hardened for a public server.** The GitHub repo is public and the app
 is meant to be reachable from anywhere, so:
 
-- **Sign-up by invitation.** `allowed_emails.csv` at the root, one address per
-  line, read on every sign-up (edits apply without a restart), fail-closed when
-  missing. It is **gitignored** — the repo is public and these are people's
+- **Sign-up by invitation.** `allowed_emails.csv` at the root: an `email,ai`
+  header, then one address per line. It is read on every request, so edits
+  apply without a restart, and it fails closed when missing. The **`ai`
+  column** (`yes`/`no`) says who may use Conversation, which costs money: the
+  chat page and every chat request check it. It is **gitignored** — the repo is public and these are people's
   addresses. There is deliberately no template file. Only sign-up checks
   it, not sign-in, so the seeded demo accounts still work for tests.
 - **Five wrong passwords lock the account** (`users.failed_logins`,
@@ -396,6 +398,50 @@ The owner's data had no duplicates when this went in (2026-09-10).
 - **`POST /preferences/theme` returns you to the page you came from,** but only
   a path on this site: a Referer with a foreign host sends you home.
 
+### Conversation
+
+`src/routes/chat.ts` and `public/chat.js`, modelled on the original app's
+`ai_interface.py`, whose three roles and prompt wording carry over:
+
+- **Interpreter.** It corrects what the learner wrote, at temperature 0. The
+  corrected sentence, not the draft, is what joins the history, as in the
+  original.
+- **Partner.** It opens (always, not only for roleplay), drives, and replies,
+  and every message ends on something to answer. General conversation is told
+  outright not to open with small talk about the learner's day: the owner found
+  that dull. The scenes live in `src/chat-scenarios.ts`: general, Surprise me
+  (the original's random roleplay), fixed scenes, and the learner's own. A
+  hidden kickoff message comes first, because Anthropic requires a
+  conversation to start with the user.
+- **Teacher.** A thread per message (`/api/chat/teacher`): it explains, then
+  takes follow-ups. That is the original's "anything further explaining?" loop.
+
+The level is picked from A1 to C1; the original was fixed at A1. Replies and
+corrections are read aloud automatically, with Play, Slow and a mute, as the
+original spoke everything with repeat and slow.
+
+**Out of credit is its own error.** OpenAI reports it as a 429
+(`insufficient_quota` / `credit_balance_exhausted`) that looks like rate
+limiting; Anthropic as a 400 mentioning the credit balance. `classifyAIError` in
+`src/ai.ts` sorts it from a bad key and a busy provider, and the page names the
+provider and links to its billing page. It came up for real: the owner's
+OpenAI account had no API credit at first.
+
+**`AI_PROVIDER=mock`** is a free stand-in with a predictable answer per role,
+so `npm run test:chat` can drive the page. "!nocredit" in a message fails the
+way an empty account does. Start the server with it for that test (in cmd,
+`set AI_PROVIDER=mock&& npm start`). It must never be set on the server.
+
+### Sessions survive leaving the page
+
+Written and listening sessions are saved to `localStorage` after every question
+and answer, and resumed when the page loads again. That covers switching tabs,
+a phone reloading a sleeping page, or a stray tap on the tab bar, which used to
+throw the whole session away. Answered-but-not-continued moves on rather than
+re-asking, so nothing is recorded twice. Saves are kept for 12 hours, and
+"End session" clears them. Tests that start a second session on the same page
+must clear `localStorage` first.
+
 ### Counting a day's practice
 
 Two different questions, both answered on the Progress page's Today card:
@@ -478,7 +524,9 @@ If the lag persists, establish the device and browser before changing more.
   `--learning` is the text shade, `--learning-fill` the vivid amber for bars and
   dots. One colour for both was a muddy mustard. Listening has its own
   `--listening` (raspberry), because the earlier blue sat too close to Written's
-  indigo to tell apart on a chart.
+  indigo to tell apart on a chart. The banner bars draw solid and learnt as
+  separate bands (`.bar i.solid`, `.bar i.learnt-only`). Plain `.bar i.learnt`
+  is the quiz's own progress bar and stays one green.
 - **Playwright hides Chrome's Google voices.** They live in a component
   extension that automation disables, so a test browser shows only the OS's
   local voices — none French on this laptop. `measure-speech.ts` re-enables it
@@ -561,6 +609,7 @@ the demo account seeded.
 | `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
 | `npm run test:duplicates` | A word can't be added twice or renamed onto another, whatever case, spacing or category |
 | `npm run test:theme` | Theme saved per account and stamped on pages, safe redirect, phone language picker and Settings tab |
+| `npm run test:chat` | Conversation end to end: scene and level, AI opens, corrected turn, speech, teacher thread, own scene, out-of-credit message. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |

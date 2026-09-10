@@ -667,6 +667,11 @@ img { max-width: 100%; }
 .bar i.learnt { background: var(--learnt); }
 .bar i.learning { background: var(--learning-fill); }
 
+/* The banner's bands: solid (deeper green) and learnt-not-solid (lighter), as on
+   the Progress page. Plain .learnt stays for the quiz's own progress bar. */
+.bar i.solid { background: var(--status-solid); }
+.bar i.learnt-only { background: var(--status-learnt); }
+
 /* Nudge toward thin categories */
 .type-cell.is-thin { background: var(--learning-soft); }
 .type-cell.is-thin:hover { background: var(--learning-soft); filter: brightness(0.98); }
@@ -1737,7 +1742,42 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   border-top: 1px solid var(--border);
 }
 
-.chat-compose .input { flex: 1; }
+.chat-compose .input { flex: 1; min-width: 0; }
+
+/* Before you start: what about, at what level, and your own scene. Start stays
+   on the first line; your own scene takes a line of its own beneath. */
+.chat-setup {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  padding: 18px 20px 20px;
+}
+
+.chat-setup-scene { flex: 1 1 220px; min-width: 0; }
+.chat-setup-level { flex: 0 0 110px; }
+.chat-setup-custom { flex: 1 1 100%; order: 4; }
+.chat-setup .btn { flex: 0 0 auto; }
+
+/* Play, Slow and Ask the teacher, under each tutor message and correction. */
+.msg-actions { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+
+/* A thread with the teacher about one message, indented beneath it. */
+.teacher-thread {
+  display: grid;
+  gap: 8px;
+  margin: -4px 0 4px 18px;
+  padding-left: 12px;
+  border-left: 2px solid var(--border);
+}
+
+.teacher-thread .msg { max-width: 100%; }
+.teacher-ask { display: flex; gap: 8px; }
+.teacher-ask .input { flex: 1; min-width: 0; }
+
+.bubble-note { margin-top: 6px; font-size: 0.85rem; }
+
+#chat-mute[aria-pressed="true"] { color: var(--text-faint); }
 
 /* ============================================================
    Charts

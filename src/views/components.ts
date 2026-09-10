@@ -16,16 +16,18 @@ export function progressBanner(opts: {
   const { summary, types } = opts;
   const pct = summary.pctLearnt;
 
-  const learntWidth = summary.total > 0 ? (100 * summary.learnt) / summary.total : 0;
-  const learningWidth =
-    summary.total > 0 ? (100 * summary.inProgress) / summary.total : 0;
+  // Solid and learnt as separate bands, the deeper green for solid, as on the
+  // Progress page. A single "learnt" band hid how much of it was solid.
+  const share = (n: number, of: number) => (of > 0 ? (100 * n) / of : 0);
+  const bands = (s: Summary) =>
+    `<i class="solid" style="width:${share(s.completelyLearnt, s.total).toFixed(1)}%"></i>` +
+    `<i class="learnt-only" style="width:${share(s.learntNotSolid, s.total).toFixed(1)}%"></i>` +
+    `<i class="learning" style="width:${share(s.inProgress, s.total).toFixed(1)}%"></i>`;
 
   const median = medianOf(types.map((t) => t.total));
 
   const cells = types
     .map((t) => {
-      const tLearnt = t.total > 0 ? (100 * t.learnt) / t.total : 0;
-      const tLearning = t.total > 0 ? (100 * t.inProgress) / t.total : 0;
       // "Thin" = noticeably smaller than the typical category, so it is the
       // natural place to add words next.
       const thin = types.length > 2 && t.total < median * 0.6;
@@ -35,7 +37,7 @@ export function progressBanner(opts: {
 
       return `<${tag} class="type-cell${thin ? " is-thin" : ""}"${attrs}>
         <div class="name"><span>${esc(t.wordTypeName)}</span><span class="count">${t.total}</span></div>
-        <div class="bar"><i class="learnt" style="width:${tLearnt.toFixed(1)}%"></i><i class="learning" style="width:${tLearning.toFixed(1)}%"></i></div>
+        <div class="bar">${bands(t)}</div>
         <div class="pct">${t.pctLearnt.toFixed(0)}% learnt${thin ? " · thin" : ""}</div>
       </${tag}>`;
     })
@@ -68,7 +70,7 @@ export function progressBanner(opts: {
       : `<div style="padding:14px 20px;color:var(--text-muted);font-size:0.86rem;border-top:1px solid var(--border)">No word types yet.</div>`
   }
   <div class="bar" style="border-radius:0;height:3px;margin:0">
-    <i class="learnt" style="width:${learntWidth.toFixed(1)}%"></i><i class="learning" style="width:${learningWidth.toFixed(1)}%"></i>
+    ${bands(summary)}
   </div>
 </section>`;
 }

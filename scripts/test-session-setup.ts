@@ -119,6 +119,28 @@ const stillTyping = await page.inputValue(".quiz-input");
 check("y types normally again afterwards", stillTyping === "y", `"${stillTyping}"`);
 await page.fill(".quiz-input", "");
 
+console.log("\nComing back to a session\n");
+
+const counterBefore = await page.locator(".quiz-progress span").first().textContent();
+await page.reload({ waitUntil: "networkidle" });
+await page.waitForSelector(".quiz-input", { timeout: 10_000 });
+check("a reload keeps the session", await page.locator("#setup").isHidden());
+check(
+  "at the same point",
+  (await page.locator(".quiz-progress span").first().textContent()) === counterBefore,
+  `${counterBefore?.trim()}`,
+);
+
+await page.goto(`${BASE}/settings`);
+await page.goto(`${BASE}/practice/written`, { waitUntil: "networkidle" });
+await page.waitForSelector(".quiz-input", { timeout: 10_000 });
+check("so does a stray tap onto another page and back", await page.locator("#setup").isHidden());
+
+await page.click("#end-session");
+await page.waitForSelector("#summary:not([hidden])", { timeout: 10_000 });
+await page.reload({ waitUntil: "networkidle" });
+check("ending it for real clears it", await page.locator("#setup").isVisible());
+
 if (errors.length > 0) {
   console.log(`\nConsole errors: ${errors.length}`);
   for (const e of errors.slice(0, 3)) console.log(`  ${e}`);

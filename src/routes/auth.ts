@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { z } from "zod";
 
-import { allowedEmails, allowlistPath, mayRegister } from "../allowlist.js";
+import { aiAllowedCount, allowedEmails, allowlistPath, mayRegister } from "../allowlist.js";
 import {
   MAX_FAILED_LOGINS,
   clearFailedLogins,
@@ -85,7 +85,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     app.log.warn(`Nobody can sign up: ${allowlistPath()} is missing or lists no addresses.`);
   } else {
     app.log.info(
-      `Sign-up is open to ${invited} invited address${invited === 1 ? "" : "es"} (${allowlistPath()}).`,
+      `Sign-up is open to ${invited} invited address${invited === 1 ? "" : "es"}, ${aiAllowedCount()} with conversation (${allowlistPath()}).`,
     );
   }
 
