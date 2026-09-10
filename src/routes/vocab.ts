@@ -130,6 +130,52 @@ const listColumns = {
   createdAt: words.createdAt,
 };
 
+/**
+ * Spelling as the duplicate check compares it. Case, spacing and apostrophe
+ * style are ignored. Accents are kept, because té (tea) and te (you) are
+ * different words.
+ */
+function spellingKey(term: string): string {
+  return term
+    .normalize("NFC")
+    .replace(/[’‘`]/g, "'")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLowerCase();
+}
+
+/**
+ * A word already in the category's language spelled the same way, in any
+ * category. `exceptId` skips the word being edited, so saving it unchanged is
+ * never a clash.
+ */
+function findSameSpelling(wordTypeId: number, term: string, exceptId?: number) {
+  const language = db
+    .select({ languageId: wordTypes.languageId })
+    .from(wordTypes)
+    .where(eq(wordTypes.id, wordTypeId))
+    .get();
+  if (!language) return undefined;
+
+  const key = spellingKey(term);
+  return db
+    .select({
+      id: words.id,
+      term: words.term,
+      english: words.english,
+      wordTypeName: wordTypes.name,
+    })
+    .from(words)
+    .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
+    .where(eq(wordTypes.languageId, language.languageId))
+    .all()
+    .find((w) => w.id !== exceptId && spellingKey(w.term) === key);
+}
+
+function duplicateMessage(existing: { term: string; english: string; wordTypeName: string }): string {
+  return `“${existing.term}” is already in your list, as “${existing.english}” (${existing.wordTypeName}). Edit that entry instead — a second meaning can go in with a slash.`;
+}
+
 function loadListRow(languageId: number, wordId: number) {
   return db
     .select(listColumns)
@@ -243,6 +289,13 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       return reply.redirect(`/vocab?language=${languageId}&error=word`);
     }
 
+    const duplicate = findSameSpelling(parsed.data.wordTypeId, parsed.data.term);
+    if (duplicate) {
+      return reply.redirect(
+        `/vocab?language=${languageId}&type=${parsed.data.wordTypeId}&error=duplicate&dup=${encodeURIComponent(duplicate.term)}`,
+      );
+    }
+
     db.insert(words)
       .values({
         wordTypeId: parsed.data.wordTypeId,
@@ -280,6 +333,11 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
     if (!ownsWordType(ctx.user.id, parsed.data.wordTypeId)) {
       return reply.code(403).send({ error: "forbidden" });
+    }
+
+    const duplicate = findSameSpelling(parsed.data.wordTypeId, parsed.data.term);
+    if (duplicate) {
+      return reply.code(409).send({ error: duplicateMessage(duplicate) });
     }
 
     const created = db
@@ -364,6 +422,15 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
           .send({ error: "That word could not be saved — check the fields and try again." });
       }
       return reply.redirect(vocabUrl(ctx.currentLanguage?.id, filters, { error: "word" }));
+    }
+
+    // Renaming a word onto another's spelling would make a duplicate just the same.
+    const duplicate = findSameSpelling(parsed.data.wordTypeId, parsed.data.term, id);
+    if (duplicate) {
+      if (inPlace) return reply.code(409).send({ error: duplicateMessage(duplicate) });
+      return reply.redirect(
+        vocabUrl(ctx.currentLanguage?.id, filters, { error: "duplicate", dup: duplicate.term }),
+      );
     }
 
     db.update(words)
@@ -648,6 +715,11 @@ function flashMessage(query: Record<string, string | undefined>): string {
     return alert("ok", "Language created with a starter set of categories.");
   if (query["saved"]) return alert("ok", "Changes saved.");
   if (query["deleted"]) return alert("ok", "Word deleted.");
+  if (query["error"] === "duplicate")
+    return alert(
+      "error",
+      `“${query["dup"] ?? "That word"}” is already in your list. Edit that entry instead — a second meaning can go in with a slash.`,
+    );
   if (query["error"] === "word")
     return alert("error", "That word could not be saved — check the fields and try again.");
   if (query["error"]) return alert("error", "Something in that form was not valid.");

@@ -29,7 +29,8 @@
     "test:listening": "tsx scripts/test-listening.ts",
     "test:vocab-edit": "tsx scripts/test-vocab-edit.ts",
     "test:auth": "tsx scripts/test-auth.ts",
-    "test:all": "npm run test && npm run test:accents && npm run test:ai && npm run test:auth && npm run test:search && npm run test:session && npm run test:listening && npm run test:vocab-edit && npm run test:entry",
+    "test:duplicates": "tsx scripts/test-duplicates.ts",
+    "test:all": "npm run test && npm run test:accents && npm run test:ai && npm run test:auth && npm run test:duplicates && npm run test:search && npm run test:session && npm run test:listening && npm run test:vocab-edit && npm run test:entry",
     "test:daily": "tsx scripts/test-daily-count.ts"
   },
   "author": "",

@@ -364,6 +364,20 @@ Speech strips both the notes and everything after the first slash, or it reads
 
 An empty answer never matches, whatever the rules — that is the skip path.
 
+### Duplicate words
+
+A word cannot be added twice within a language, in any category, and cannot
+be created by renaming another word through Edit. `spellingKey` in
+`src/routes/vocab.ts` decides what "the same" means:
+
+- **Ignored:** case, extra spacing, and curly versus straight apostrophes.
+- **Kept:** accents, because *té* (tea) and *te* (you) are different words.
+
+The refusal names the existing entry. A second meaning goes into that entry
+with a slash (`end/thin`), which answer matching already accepts. The
+database's own unique index only caught an exact match within one category.
+The owner's data had no duplicates when this went in (2026-09-10).
+
 ### Counting a day's practice
 
 Two different questions, both answered on the Progress page's Today card:
@@ -521,6 +535,7 @@ the demo account seeded.
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |
 | `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
+| `npm run test:duplicates` | A word can't be added twice or renamed onto another, whatever case, spacing or category |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |
