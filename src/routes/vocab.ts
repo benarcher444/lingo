@@ -59,6 +59,27 @@ const SORTS = {
 
 type SortKey = keyof typeof SORTS;
 
+/**
+ * Reads the list filters from a query string, or from the fields the edit form
+ * echoes back. The page, the save and the row fragments must agree on them.
+ */
+function filtersFrom(source: Record<string, unknown>): {
+  type: number | null;
+  q: string;
+  sort: SortKey;
+  mode: Mode;
+} {
+  const text = (key: string) => (typeof source[key] === "string" ? (source[key] as string) : "");
+  const sort = text("sort");
+  return {
+    // "All types" submits an empty value, which must read as absent, not 0.
+    type: optionalId(text("type")),
+    q: text("q").trim(),
+    sort: Object.hasOwn(SORTS, sort) ? (sort as SortKey) : "added_desc",
+    mode: text("mode") === "audio" ? "audio" : "written",
+  };
+}
+
 function vocabUrl(
   languageId: number | undefined,
   filters: ListFilters,
@@ -94,6 +115,28 @@ function ownsWord(userId: number, wordId: number): boolean {
     .where(and(eq(words.id, wordId), eq(languages.userId, userId)))
     .get();
   return Boolean(row);
+}
+
+/** What the word list shows of each word — shared by the page and its row fragments. */
+const listColumns = {
+  id: words.id,
+  term: words.term,
+  english: words.english,
+  wordTypeId: words.wordTypeId,
+  wordTypeName: wordTypes.name,
+  writtenEnabled: words.writtenEnabled,
+  audioEnabled: words.audioEnabled,
+  notes: words.notes,
+  createdAt: words.createdAt,
+};
+
+function loadListRow(languageId: number, wordId: number) {
+  return db
+    .select(listColumns)
+    .from(words)
+    .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
+    .where(and(eq(words.id, wordId), eq(wordTypes.languageId, languageId)))
+    .get();
 }
 
 export async function vocabRoutes(app: FastifyInstance): Promise<void> {
@@ -290,18 +333,19 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
     // The edit form echoes the active filters back so the redirect can return
     // you to the same filtered view rather than the whole list.
-    const filters: ListFilters = {
-      type: optionalId(typeof body["_type"] === "string" ? body["_type"] : undefined),
-      q: typeof body["_q"] === "string" ? body["_q"] : "",
-      sort:
-        typeof body["_sort"] === "string" && body["_sort"] in SORTS
-          ? (body["_sort"] as SortKey)
-          : undefined,
-      mode: body["_mode"] === "audio" ? "audio" : "written",
-    };
+    const filters = filtersFrom({
+      type: body["_type"],
+      q: body["_q"],
+      sort: body["_sort"],
+      mode: body["_mode"],
+    });
+
+    // public/vocab.js edits in place and wants the updated row back, not a page.
+    const inPlace = request.headers["x-requested-with"] === "fetch";
 
     if (body["_action"] === "delete") {
       db.delete(words).where(eq(words.id, id)).run();
+      if (inPlace) return reply.send({ ok: true, deleted: true });
       return reply.redirect(
         vocabUrl(ctx.currentLanguage?.id, filters, { deleted: 1 }),
       );
@@ -314,6 +358,11 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     });
 
     if (!parsed.success || !ownsWordType(ctx.user.id, parsed.data.wordTypeId)) {
+      if (inPlace) {
+        return reply
+          .code(400)
+          .send({ error: "That word could not be saved — check the fields and try again." });
+      }
       return reply.redirect(vocabUrl(ctx.currentLanguage?.id, filters, { error: "word" }));
     }
 
@@ -329,7 +378,41 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       .where(eq(words.id, id))
       .run();
 
-    return reply.redirect(vocabUrl(ctx.currentLanguage?.id, filters, { saved: 1 }));
+    if (inPlace) {
+      const language = ctx.currentLanguage;
+      const row = language ? loadListRow(language.id, id) : undefined;
+      // Moved out of the language on show — let the page reload rather than guess.
+      if (!language || !row) return reply.send({ ok: true, reload: true });
+
+      const score =
+        loadScoredWords(language.id, filters.mode).find((s) => s.wordId === id)?.score ?? null;
+      return reply.send({ ok: true, html: displayRow(row, score, language.id, filters) });
+    }
+
+    // Without JavaScript: back to the same row, not the top of the page.
+    return reply.redirect(
+      `${vocabUrl(ctx.currentLanguage?.id, filters, { saved: 1 })}#word-${id}`,
+    );
+  });
+
+  /**
+   * One word's edit row, for editing in place. As a full page load, every Edit
+   * threw the list back to the top and reset the add form, which made editing a
+   * run of words a chore. The page still works without this.
+   */
+  app.get("/vocab/words/:id/edit-row", async (request, reply) => {
+    const ctx = requireContext(request, reply, "vocab");
+    if (!ctx) return;
+
+    const language = ctx.currentLanguage;
+    const id = Number((request.params as { id: string }).id);
+    const row = language && Number.isInteger(id) ? loadListRow(language.id, id) : undefined;
+    if (!language || !row) return reply.code(404).send("");
+
+    const filters = filtersFrom(request.query as Record<string, unknown>);
+    return reply
+      .type("text/html")
+      .send(editRow(row, typesFor(language), language.id, filters));
   });
 
   /* ---------------------------------------------------------------
@@ -359,24 +442,16 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     const types = typesFor(language);
     // Written or listening — the banner and the status column both follow it,
     // as the progress page does.
-    const mode: Mode = query["mode"] === "audio" ? "audio" : "written";
+    /** Carried through Edit, Cancel and the post-save redirect. */
+    const listFilters = filtersFrom(query);
+    const { type: selectedType, q: search, sort, mode } = listFilters;
 
     const scored = loadScoredWords(language.id, mode);
     const summary = summarise(scored, mode);
     const typeSummaries = summariseByType(scored, mode);
 
-    // The "All types" option submits an empty value, so these must treat "" as
-    // absent rather than as the number 0.
-    const selectedType = optionalId(query["type"]);
-    const search = (query["q"] ?? "").trim();
     const editId = optionalId(query["edit"]);
-
-    const requestedSort = query["sort"] ?? "";
-    const sort: SortKey = requestedSort in SORTS ? (requestedSort as SortKey) : "added_desc";
     const detailId = optionalId(query["word"]);
-
-    /** Carried through Edit, Cancel and the post-save redirect. */
-    const listFilters: ListFilters = { type: selectedType, q: search, sort, mode };
 
     const scoreByWord = new Map(scored.map((s) => [s.wordId, s.score]));
 
@@ -391,17 +466,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     }
 
     const rows = db
-      .select({
-        id: words.id,
-        term: words.term,
-        english: words.english,
-        wordTypeId: words.wordTypeId,
-        wordTypeName: wordTypes.name,
-        writtenEnabled: words.writtenEnabled,
-        audioEnabled: words.audioEnabled,
-        notes: words.notes,
-        createdAt: words.createdAt,
-      })
+      .select(listColumns)
       .from(words)
       .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
       .where(and(...conditions))
@@ -468,7 +533,8 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         ${
           detail
             ? wordDetailPanel(detail, vocabUrl(language.id, listFilters))
-            : addWordCard(language.id, types, selectedType)
+            : // Not when landing back on a row: autofocus would scroll up to this form.
+              addWordCard(language.id, types, selectedType, editId === null && !query["saved"])
         }
 
         <div class="card">
@@ -604,6 +670,7 @@ function addWordCard(
   languageId: number,
   types: { id: number; name: string }[],
   selectedType: number | null,
+  autofocus: boolean,
 ): string {
   if (types.length === 0) {
     return `<div class="card"><div class="card-body">
@@ -642,7 +709,7 @@ function addWordCard(
         <div class="add-row">
           <div class="field">
             <label for="term">Word or phrase</label>
-            <input class="input" id="term" name="term" required autofocus
+            <input class="input" id="term" name="term" required${autofocus ? " autofocus" : ""}
                    autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="la femme">
           </div>
           <div class="field">
@@ -683,7 +750,7 @@ function displayRow(
     .filter(Boolean)
     .join(" ");
 
-  return `<tr>
+  return `<tr id="word-${row.id}" data-word-id="${row.id}">
     <td class="term"><a class="term-link" href="${esc(vocabUrl(languageId, filters, { word: row.id }))}">${esc(row.term)}</a>${
       row.notes ? `<div class="hint">${esc(row.notes)}</div>` : ""
     }</td>
@@ -695,7 +762,7 @@ function displayRow(
         : `${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span>`
     }</td>
     <td class="col-modes">${modes || `<span class="hint">none</span>`}</td>
-    <td><a class="btn btn-sm btn-ghost" href="${esc(vocabUrl(languageId, filters, { edit: row.id }))}">Edit</a></td>
+    <td><a class="btn btn-sm btn-ghost" data-edit="${row.id}" href="${esc(`${vocabUrl(languageId, filters, { edit: row.id })}#word-${row.id}`)}">Edit</a></td>
   </tr>`;
 }
 
@@ -713,9 +780,9 @@ function editRow(
   languageId: number,
   filters: ListFilters,
 ): string {
-  return `<tr style="background:var(--accent-soft)">
+  return `<tr id="word-${row.id}" data-word-id="${row.id}" class="edit-row">
     <td colspan="6" style="padding:14px 16px">
-      <form method="post" action="/words/${row.id}" class="stack-sm">
+      <form method="post" action="/words/${row.id}" class="stack-sm" data-word-form>
         <input type="hidden" name="_type" value="${filters.type ?? ""}">
         <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
         <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
@@ -741,11 +808,12 @@ function editRow(
           <label class="check"><input type="checkbox" name="writtenEnabled"${row.writtenEnabled ? " checked" : ""}> Written</label>
           <label class="check"><input type="checkbox" name="audioEnabled"${row.audioEnabled ? " checked" : ""}> Listening</label>
           <span class="spacer"></span>
-          <a class="btn btn-sm" href="${esc(vocabUrl(languageId, filters))}">Cancel</a>
+          <span class="hint edit-keys"><kbd>Enter</kbd> saves · <kbd>Esc</kbd> cancels</span>
+          <a class="btn btn-sm" data-cancel href="${esc(`${vocabUrl(languageId, filters)}#word-${row.id}`)}">Cancel</a>
           <button class="btn btn-sm btn-primary" type="submit">${icons.check}Save</button>
         </div>
       </form>
-      <form method="post" action="/words/${row.id}"
+      <form method="post" action="/words/${row.id}" data-word-form
             onsubmit="return confirm('Delete this word and its progress? This cannot be undone.')"
             style="margin-top:10px">
         <input type="hidden" name="_action" value="delete">

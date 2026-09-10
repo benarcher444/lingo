@@ -31,6 +31,35 @@ for (const input of document.querySelectorAll("input[name=term]")) {
   if (input !== term) attachAccents(input);
 }
 
+/* ------------------------------------------------------------------
+   The add form's category remembers your last choice
+   ------------------------------------------------------------------ */
+
+// Every search, sort or filter reloads the page, and the category used to reset
+// each time — to nouns, the first option — part-way through a run of words.
+// Remembered per language, in this browser only.
+const categorySelect = document.getElementById("wordTypeId");
+const languageId = form?.querySelector("input[name=language]")?.value;
+const categoryKey = `lingo:add-category:${languageId}`;
+
+if (categorySelect && languageId) {
+  try {
+    const saved = localStorage.getItem(categoryKey);
+    if (saved && [...categorySelect.options].some((o) => o.value === saved)) {
+      categorySelect.value = saved;
+    }
+  } catch {
+    // Storage blocked (private window, site data off): the server's default stands.
+  }
+  categorySelect.addEventListener("change", () => {
+    try {
+      localStorage.setItem(categoryKey, categorySelect.value);
+    } catch {
+      // As above — nothing to remember with.
+    }
+  });
+}
+
 if (form && term && english) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -151,9 +180,173 @@ function prependRow(word) {
   row.querySelector(".english-cell").textContent = word.english;
   row.querySelector(".type-cell-name").textContent = word.wordTypeName;
 
+  row.id = `word-${word.id}`;
+  row.dataset.wordId = String(word.id);
+
   const params = new URLSearchParams(window.location.search);
   const language = params.get("language");
-  row.querySelector("a").href = `/vocab?language=${language ?? ""}&edit=${word.id}`;
+  const edit = row.querySelector("a");
+  edit.dataset.edit = String(word.id);
+  edit.href = `/vocab?language=${language ?? ""}&edit=${word.id}#word-${word.id}`;
 
   tableBody.prepend(row);
 }
+
+/* ------------------------------------------------------------------
+   Editing in place
+   ------------------------------------------------------------------ */
+
+// Edit, Save, Cancel and Delete swap the row where it stands. As full page
+// loads they threw you back to the top every time and reset the add form, which
+// made editing a run of words miserable. Without this file the links and forms
+// still work, and land back on #word-<id>.
+
+/** The display row each open editor replaced, put back on Cancel. */
+const originals = new Map();
+
+function rowFrom(html) {
+  const template = document.createElement("template");
+  template.innerHTML = html.trim();
+  return template.content.firstElementChild;
+}
+
+/** The list's filters, which the fragments echo into their links and fields. */
+function listQuery() {
+  const current = new URLSearchParams(window.location.search);
+  const keep = new URLSearchParams();
+  for (const key of ["language", "type", "q", "sort", "mode"]) {
+    const value = current.get(key);
+    if (value) keep.set(key, value);
+  }
+  return keep.toString();
+}
+
+async function openEditor(link) {
+  const row = link.closest("tr");
+  const id = link.dataset.edit;
+
+  try {
+    const response = await fetch(`/vocab/words/${id}/edit-row?${listQuery()}`, {
+      headers: { "x-requested-with": "fetch" },
+    });
+    // A redirect means the session ended — let the real page deal with it.
+    if (!response.ok || response.redirected) throw new Error("no fragment");
+    const editor = rowFrom(await response.text());
+    if (!editor || editor.tagName !== "TR") throw new Error("no fragment");
+
+    originals.set(id, row);
+    row.replaceWith(editor);
+
+    const input = editor.querySelector("input[name=term]");
+    if (input) {
+      attachAccents(input);
+      input.focus({ preventScroll: true });
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  } catch {
+    window.location.href = link.href;
+  }
+}
+
+function closeEditor(editor) {
+  const id = editor.dataset.wordId;
+  const original = originals.get(id);
+  if (!original) {
+    window.location.reload();
+    return;
+  }
+  originals.delete(id);
+  editor.replaceWith(original);
+  original.querySelector("a[data-edit]")?.focus({ preventScroll: true });
+}
+
+function showRowError(form, message) {
+  let slot = form.querySelector(".row-error");
+  if (!slot) {
+    slot = document.createElement("div");
+    slot.className = "alert alert-error row-error";
+    form.prepend(slot);
+  }
+  slot.textContent = message;
+}
+
+async function saveEditor(form) {
+  const editor = form.closest("tr");
+  const id = editor.dataset.wordId;
+  editor.classList.add("is-busy");
+
+  try {
+    const response = await fetch(form.action, {
+      method: "POST",
+      headers: {
+        "x-requested-with": "fetch",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body: new URLSearchParams(new FormData(form)),
+    });
+    const payload = await response.json().catch(() => null);
+    if (!payload) throw new Error("not json");
+
+    if (!response.ok) {
+      showRowError(form, payload.error ?? "That word could not be saved.");
+      return;
+    }
+
+    originals.delete(id);
+    if (payload.reload) {
+      window.location.reload();
+      return;
+    }
+    if (payload.deleted) {
+      editor.remove();
+      return;
+    }
+
+    const updated = rowFrom(payload.html);
+    updated.classList.add("just-added");
+    editor.replaceWith(updated);
+    updated.querySelector("a[data-edit]")?.focus({ preventScroll: true });
+  } catch {
+    // Signed out, server away, anything unexpected: the ordinary post still works.
+    form.submit();
+  } finally {
+    editor.classList.remove("is-busy");
+  }
+}
+
+tableBody?.addEventListener("click", (event) => {
+  // Modified clicks open the link in a new tab, as usual.
+  if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  const edit = event.target.closest("a[data-edit]");
+  if (edit) {
+    event.preventDefault();
+    openEditor(edit);
+    return;
+  }
+
+  const cancel = event.target.closest("a[data-cancel]");
+  if (cancel) {
+    event.preventDefault();
+    closeEditor(cancel.closest("tr"));
+  }
+});
+
+tableBody?.addEventListener("submit", (event) => {
+  // A declined delete confirmation is already cancelled by its inline handler.
+  if (event.defaultPrevented) return;
+  const form = event.target.closest("form[data-word-form]");
+  if (!form) return;
+  event.preventDefault();
+  saveEditor(form);
+});
+
+tableBody?.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  const editor = event.target.closest("tr.edit-row");
+  if (!editor) return;
+  event.preventDefault();
+  closeEditor(editor);
+});

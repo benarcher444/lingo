@@ -138,30 +138,61 @@ export function barChart(
   return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Completion by category">${bars}</svg>`;
 }
 
-export function activityChart(days: { date: string; count: number }[]): string {
+/** Listening's colour wherever the two modes appear side by side. */
+export const LISTENING_COLOUR = "#2f7dc4";
+
+/** One day's answers, split by mode. */
+export interface ActivityDay {
+  date: string;
+  written: number;
+  audio: number;
+}
+
+/**
+ * Answers per day, written stacked under listening, in the Today card's colours.
+ * Always both modes: counting only the mode toggled at the top made a day of
+ * listening look like a day off, and the chart disagreed with the Today card.
+ */
+export function activityChart(days: ActivityDay[]): string {
   if (days.length === 0) return emptyChart("No practice recorded yet");
 
-  const max = Math.max(...days.map((d) => d.count), 1);
+  const max = Math.max(...days.map((d) => d.written + d.audio), 1);
   const height = 130;
   const gap = 3;
+  const plot = height - 28;
+  const base = height - 20;
   const barW = Math.max(3, (W - (days.length - 1) * gap) / days.length);
 
   const bars = days
     .map((day, i) => {
-      const h = Math.max(2, (day.count / max) * (height - 28));
       const x = i * (barW + gap);
-      const y = height - 20 - h;
-      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}"
-                height="${h.toFixed(1)}" rx="2" fill="var(--accent)" opacity="${day.count > 0 ? 1 : 0.25}">
-                <title>${esc(day.date)}: ${day.count} answers</title>
-              </rect>`;
+      const total = day.written + day.audio;
+      const title = `<title>${esc(day.date)}: ${total} answer${total === 1 ? "" : "s"} — ${
+        day.written
+      } written, ${day.audio} listening</title>`;
+
+      if (total === 0) {
+        return `<rect x="${x.toFixed(1)}" y="${(base - 2).toFixed(1)}" width="${barW.toFixed(1)}"
+                  height="2" rx="1" fill="var(--accent)" opacity="0.25">${title}</rect>`;
+      }
+
+      // Any non-zero part gets at least 2px, so a few answers in one mode still show.
+      const writtenH = day.written > 0 ? Math.max(2, (day.written / max) * plot) : 0;
+      const audioH = day.audio > 0 ? Math.max(2, (day.audio / max) * plot) : 0;
+
+      return `<g>${title}
+        <rect x="${x.toFixed(1)}" y="${(base - writtenH).toFixed(1)}" width="${barW.toFixed(1)}"
+              height="${writtenH.toFixed(1)}" rx="1.5" fill="var(--accent)" />
+        <rect x="${x.toFixed(1)}" y="${(base - writtenH - audioH).toFixed(1)}" width="${barW.toFixed(1)}"
+              height="${audioH.toFixed(1)}" rx="1.5" fill="${LISTENING_COLOUR}" />
+      </g>`;
     })
     .join("");
 
   const first = days[0]?.date ?? "";
   const last = days[days.length - 1]?.date ?? "";
 
-  return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Answers per day">
+  return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Answers per day, written and listening">
     ${bars}
     <text x="0" y="${height - 4}" font-size="13" fill="var(--text-faint)">${esc(shortDate(first))}</text>
     <text x="${W}" y="${height - 4}" font-size="13" text-anchor="end" fill="var(--text-faint)">${esc(shortDate(last))}</text>

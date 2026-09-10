@@ -6,7 +6,14 @@ import { requireContext } from "../context.js";
 import { db } from "../db/index.js";
 import { attempts, statSnapshots, wordTypes, words } from "../db/schema.js";
 import { loadScoredWords, summarise, summariseByType } from "../stats.js";
-import { activityChart, barChart, legend, lineChart, type Series } from "../views/charts.js";
+import {
+  LISTENING_COLOUR,
+  activityChart,
+  barChart,
+  legend,
+  lineChart,
+  type Series,
+} from "../views/charts.js";
 import { emptyState, pageHead } from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
 
@@ -23,8 +30,8 @@ const SERIES_COLOURS = [
 
 /** Measures you can plot, in the order they are offered. */
 const MEASURES = {
-  percentage_learnt: { label: "Percentage learnt", suffix: "%" },
   words_learnt: { label: "Words learnt", suffix: "" },
+  percentage_learnt: { label: "Percentage learnt", suffix: "%" },
   words_completely_learnt: { label: "Words solid", suffix: "" },
   words_learning: { label: "Words still learning", suffix: "" },
   new_words: { label: "Words untouched", suffix: "" },
@@ -92,8 +99,11 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     /* ---- What to plot ---- */
 
     const requestedMeasure = String(query["measure"] ?? "");
-    const measure: MeasureKey =
-      requestedMeasure in MEASURES ? (requestedMeasure as MeasureKey) : "percentage_learnt";
+    // Words learnt by default: a count that only climbs as you learn, where a
+    // percentage also drops every time a new word is added.
+    const measure: MeasureKey = Object.hasOwn(MEASURES, requestedMeasure)
+      ? (requestedMeasure as MeasureKey)
+      : "words_learnt";
 
     // Categories are checkboxes, so this arrives as a string, an array, or not
     // at all. Absent means "everything", which is the useful default.
@@ -164,39 +174,38 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         points,
       }));
 
-    /* ---- Activity, honouring the same category selection ---- */
+    /* ---- Activity: both modes, honouring the category selection ----
+       Both modes whatever the toggle says, as the Today card counts them. It
+       used to follow the toggle, so with Written selected a day of listening
+       was missing from the chart while Today counted it. */
 
     const since = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
+    const dayOf = sql<string>`substr(${attempts.answeredAt}, 1, 10)`;
 
-    const activityConditions = [
-      eq(wordTypes.languageId, language.id),
-      eq(attempts.mode, mode),
-      gte(sql`substr(${attempts.answeredAt}, 1, 10)`, since),
-    ];
+    const activityConditions = [eq(wordTypes.languageId, language.id), gte(dayOf, since)];
     if (!showAllCategories) {
       activityConditions.push(inArray(words.wordTypeId, [...selectedCats]));
     }
 
     const activityRows = db
-      .select({
-        day: sql<string>`substr(${attempts.answeredAt}, 1, 10)`,
-        count: sql<number>`count(*)`,
-      })
+      .select({ day: dayOf, mode: attempts.mode, count: sql<number>`count(*)` })
       .from(attempts)
       .innerJoin(words, eq(words.id, attempts.wordId))
       .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
       .where(and(...activityConditions))
-      .groupBy(sql`substr(${attempts.answeredAt}, 1, 10)`)
+      .groupBy(dayOf, attempts.mode)
       .all();
 
-    const activityMap = new Map(activityRows.map((r) => [r.day, r.count]));
+    const answersOn = (date: string, m: Mode) =>
+      activityRows.find((r) => r.day === date && r.mode === m)?.count ?? 0;
+
     const days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date(Date.now() - (29 - i) * 86_400_000).toISOString().slice(0, 10);
-      return { date, count: activityMap.get(date) ?? 0 };
+      return { date, written: answersOn(date, "written"), audio: answersOn(date, "audio") };
     });
 
-    const totalAnswers = days.reduce((sum, d) => sum + d.count, 0);
-    const activeDays = days.filter((d) => d.count > 0).length;
+    const totalAnswers = days.reduce((sum, d) => sum + d.written + d.audio, 0);
+    const activeDays = days.filter((d) => d.written + d.audio > 0).length;
 
     /* ---- Today's practice, split by mode ----
        Deliberately ignores the mode toggle and the category filter: this is
@@ -391,7 +400,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
           <div class="card-body">
             <div class="today-grid">
               ${todayCard("Written practice", icons.pen, todayWritten, "var(--accent)")}
-              ${todayCard("Listening practice", icons.ear, todayAudio, "#2f7dc4")}
+              ${todayCard("Listening practice", icons.ear, todayAudio, LISTENING_COLOUR)}
             </div>
           </div>
         </div>
@@ -435,13 +444,19 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
           <div class="card">
             <div class="card-head">
-              <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days.</div></div>
+              <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days, both modes${
+                showAllCategories ? "" : " · selected categories"
+              }.</div></div>
               <div class="row">
                 <span class="pill pill-plain">${totalAnswers} answers</span>
                 <span class="pill pill-plain">${activeDays} active days</span>
               </div>
             </div>
             <div class="card-body chart-box">${activityChart(days)}</div>
+            ${legend([
+              { name: "Written", colour: "var(--accent)" },
+              { name: "Listening", colour: LISTENING_COLOUR },
+            ])}
           </div>
         </div>
 

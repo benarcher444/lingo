@@ -331,6 +331,15 @@ have a null id and coalesce to the date, so each such day reads as one session �
 historical days therefore under-report. That was accepted rather than
 backfilled.
 
+The **Practice activity** chart counts *answers*, not words, stacked written
+under listening — always both modes, whatever the page's Written/Listening
+toggle says. It once followed the toggle, so with Written selected a day of
+listening vanished from it while the Today card counted it, and the two looked
+contradictory. It still honours the category checkboxes.
+
+The progress graph defaults to **Words learnt**: a percentage also drops every
+time a word is added, which reads as going backwards.
+
 ### Listening speech
 
 `public/practice.js` owns it. Three pieces, each for a reason:
@@ -360,6 +369,10 @@ If the lag persists, establish the device and browser before changing more.
 
 ### Traps worth remembering
 
+- **The running server does not reload.** It is started with `npm start` —
+  plain `tsx`, no watch — so a server-side edit is invisible until a restart,
+  while files in `public/` are served fresh. A screenshot pass after editing
+  `src/` without restarting verifies the *old* code; it happened once.
 - **An override is a second row.** "I was right — count it" records a new,
   correct, `overridden` attempt after the miss, and the miss row stays. So the
   counters take both — one overridden question is tested +2, correct +1 — and
@@ -391,9 +404,15 @@ If the lag persists, establish the device and browser before changing more.
 - **Grid and flex children default to `min-width: auto`.** They refuse to shrink
   below their content, so a wide table's own `overflow-x` never engages.
   `.stack > *`, `.container > *` and `.card` set `min-width: 0` for this.
-- **Filters must travel.** Edit, Cancel and every post-save redirect carry the
-  category, search and sort. Dropping them reloads the unfiltered list, which
-  reads to the user as the page refreshing and losing their place.
+- **Filters must travel — and editing must not reload.** Edit, Save, Cancel
+  and Delete happen in place (`public/vocab.js` swaps the row, fetching
+  `/vocab/words/:id/edit-row`; the save returns the new row as JSON when sent
+  with `x-requested-with: fetch`). As full page loads, every Edit jumped back to
+  the top and reset the add form's category, which made editing a run of words
+  a chore. The no-JavaScript path still works: links and redirects carry the
+  category, search, sort and mode, and land on `#word-<id>`, with the add
+  form's `autofocus` switched off so it does not scroll back up. The add
+  form's category is remembered per language in `localStorage`.
 - **Overlapping buckets look like a partition.** "Solid" is a subset of
   "learnt", so showing solid / learning / untouched left a word between the
   thresholds in no bucket and the tiles did not add up. `Summary.learntNotSolid`
@@ -444,6 +463,7 @@ the demo account seeded.
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |
+| `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
 | `npm run test:entry` | Keyboard word entry |
 | `npm run test:daily` | Session-based daily counting |
 | `npm run audit:mobile` | Touch targets, iOS input zoom, overflow |

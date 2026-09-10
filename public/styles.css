@@ -917,6 +917,18 @@ table.data td {
 table.data tr:last-child td { border-bottom: none; }
 table.data tbody tr:hover { background: var(--surface-2); }
 
+/* Editing in place. The scroll margin keeps a row clear of the top edge when the
+   no-JavaScript path lands on #word-<id>. */
+table.data tbody tr[id^="word-"] { scroll-margin-top: 96px; }
+table.data tbody tr.edit-row,
+table.data tbody tr.edit-row:hover { background: var(--accent-soft); }
+table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
+.row-error { margin-bottom: 4px; }
+
+@media (max-width: 620px) {
+  .edit-keys { display: none; }
+}
+
 .term { font-family: var(--serif); font-size: 1.02rem; }
 .num { font-variant-numeric: tabular-nums; text-align: right; }
 
