@@ -207,12 +207,18 @@ try {
   app.log.info(`Database: ${databasePath}`);
   app.log.info(`On this machine:  http://localhost:${PORT}`);
 
-  const lan = lanAddresses();
-  for (const address of lan) {
-    app.log.info(`On your phone:    http://${address}:${PORT}   (same Wi-Fi)`);
-  }
-  if (lan.length === 0) {
-    app.log.warn("No network address found — only this machine can reach it.");
+  // Bound to loopback, as on the hosted server behind Caddy, the LAN addresses
+  // would be wrong: nothing but the proxy can reach the app.
+  if (["127.0.0.1", "::1", "localhost"].includes(HOST)) {
+    app.log.info("Listening on this machine only: visitors arrive through the HTTPS proxy.");
+  } else {
+    const lan = lanAddresses();
+    for (const address of lan) {
+      app.log.info(`On your phone:    http://${address}:${PORT}   (same Wi-Fi)`);
+    }
+    if (lan.length === 0) {
+      app.log.warn("No network address found — only this machine can reach it.");
+    }
   }
 } catch (error) {
   app.log.error(error);

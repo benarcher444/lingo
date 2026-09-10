@@ -4,8 +4,9 @@
 
 A rebuild of a personal language-learning tool. The original was a Python
 terminal app (`old_code_repo/`, formerly `learning_spanish` — the name is a
-misnomer, the real dataset is French). The new build is a **web app**, run
-locally first, eventually on a Raspberry Pi behind a DNS name.
+misnomer, the real dataset is French). The new build is a **web app**,
+hosted on a Hetzner server (see "The live server") and developed on the
+laptop.
 
 `old_code_repo/` is **reference only**. It is frozen, its git history removed,
 and nothing new should be written into it. Its value is the data model, the
@@ -594,10 +595,7 @@ small — map each CSV to a category, insert, leave progress empty. Note that
 
 - Importing the archived vocabulary.
 - Per-user configuration of the learner level and the learnt thresholds.
-- The server itself. `DEPLOY.md` and `deploy/` are ready, but no server exists
-  yet. Hetzner was chosen over a Pi at home on 2026-09-10: the home broadband
-  is unreliable, and EC2 costs more to set up and run for no benefit at this
-  size.
+- A real domain. sslip.io stands in; see "The live server".
 - Backfilling session ids onto historical attempts (the timestamps would
   support inferring sessions from gaps; judged not worth it).
 
@@ -631,6 +629,28 @@ small — map each CSV to a category, insert, leave progress empty. Note that
 - `HOST` defaults to `0.0.0.0` so a phone on the same Wi-Fi can reach it. That
   is the bind address, **not** browsable — the startup log prints the real LAN
   URL, which changes with the network.
+
+### The live server
+
+- **https://91-99-202-188.sslip.io**, live since 2026-09-10. It runs on a
+  Hetzner cx23 (x86, 2 vCPU, 4 GB) with Ubuntu 26.04, Node 24.21 and Caddy
+  2.6.2.
+- **Why Hetzner:** chosen over a Pi at home, because the home broadband is
+  unreliable, and over EC2, which costs more to set up and run for no benefit
+  at this size. It is about $8.70 a month.
+- **Why sslip.io:** it stands in for a domain, because a certificate needs a
+  name, not an IP. Moving to a real domain means one line in
+  `/etc/caddy/Caddyfile` plus an `A` record.
+- **SSH:** `root@91.99.202.188`, keys only. Password logins are off in
+  `/etc/ssh/sshd_config.d/00-lingo-hardening.conf`. Hetzner's firewall allows
+  22, 80 and 443 only.
+- **The owner's data moved there on 2026-09-10** (150 words, 1,022 answers,
+  checksums matched). **The server's database is the real one.** The laptop's
+  copy of that account is stale, and the local install is for development.
+- **GitHub deploy key:** `~/.ssh/lingo_deploy` on the laptop. The server's
+  `authorized_keys` forces it to `lingo-deploy`, and it cannot open a shell.
+- **The server's `.env`** holds `HOST=127.0.0.1` and Sonnet. The owner adds the
+  API key there themselves.
 
 ### Outstanding
 
