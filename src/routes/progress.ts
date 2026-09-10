@@ -381,8 +381,10 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
               )
               .join("")}
 
-            <a class="btn btn-sm btn-ghost"
-               href="/progress?language=${language.id}&mode=${mode}&measure=${measure}">Reset</a>
+            <div class="chart-filters-foot">
+              <a class="btn btn-sm btn-ghost"
+                 href="/progress?language=${language.id}&mode=${mode}&measure=${measure}">Reset</a>
+            </div>
           </form>
         </div>
 

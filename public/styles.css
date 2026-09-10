@@ -1083,16 +1083,21 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
    Progress controls
    ============================================================ */
 
+/* Centred: "Show" on its own line, the categories wrapping beneath it, and
+   Reset alone at the bottom. Left-aligned, a ragged row looked untidy. */
 .chart-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
   gap: 4px 14px;
   padding: 12px 18px 15px;
   border-top: 1px solid var(--border);
 }
 
 .chart-filters-label {
+  flex-basis: 100%;
+  text-align: center;
   font-size: 0.72rem;
   font-weight: 640;
   letter-spacing: 0.06em;
@@ -1101,6 +1106,12 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 }
 
 .chart-filters .check { font-size: 0.83rem; }
+
+.chart-filters-foot {
+  flex-basis: 100%;
+  display: flex;
+  justify-content: center;
+}
 .chart-filters .check .hint { font-size: 0.72rem; }
 
 /* Today at a glance, one panel per mode. */
@@ -1205,6 +1216,32 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 }
 
 .split-label { color: var(--text-muted); }
+
+/* On a phone the four entries share one row. Laid out one line each, they
+   needed ~360px of a ~326px card and wrapped two and two. Each becomes its
+   dot and count, with the label and percentage in small type beneath. */
+@media (max-width: 620px) {
+  .split-legend {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .split-item {
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1px 4px;
+    min-width: 0;
+    font-size: 0.68rem;
+  }
+
+  .split-item i { width: 8px; height: 8px; }
+
+  /* Fills the rest of the first line, so the label and % drop beneath it. */
+  .split-count { flex: 0 0 calc(100% - 12px); font-size: 0.98rem; }
+
+  .split-item .hint { font-size: 0.62rem; }
+}
 
 /* ============================================================
    Word detail

@@ -601,7 +601,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
           detail
             ? wordDetailPanel(detail, vocabUrl(language.id, listFilters))
             : // Not when landing back on a row: autofocus would scroll up to this form.
-              addWordCard(language.id, types, selectedType, editId === null && !query["saved"])
+              addWordCard(language.id, types, selectedType, editId === null && !query["saved"], language.code)
         }
 
         <div class="card">
@@ -738,12 +738,36 @@ function firstLanguageCard(): string {
   </div></div>`;
 }
 
+/**
+ * The add form's example entry, in the language being added to. It was always
+ * French ("la femme"), which read oddly on a Spanish list. Languages without
+ * an example here get a neutral hint rather than someone else's word.
+ */
+const EXAMPLE_WORDS: Record<string, string> = {
+  fr: "la femme",
+  es: "la mujer",
+  it: "la donna",
+  de: "die Frau",
+  pt: "a mulher",
+  nl: "de vrouw",
+};
+
+function exampleFor(languageCode: string): { term: string; english: string } {
+  // Codes may carry a region (fr-FR); the example goes by the language.
+  const base = (languageCode || "").split(/[-_]/)[0]!.toLowerCase();
+  const term = EXAMPLE_WORDS[base];
+  return term ? { term, english: "the woman" } : { term: "a word or phrase", english: "what it means" };
+}
+
 function addWordCard(
   languageId: number,
   types: { id: number; name: string }[],
   selectedType: number | null,
   autofocus: boolean,
+  languageCode: string,
 ): string {
+  const example = exampleFor(languageCode);
+
   if (types.length === 0) {
     return `<div class="card"><div class="card-body">
       ${alert("info", "Add a category below before you can add words.")}
@@ -782,12 +806,12 @@ function addWordCard(
           <div class="field">
             <label for="term">Word or phrase</label>
             <input class="input" id="term" name="term" required${autofocus ? " data-autofocus" : ""}
-                   autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="la femme">
+                   autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${esc(example.term)}">
           </div>
           <div class="field">
             <label for="english">English</label>
             <input class="input" id="english" name="english" required
-                   autocomplete="off" spellcheck="false" placeholder="the woman">
+                   autocomplete="off" spellcheck="false" placeholder="${esc(example.english)}">
           </div>
           <button class="btn btn-primary" type="submit">${icons.plus}Add</button>
         </div>
