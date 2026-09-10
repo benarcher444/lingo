@@ -47,8 +47,9 @@ if (!target) {
   process.exit(1);
 }
 
+// A new password also unlocks the account: whoever runs this is vouching for it.
 db.update(users)
-  .set({ passwordHash: await hashPassword(password) })
+  .set({ passwordHash: await hashPassword(password), failedLogins: 0, lockedAt: null })
   .where(eq(users.id, target.id))
   .run();
 
@@ -56,4 +57,4 @@ db.update(users)
 db.delete(sessions).where(eq(sessions.userId, target.id)).run();
 
 console.log(`\nPassword updated for ${target.email}.`);
-console.log("Existing sessions were signed out. Log in with the new password.\n");
+console.log("Existing sessions were signed out, and the account is unlocked. Sign in with the new password.\n");

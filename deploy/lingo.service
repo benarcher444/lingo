@@ -1,0 +1,29 @@
+# Lingo as a systemd service: starts on boot, restarts if it crashes.
+# Install:  cp deploy/lingo.service /etc/systemd/system/ && systemctl enable --now lingo
+
+[Unit]
+Description=Lingo language-learning web app
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lingo
+Group=lingo
+WorkingDirectory=/opt/lingo
+EnvironmentFile=/opt/lingo/.env
+Environment=NODE_ENV=production
+ExecStart=/opt/lingo/node_modules/.bin/tsx src/server.ts
+Restart=on-failure
+RestartSec=3
+
+# Hardening. The app only ever writes its database, so everything else is
+# read-only to it, and it cannot gain privileges.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/lingo/data
+
+[Install]
+WantedBy=multi-user.target

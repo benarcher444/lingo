@@ -1,0 +1,12 @@
+# One database backup. Run nightly by lingo-backup.timer.
+
+[Unit]
+Description=Back up the Lingo database
+
+[Service]
+Type=oneshot
+User=lingo
+Group=lingo
+WorkingDirectory=/opt/lingo
+EnvironmentFile=/opt/lingo/.env
+ExecStart=/opt/lingo/node_modules/.bin/tsx scripts/backup-db.ts

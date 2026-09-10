@@ -1,0 +1,16 @@
+# Caddy in front of Lingo. Replace lingo.example.com with your domain — Caddy
+# then fetches and renews the HTTPS certificate itself, once DNS points here.
+# Install:  sed "s/lingo.example.com/<your domain>/" deploy/Caddyfile > /etc/caddy/Caddyfile
+
+lingo.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:3000
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+}

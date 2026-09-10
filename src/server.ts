@@ -1,3 +1,6 @@
+// First, before any module reads process.env — see env.ts.
+import "./env.js";
+
 import cookie from "@fastify/cookie";
 import formbody from "@fastify/formbody";
 import fastifyStatic from "@fastify/static";
@@ -20,21 +23,20 @@ import { loadScoredWords } from "./stats.js";
 import { pageHead } from "./views/components.js";
 import { esc, icons, layout } from "./views/layout.js";
 
-// Load .env before anything reads process.env (Node 20.6+ builtin, no dependency).
-try {
-  process.loadEnvFile();
-} catch {
-  // No .env file — environment variables come from the shell.
-}
-
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(here, "..");
 
 const PORT = Number(process.env.PORT ?? 3000);
-// 0.0.0.0 so the Pi is reachable from other devices on the LAN, not just itself.
+// 0.0.0.0 so other devices on the home Wi-Fi can reach it. On a public server
+// set HOST=127.0.0.1, so only the HTTPS proxy in front of it can.
 const HOST = process.env.HOST ?? "0.0.0.0";
 
 const app = Fastify({
+  // Believe X-Forwarded-For and -Proto only from a proxy on this machine (Caddy
+  // on the server). Then request.ip is the visitor, for rate limiting, and
+  // request.protocol is https, for the Secure cookie. The same headers from
+  // anyone else are ignored.
+  trustProxy: "127.0.0.1,::1",
   logger: {
     level: process.env.LOG_LEVEL ?? "info",
     transport:

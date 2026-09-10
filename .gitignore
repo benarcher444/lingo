@@ -25,3 +25,10 @@ Thumbs.db
 *.log
 .vscode/
 .idea/
+
+# Who may sign up. Personal email addresses, and this repository is public.
+# The template is allowed_emails.example.csv.
+allowed_emails.csv
+
+# npm cache when installing as the server's lingo user (home is /opt/lingo)
+.npm/

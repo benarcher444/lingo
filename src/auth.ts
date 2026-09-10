@@ -1,6 +1,6 @@
 import argon2 from "argon2";
 import { randomBytes } from "node:crypto";
-import { eq, lt } from "drizzle-orm";
+import { and, eq, isNull, lt, sql } from "drizzle-orm";
 import type { FastifyReply, FastifyRequest } from "fastify";
 
 import { db } from "./db/index.js";
@@ -8,6 +8,9 @@ import { sessions, users, type User } from "./db/schema.js";
 
 const SESSION_COOKIE = "ll_session";
 const SESSION_DAYS = 30;
+
+/** Wrong passwords in a row before an account locks. */
+export const MAX_FAILED_LOGINS = 5;
 
 export async function hashPassword(password: string): Promise<string> {
   return argon2.hash(password, { type: argon2.argon2id });
@@ -56,15 +59,50 @@ export function userForSession(sessionId: string | undefined): User | null {
   return row.user;
 }
 
-export function setSessionCookie(reply: FastifyReply, sessionId: string): void {
+/**
+ * Counts a wrong password and returns how many attempts remain — 0 means this
+ * one locked the account. The increment is a single UPDATE, so guesses fired in
+ * parallel cannot slip past the limit.
+ */
+export function recordFailedLogin(userId: number): number {
+  const row = db
+    .update(users)
+    .set({ failedLogins: sql`${users.failedLogins} + 1` })
+    .where(eq(users.id, userId))
+    .returning({ failedLogins: users.failedLogins })
+    .get();
+
+  const failures = row?.failedLogins ?? MAX_FAILED_LOGINS;
+  if (failures >= MAX_FAILED_LOGINS) {
+    db.update(users)
+      .set({ lockedAt: new Date().toISOString() })
+      .where(and(eq(users.id, userId), isNull(users.lockedAt)))
+      .run();
+  }
+
+  return Math.max(0, MAX_FAILED_LOGINS - failures);
+}
+
+/** After a successful sign-in, a password reset, or the owner unlocking it. */
+export function clearFailedLogins(userId: number): void {
+  db.update(users).set({ failedLogins: 0, lockedAt: null }).where(eq(users.id, userId)).run();
+}
+
+export function setSessionCookie(
+  request: FastifyRequest,
+  reply: FastifyReply,
+  sessionId: string,
+): void {
   reply.setCookie(SESSION_COOKIE, sessionId, {
     path: "/",
     httpOnly: true,
     sameSite: "lax",
     maxAge: SESSION_DAYS * 86_400,
-    // Left off deliberately: the Pi will serve plain HTTP on the LAN before it
-    // gets a certificate. Turn on once there is one.
-    secure: false,
+    // Secure whenever the visitor came in over HTTPS — on the server that is
+    // Caddy saying so, which server.ts trusts. Plain HTTP on the home Wi-Fi
+    // still gets a working cookie, where a hard-coded `true` would lock the
+    // phone out.
+    secure: request.protocol === "https",
   });
 }
 

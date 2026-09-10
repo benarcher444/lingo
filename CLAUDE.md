@@ -241,9 +241,13 @@ score in memory over the filtered set.
 
 **The AI provider is configuration, not a code decision.** `src/ai.ts` exposes
 one `complete()` interface; OpenAI and Anthropic are implementations behind it,
-chosen by `AI_PROVIDER`. Default is OpenAI, which is what the original app used.
-I hard-coded Anthropic at first without asking — that was the wrong call, and
-the abstraction exists so the choice stays the user's. A third provider is a new
+chosen by `AI_PROVIDER`. With it unset, Anthropic is preferred — the owner asked
+for that on 2026-09-10; before, it was OpenAI, as the original app used. Early
+on I hard-coded Anthropic without asking, which was the wrong call: the
+abstraction exists so the choice stays the user's. Every key is **API billing,
+separate from any subscription** — a Claude Pro or ChatGPT Plus plan does not
+include API access, which surprised the owner, so say it plainly when it comes
+up. A third provider is a new
 class, not a change to the tutor pipeline.
 
 **Browser speech synthesis, not gTTS.** No cache directory, no dependency, no
@@ -258,6 +262,36 @@ provider: works offline, no dependency. Every table hangs off `user_id`, so
 OAuth later is additive. Passwords cannot be recovered, only replaced —
 `scripts/set-password.ts` exists because being locked out of a local install
 otherwise has no remedy.
+
+**Sign-in hardened for a public server.** The GitHub repo is public and the app
+is meant to be reachable from anywhere, so:
+
+- **Sign-up by invitation.** `allowed_emails.csv` at the root, one address per
+  line, read on every sign-up (edits apply without a restart), fail-closed when
+  missing. It is **gitignored** — the repo is public and these are people's
+  addresses; `allowed_emails.example.csv` is the template. Only sign-up checks
+  it, not sign-in, so the seeded demo accounts still work for tests.
+- **Five wrong passwords lock the account** (`users.failed_logins`,
+  `users.locked_at`), and it stays locked even for the right password until
+  `npm run unlock -- <email>` or `set-password`. The owner asked for a hard
+  lock. The trade-off: anyone who knows an address can lock it out, and
+  unlocking needs a shell on the server. A timed lock is the alternative, if it
+  ever bites. The remaining attempts are shown, which reveals the account
+  exists; with invitation-only sign-up that seemed worth it, so the owner
+  doesn't lock themselves out.
+- **A per-address limit** in memory (`src/rate-limit.ts`: 10 sign-ins per 15
+  min, 5 sign-ups per hour). argon2 is slow on purpose, so a flood of attempts
+  is also a CPU attack. Loopback is exempt, because tests and screenshot runs
+  sign in dozens of times.
+- **`trustProxy` is loopback only**, so behind Caddy `request.ip` is the visitor
+  and `request.protocol` is `https`. The cookie is `Secure` exactly when the
+  request came in over HTTPS, so the home Wi-Fi over plain HTTP keeps working.
+- **`HOST=127.0.0.1` on the server.** The `0.0.0.0` default is for the LAN.
+
+Deployment is in `DEPLOY.md` with the files in `deploy/`: Hetzner, Caddy,
+systemd with hardening, a nightly backup timer, and `deploy.sh` (back up, pull,
+`npm ci --omit=dev`, restart). `tsx` is in `dependencies`, not dev, because
+production runs through it.
 
 **Charts are hand-written inline SVG.** No charting library: nothing to fetch,
 nothing to bundle, works offline. Colours come from CSS custom properties so
@@ -369,6 +403,11 @@ If the lag persists, establish the device and browser before changing more.
 
 ### Traps worth remembering
 
+- **`.env` has to load before any import reads it.** Imports are hoisted, so
+  `process.loadEnvFile()` in `server.ts`'s body ran only after `db/index.ts`
+  had read `DATABASE_PATH`, and after `ai.ts` had chosen its provider (it does
+  that at import). `src/env.ts` is imported first to fix it. Keep it first.
+  Scripts that need `.env` load it themselves (`check-ai.ts`).
 - **The running server does not reload.** It is started with `npm start` —
   plain `tsx`, no watch — so a server-side edit is invisible until a restart,
   while files in `public/` are served fresh. A screenshot pass after editing
@@ -460,6 +499,7 @@ the demo account seeded.
 | `npm run test:accents` | Accent composition, per language |
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |
+| `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |
@@ -489,6 +529,11 @@ Read-only checks and one-off fixes live in `scripts/`:
 - `clean-test-words.ts` — removes words left by the entry test.
 - `measure-speech.ts` — times Start-to-first-sound in listening practice and
   lists the voices on offer. Muted; `--direct`, `--headed`, `--runs=N`.
+- `unlock-account.ts` (`npm run unlock`) — lists locked accounts, or unlocks
+  one.
+- `backup-db.ts` (`npm run backup`) — a consistent online copy into
+  `data/backups/`, keeping 14. Use this rather than copying the file, which
+  misses whatever is still in the WAL.
 
 **`npm run seed` writes to the live database.** It only adds, so real data is
 safe, but always follow it with `npm run seed:clean`.
@@ -510,7 +555,10 @@ small — map each CSV to a category, insert, leave progress empty. Note that
 
 - Importing the archived vocabulary.
 - Per-user configuration of the learner level and the learnt thresholds.
-- Deployment automation for the Pi, or the DNS setup.
+- The server itself. `DEPLOY.md` and `deploy/` are ready, but no server exists
+  yet. Hetzner was chosen over a Pi at home on 2026-09-10: the home broadband
+  is unreliable, and EC2 costs more to set up and run for no benefit at this
+  size.
 - Backfilling session ids onto historical attempts (the timestamps would
   support inferring sessions from gaps; judged not worth it).
 
@@ -535,8 +583,9 @@ small — map each CSV to a category, insert, leave progress empty. Note that
 ### Environment notes
 
 - Windows 11, Git Bash available; PowerShell is not always enabled.
-- The dev server is a child of the session and dies with it. On the Pi it wants
-  a process manager pointed at `npm start`.
+- Locally the server runs as a detached `npm run start`, logging to
+  `data\server.log`. On the hosted server it runs under systemd — see
+  `DEPLOY.md`.
 - `HOST` defaults to `0.0.0.0` so a phone on the same Wi-Fi can reach it. That
   is the bind address, **not** browsable — the startup log prints the real LAN
   URL, which changes with the network.

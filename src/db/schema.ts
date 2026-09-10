@@ -22,6 +22,10 @@ export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  /** Wrong passwords since the last good sign-in. Five locks the account. */
+  failedLogins: integer("failed_logins").notNull().default(0),
+  /** Set when the account locks; cleared by unlock-account.ts or set-password.ts. */
+  lockedAt: text("locked_at"),
   createdAt: text("created_at").notNull().default(now),
 });
 

@@ -4,7 +4,7 @@ A personal language-learning web app: build a vocabulary, get tested on it,
 listen to it, talk to a tutor about it, and watch how much of it is actually
 holding.
 
-Runs locally now; built to run on a Raspberry Pi behind a DNS name later.
+Runs locally, or on a small server behind a domain — see [DEPLOY.md](DEPLOY.md).
 
 <https://github.com/benarcher444/lingo>
 
@@ -18,8 +18,10 @@ cp env.example .env      # optional — sensible defaults without it
 npm run dev              # http://localhost:3000
 ```
 
-Register an account at `/register` and add your first language. A starter set of
-categories (nouns, verbs, adjectives, …) is created with it.
+Sign-up is by invitation. Copy `allowed_emails.example.csv` to
+`allowed_emails.csv` and put your email address in it, then register at
+`/register` and add your first language. A starter set of categories (nouns,
+verbs, adjectives, …) is created with it.
 
 To poke around with realistic data instead:
 
@@ -228,20 +230,14 @@ server reports it rather than the README hard-coding one.
 
 ---
 
-## Deploying to the Pi
+## Deploying
 
-```bash
-git pull
-npm ci
-npm start
-```
+See **[DEPLOY.md](DEPLOY.md)**: a Hetzner server, Caddy for HTTPS, systemd, and
+nightly backups. Migrations run at startup, so an update is pull, install,
+restart — `deploy/deploy.sh` does all three.
 
-Migrations run at startup, so there is no separate step. `HOST` defaults to
-`0.0.0.0` so the app is reachable from other devices on the network. Point a
-process manager (systemd, pm2) at `npm start` to survive reboots.
-
-**Back up `data/app.db`.** It is the vocabulary and the entire learning history,
-and it is gitignored deliberately.
+**Back up `data/app.db`** — `npm run backup` takes a consistent copy. It is the
+vocabulary and the entire learning history, and it is gitignored deliberately.
 
 ### Locked out
 
@@ -254,6 +250,14 @@ npm run set-password -- you@example.com newpassword123
 ```
 
 Existing sessions are signed out; vocabulary and progress are untouched.
+
+Five wrong passwords in a row lock an account until it is unlocked. Setting a
+new password, as above, also unlocks it.
+
+```bash
+npm run unlock                        # list locked accounts
+npm run unlock -- you@example.com
+```
 
 ### Resetting
 

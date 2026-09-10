@@ -36,9 +36,9 @@ const CASES: Case[] = [
     expect: "OpenAI · gpt-4o-mini",
   },
   {
-    name: "unset prefers OpenAI when both keys exist",
+    name: "unset prefers Anthropic when both keys exist",
     env: { OPENAI_API_KEY: "test", ANTHROPIC_API_KEY: "test" },
-    expect: "OpenAI · gpt-4o-mini",
+    expect: "Anthropic · claude-opus-5",
   },
   {
     name: "AI_PROVIDER=none disables it even with a key",

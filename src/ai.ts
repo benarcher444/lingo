@@ -12,8 +12,11 @@
  *   OPENAI_API_KEY=sk-...     # whichever provider you chose
  *   ANTHROPIC_API_KEY=sk-ant-...
  *
- * With AI_PROVIDER unset it picks whichever key is present, preferring OpenAI —
- * which is what the original terminal app used.
+ * With AI_PROVIDER unset it picks whichever key is present, preferring
+ * Anthropic — the owner's choice. (It preferred OpenAI, which the original
+ * terminal app used, until the owner asked to switch.)
+ *
+ * Any key here is API billing, separate from a Claude or ChatGPT subscription.
  */
 
 export type ProviderName = "openai" | "anthropic" | "none";
@@ -57,8 +60,8 @@ function resolveProviderName(): ProviderName {
     );
   }
 
-  if (process.env.OPENAI_API_KEY) return "openai";
   if (process.env.ANTHROPIC_API_KEY) return "anthropic";
+  if (process.env.OPENAI_API_KEY) return "openai";
   return "none";
 }
 
