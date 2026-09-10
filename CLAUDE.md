@@ -389,8 +389,9 @@ The owner's data had no duplicates when this went in (2026-09-10).
   stylesheet already had the `[data-theme]` overrides.
 - **On a phone, the Settings tab is the menu.** The sidebar is hidden there,
   and with it the language picker, which made switching language impossible.
-  The phone's top bar carries a language dropdown, and Settings covers signing
-  out or switching account, switching and creating languages, and the theme.
+  Settings covers signing out or switching account, switching and creating
+  languages, and the theme. A language dropdown in the phone's top bar was
+  tried, then removed at the owner's request as a duplicate of Settings.
   The desktop sidebar has the theme switch as well.
 - **`POST /preferences/theme` returns you to the page you came from,** but only
   a path on this site: a Referer with a foreign host sends you home.
@@ -508,7 +509,7 @@ If the lag persists, establish the device and browser before changing more.
   category, search, sort and mode, and land on `#word-<id>`, with the add
   form's focus switched off so it does not scroll back up. That focus comes
   from `vocab.js`, on desktop widths only: on a phone it scrolled the page past
-  the top bar and its language picker. The add
+  the top bar. The add
   form's category is remembered per language in `localStorage`.
 - **Overlapping buckets look like a partition.** "Solid" is a subset of
   "learnt", so showing solid / learning / untouched left a word between the

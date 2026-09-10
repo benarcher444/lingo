@@ -22,7 +22,7 @@ let added = 0;
 let inFlight = false;
 
 // Straight into typing on a desktop. Not on a phone, where focusing the field
-// scrolled the page past the top bar, and its language picker, on every visit.
+// scrolled the page down past the top bar on every visit.
 if (term?.dataset.autofocus !== undefined && window.matchMedia("(min-width: 861px)").matches) {
   term.focus();
 }

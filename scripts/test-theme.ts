@@ -1,8 +1,8 @@
 /**
  * Checks the colour theme and the phone's controls. The choice is saved to the
  * account and stamped on every page, bad values are ignored, and the redirect
- * stays on this site. The phone gets a language picker and a Settings tab, and
- * Settings covers account, languages and theme.
+ * stays on this site. The phone gets a Settings tab, which covers account,
+ * languages and theme.
  *
  *   npx tsx scripts/test-theme.ts
  *
@@ -82,7 +82,8 @@ try {
   console.log("\nPhone\n");
 
   html = await page("/vocab");
-  check("the top bar has a language picker", /class="mobile-lang"[\s\S]*?<select[^>]*name="language"/.test(html));
+  // Switching language on a phone happens on Settings; the top bar is just the logo.
+  check("the top bar has no language dropdown", !html.includes('class="mobile-lang"'));
   check("the bottom bar has a Settings tab", /<nav class="mobile-bar">[\s\S]*?href="\/settings"/.test(html));
 
   const settings = await page("/settings");

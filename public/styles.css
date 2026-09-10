@@ -753,6 +753,18 @@ img { max-width: 100%; }
 
 .field-label-row .hint { font-size: 0.74rem; white-space: nowrap; }
 
+/* Start a session: category, how many, Start — one row, bottoms aligned. */
+.setup-row { align-items: flex-end; }
+.setup-category { flex: 1 1 240px; min-width: 170px; }
+.setup-count { flex: 0 1 210px; min-width: 150px; }
+
+/* On a phone the three wrapped onto a line each, leaving Start stranded on
+   the left. Category takes the first line; How many and Start share the second. */
+@media (max-width: 620px) {
+  .setup-category { flex-basis: 100%; }
+  .setup-count { flex: 1 1 0; min-width: 0; }
+}
+
 .input,
 .select,
 textarea.input {
@@ -1841,8 +1853,8 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   .mobile-bar a:hover { text-decoration: none; }
   .mobile-bar svg { width: 19px; height: 19px; stroke-width: 1.8; }
 
-  /* Logo on the left, language on the right: on a phone the sidebar, and its
-     language picker, are hidden. Everything else lives on the Settings tab. */
+  /* Just the logo: on a phone the sidebar is hidden, and language, account
+     and theme all live on the Settings tab. */
   .mobile-head {
     display: flex;
     align-items: center;
@@ -1863,8 +1875,6 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 
   .mobile-brand:hover { text-decoration: none; }
 
-  .mobile-lang { min-width: 0; }
-  .mobile-lang .select { width: auto; max-width: 48vw; font-weight: 560; }
 
   .theme-switch button { min-height: 42px; }
 

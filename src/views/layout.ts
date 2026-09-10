@@ -98,22 +98,6 @@ function languagePicker(ctx: NavContext): string {
     </form>`;
 }
 
-/**
- * The phone's copy of the picker, in the top bar. On a phone the sidebar is
- * hidden behind the bottom tab bar, and with it the only way to switch language.
- */
-function mobileLanguagePicker(ctx: NavContext): string {
-  if (ctx.languages.length === 0) return "";
-
-  return `
-    <form method="get" action="/switch-language" class="mobile-lang">
-      <select class="select" name="language" aria-label="Language" onchange="this.form.submit()">
-        ${languageOptions(ctx)}
-      </select>
-      <input type="hidden" name="return" value="${esc(ctx.active)}">
-    </form>`;
-}
-
 export type Theme = User["theme"];
 
 const THEME_CHOICES: { value: Theme; label: string; title: string; svg: string }[] = [
@@ -217,7 +201,6 @@ ${colorSchemeMeta(theme)}
   <main class="main">
     <div class="mobile-head">
       <a class="mobile-brand" href="/"><span class="brand-mark">L</span><span>Lingo</span></a>
-      ${mobileLanguagePicker(ctx)}
     </div>
     <div class="container">
       ${opts.body}

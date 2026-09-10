@@ -106,8 +106,8 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           <div id="setup" class="card">
             <div class="card-head"><div><h2>Start a session</h2><div class="sub">Words you know well come up far less often.</div></div></div>
             <div class="card-body">
-              <form id="setup-form" class="row">
-                <div class="field" style="flex:1;min-width:170px">
+              <form id="setup-form" class="row setup-row">
+                <div class="field setup-category">
                   <label for="wordType">Category</label>
                   <select class="select" id="wordType" name="wordTypeId">
                     <option value="">All categories</option>
@@ -120,7 +120,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
                       .join("")}
                   </select>
                 </div>
-                <div class="field" style="flex:0 1 210px;min-width:170px">
+                <div class="field setup-count">
                   <!-- The note sits beside the label, not under the input: under it,
                        this field stood taller than its neighbours, out of line. -->
                   <div class="field-label-row"><label for="count">How many</label><span class="hint" id="count-hint"></span></div>
@@ -135,7 +135,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
                     <option value="${scored.length}"></option>
                   </datalist>
                 </div>
-                <button class="btn btn-primary btn-lg" type="submit" style="align-self:end">
+                <button class="btn btn-primary btn-lg setup-start" type="submit">
                   ${icons.arrowRight}Start
                 </button>
               </form>
