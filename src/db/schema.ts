@@ -26,6 +26,12 @@ export const users = sqliteTable("users", {
   failedLogins: integer("failed_logins").notNull().default(0),
   /** Set when the account locks; cleared by unlock-account.ts or set-password.ts. */
   lockedAt: text("locked_at"),
+  /**
+   * "auto" follows the device's light/dark setting; "light" and "dark" force
+   * it. Kept on the account rather than in the browser, so one choice holds on
+   * every device.
+   */
+  theme: text("theme", { enum: ["auto", "light", "dark"] }).notNull().default("auto"),
   createdAt: text("created_at").notNull().default(now),
 });
 

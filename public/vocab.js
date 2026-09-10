@@ -21,6 +21,12 @@ const tableBody = document.querySelector("table.data tbody");
 let added = 0;
 let inFlight = false;
 
+// Straight into typing on a desktop. Not on a phone, where focusing the field
+// scrolled the page past the top bar, and its language picker, on every visit.
+if (term?.dataset.autofocus !== undefined && window.matchMedia("(min-width: 861px)").matches) {
+  term.focus();
+}
+
 // Accents apply to the target-language field only — the English column never
 // needs them, and converting there would fight normal typing.
 attachAccents(term);

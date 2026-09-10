@@ -379,6 +379,22 @@ with a slash (`end/thin`), which answer matching already accepts. The
 database's own unique index only caught an exact match within one category.
 The owner's data had no duplicates when this went in (2026-09-10).
 
+### Theme, and the phone's menu
+
+- **The theme is saved on the account** (`users.theme`: auto, light or dark),
+  not in the browser, so one choice holds on every device. Before this, the
+  site followed each device's own setting, so the laptop was dark and the phone
+  light. `layout()` stamps `data-theme` on `<html>` and sets `color-scheme`
+  while building the page, so there is no flash of the wrong palette. The
+  stylesheet already had the `[data-theme]` overrides.
+- **On a phone, the Settings tab is the menu.** The sidebar is hidden there,
+  and with it the language picker, which made switching language impossible.
+  The phone's top bar carries a language dropdown, and Settings covers signing
+  out or switching account, switching and creating languages, and the theme.
+  The desktop sidebar has the theme switch as well.
+- **`POST /preferences/theme` returns you to the page you came from,** but only
+  a path on this site: a Referer with a foreign host sends you home.
+
 ### Counting a day's practice
 
 Two different questions, both answered on the Progress page's Today card:
@@ -457,7 +473,11 @@ If the lag persists, establish the device and browser before changing more.
 - **Status colours are their own tokens.** `--status-solid` is the deeper green
   in both themes and `--status-learnt` the lighter: darker reads as more learnt.
   Mixing `--learnt` toward `--surface` looked right in light mode and inverted
-  in dark, where the mix *darkens*.
+  in dark, where the mix *darkens*. Learning is split the same way:
+  `--learning` is the text shade, `--learning-fill` the vivid amber for bars and
+  dots. One colour for both was a muddy mustard. Listening has its own
+  `--listening` (raspberry), because the earlier blue sat too close to Written's
+  indigo to tell apart on a chart.
 - **Playwright hides Chrome's Google voices.** They live in a component
   extension that automation disables, so a test browser shows only the OS's
   local voices — none French on this laptop. `measure-speech.ts` re-enables it
@@ -486,7 +506,9 @@ If the lag persists, establish the device and browser before changing more.
   the top and reset the add form's category, which made editing a run of words
   a chore. The no-JavaScript path still works: links and redirects carry the
   category, search, sort and mode, and land on `#word-<id>`, with the add
-  form's `autofocus` switched off so it does not scroll back up. The add
+  form's focus switched off so it does not scroll back up. That focus comes
+  from `vocab.js`, on desktop widths only: on a phone it scrolled the page past
+  the top bar and its language picker. The add
   form's category is remembered per language in `localStorage`.
 - **Overlapping buckets look like a partition.** "Solid" is a subset of
   "learnt", so showing solid / learning / untouched left a word between the
@@ -537,6 +559,7 @@ the demo account seeded.
 | `npm run test:ai` | Provider/model resolution, all permutations |
 | `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
 | `npm run test:duplicates` | A word can't be added twice or renamed onto another, whatever case, spacing or category |
+| `npm run test:theme` | Theme saved per account and stamped on pages, safe redirect, phone language picker and Settings tab |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |

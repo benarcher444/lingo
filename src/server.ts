@@ -12,7 +12,10 @@ import { fileURLToPath } from "node:url";
 import { provider, providerLabel } from "./ai.js";
 import { pruneSessions } from "./auth.js";
 import { loadContext, requireContext } from "./context.js";
-import { databasePath } from "./db/index.js";
+import { eq } from "drizzle-orm";
+
+import { databasePath, db } from "./db/index.js";
+import { users } from "./db/schema.js";
 import { runMigrations } from "./db/migrate.js";
 import { authRoutes } from "./routes/auth.js";
 import { chatRoutes } from "./routes/chat.js";
@@ -21,7 +24,7 @@ import { progressRoutes } from "./routes/progress.js";
 import { vocabRoutes } from "./routes/vocab.js";
 import { loadScoredWords } from "./stats.js";
 import { pageHead } from "./views/components.js";
-import { esc, icons, layout } from "./views/layout.js";
+import { esc, icons, layout, themeSwitch } from "./views/layout.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const projectRoot = join(here, "..");
@@ -101,6 +104,30 @@ app.get("/switch-language", async (request, reply) => {
   return reply.redirect(target ? `${path}?language=${target}` : path);
 });
 
+/**
+ * Auto / Light / Dark, saved to the account so one choice holds on every
+ * device. Sends you back to the page the switch was on — only ever a path on
+ * this site, never wherever a Referer claims.
+ */
+app.post("/preferences/theme", async (request, reply) => {
+  const ctx = loadContext(request, "");
+  if (!ctx) return reply.redirect("/login");
+
+  const theme = (request.body as Record<string, unknown> | undefined)?.["theme"];
+  if (theme === "auto" || theme === "light" || theme === "dark") {
+    db.update(users).set({ theme }).where(eq(users.id, ctx.user.id)).run();
+  }
+
+  let back = "/";
+  try {
+    const referer = new URL(request.headers.referer ?? "");
+    if (referer.host === request.headers.host) back = referer.pathname + referer.search;
+  } catch {
+    // No usable Referer: the home page will do.
+  }
+  return reply.redirect(back);
+});
+
 /* ------------------------------------------------------------------
    Settings
    ------------------------------------------------------------------ */
@@ -111,27 +138,49 @@ app.get("/settings", async (request, reply) => {
 
   const aiConfigured = provider !== null;
 
+  const languageChoices = ctx.languages
+    .map((l) => {
+      const current = l.id === ctx.currentLanguage?.id;
+      return `<a class="lang-choice" href="/switch-language?language=${l.id}&return=settings"${
+        current ? ' aria-current="true"' : ""
+      }><span>${esc(l.name)}</span>${
+        current ? '<span class="pill pill-accent">Current</span>' : '<span class="hint">Switch</span>'
+      }</a>`;
+    })
+    .join("");
+
+  // On a phone this page is the menu: the Settings tab is the only way to the
+  // account, the languages and the theme.
   const body = `
-    ${pageHead({ title: "Settings", sub: "Your account and this installation." })}
+    ${pageHead({ title: "Settings", sub: "Your account, your languages, and how Lingo looks." })}
     <div class="stack">
       <div class="card">
         <div class="card-head"><div><h2>Account</h2></div></div>
         <div class="card-body stack-sm">
-          <div class="row"><strong style="width:150px">Email</strong><span>${esc(ctx.user.email)}</span></div>
-          <div class="row"><strong style="width:150px">Languages</strong>
-            <span>${ctx.languages.length > 0 ? ctx.languages.map((l) => esc(l.name)).join(", ") : "none yet"}</span></div>
+          <div class="row"><strong style="width:110px">Signed in as</strong><span>${esc(ctx.user.email)}</span></div>
+          <form method="post" action="/logout">
+            <button class="btn" type="submit">${icons.logout}Sign out or switch account</button>
+          </form>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-head"><div><h2>Add a language</h2>
-          <div class="sub">A starter set of categories is created with it.</div></div></div>
-        <div class="card-body">
+        <div class="card-head"><div><h2>Language</h2>
+          <div class="sub">Each language has its own words and progress.</div></div></div>
+        <div class="card-body stack">
+          ${ctx.languages.length > 0 ? `<div class="lang-list">${languageChoices}</div>` : `<p class="hint">No languages yet.</p>`}
           <form method="post" action="/languages" class="row">
-            <input class="input" name="name" placeholder="Spanish" required style="width:210px">
+            <input class="input" name="name" placeholder="Add a language, e.g. Italian" required style="flex:1 1 200px">
             <button class="btn btn-primary" type="submit">${icons.plus}Create language</button>
           </form>
+          <div class="hint">A new language starts with a set of categories (nouns, verbs and so on) that you can change.</div>
         </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><div><h2>Appearance</h2>
+          <div class="sub">Saved to your account, so it applies on every device.</div></div></div>
+        <div class="card-body">${themeSwitch(ctx.user.theme)}</div>
       </div>
 
       <div class="card">
@@ -147,7 +196,7 @@ app.get("/settings", async (request, reply) => {
                    <span class="hint">Set <code>AI_PROVIDER</code> (openai or anthropic) and its API key in <code>.env</code>, then restart.</span>`
             }</span></div>
           <div class="row"><strong style="width:150px">Speech</strong>
-            <span class="hint">Uses your browser's built-in voices — no internet needed.</span></div>
+            <span class="hint">Uses your browser's voices. Chrome's French and Spanish voices need an internet connection.</span></div>
         </div>
       </div>
     </div>`;

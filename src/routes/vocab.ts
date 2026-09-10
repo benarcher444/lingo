@@ -781,7 +781,7 @@ function addWordCard(
         <div class="add-row">
           <div class="field">
             <label for="term">Word or phrase</label>
-            <input class="input" id="term" name="term" required${autofocus ? " autofocus" : ""}
+            <input class="input" id="term" name="term" required${autofocus ? " data-autofocus" : ""}
                    autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="la femme">
           </div>
           <div class="field">

@@ -20,7 +20,7 @@ import { esc, icons, layout } from "../views/layout.js";
 const SERIES_COLOURS = [
   "var(--accent)",
   "var(--learnt)",
-  "var(--learning)",
+  "var(--learning-fill)",
   "#d9679a",
   "#4aa3d9",
   "#9b7bd4",
@@ -296,7 +296,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       // The deeper green is the more learnt, in both themes.
       { label: "Solid", count: summary.completelyLearnt, colour: "var(--status-solid)" },
       { label: "Learnt", count: summary.learntNotSolid, colour: "var(--status-learnt)" },
-      { label: "Learning", count: summary.inProgress, colour: "var(--learning)" },
+      { label: "Learning", count: summary.inProgress, colour: "var(--learning-fill)" },
       { label: "Untouched", count: summary.untouched, colour: "var(--new)" },
     ];
 

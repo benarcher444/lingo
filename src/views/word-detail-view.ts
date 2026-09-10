@@ -4,7 +4,7 @@ import {
   type Direction,
 } from "../algorithm.js";
 import type { ModeStats, WordDetail } from "../word-detail.js";
-import { legend, lineChart, type Series } from "./charts.js";
+import { LISTENING_COLOUR, legend, lineChart, type Series } from "./charts.js";
 import { scorePill } from "./components.js";
 import { esc, icons } from "./layout.js";
 
@@ -97,7 +97,7 @@ export function wordDetailPanel(detail: WordDetail, closeHref: string): string {
   // card uses, so written and listening read the same way everywhere.
   const series: Series[] = [
     { name: "Written", colour: "var(--accent)", points: detail.scoreHistory.written },
-    { name: "Listening", colour: "#2f7dc4", points: detail.scoreHistory.audio },
+    { name: "Listening", colour: LISTENING_COLOUR, points: detail.scoreHistory.audio },
   ].filter((s) => s.points.length > 0);
 
   const pointCount = series.reduce((n, s) => n + s.points.length, 0);

@@ -42,6 +42,12 @@ export const icons = {
   sparkle: icon('<path d="M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4Z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8Z"/>'),
   cog: icon('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.6 1.6 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.6 1.6 0 0 0-1.8-.3 1.6 1.6 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.6 1.6 0 0 0 9 19.4a1.6 1.6 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.6 1.6 0 0 0 .3-1.8 1.6 1.6 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.6 1.6 0 0 0 4.6 9a1.6 1.6 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.6 1.6 0 0 0 1.8.3H9a1.6 1.6 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.6 1.6 0 0 0 1 1.5 1.6 1.6 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.6 1.6 0 0 0-.3 1.8V9a1.6 1.6 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.6 1.6 0 0 0-1.5 1Z"/>'),
   logout: icon('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5M21 12H9"/>'),
+  /** Half-filled circle: follow the device. */
+  contrast: icon('<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/>'),
+  sun: icon(
+    '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  ),
+  moon: icon('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/>'),
 };
 
 export interface NavContext {
@@ -70,24 +76,74 @@ function navLinks(languageId: number | null): NavLink[] {
   ];
 }
 
-function languagePicker(ctx: NavContext): string {
-  if (ctx.languages.length === 0) return "";
-
-  const options = ctx.languages
+function languageOptions(ctx: NavContext): string {
+  return ctx.languages
     .map(
       (l) =>
         `<option value="${l.id}"${l.id === ctx.currentLanguage?.id ? " selected" : ""}>${esc(l.name)}</option>`,
     )
     .join("");
+}
+
+function languagePicker(ctx: NavContext): string {
+  if (ctx.languages.length === 0) return "";
 
   return `
     <form method="get" action="/switch-language" class="stack-sm" style="padding: 0 10px 6px">
       <label class="nav-label" style="padding:0 0 4px" for="lang-picker">Language</label>
       <select id="lang-picker" class="select" name="language" onchange="this.form.submit()">
-        ${options}
+        ${languageOptions(ctx)}
       </select>
       <input type="hidden" name="return" value="${esc(ctx.active)}">
     </form>`;
+}
+
+/**
+ * The phone's copy of the picker, in the top bar. On a phone the sidebar is
+ * hidden behind the bottom tab bar, and with it the only way to switch language.
+ */
+function mobileLanguagePicker(ctx: NavContext): string {
+  if (ctx.languages.length === 0) return "";
+
+  return `
+    <form method="get" action="/switch-language" class="mobile-lang">
+      <select class="select" name="language" aria-label="Language" onchange="this.form.submit()">
+        ${languageOptions(ctx)}
+      </select>
+      <input type="hidden" name="return" value="${esc(ctx.active)}">
+    </form>`;
+}
+
+export type Theme = User["theme"];
+
+const THEME_CHOICES: { value: Theme; label: string; title: string; svg: string }[] = [
+  { value: "auto", label: "Auto", title: "Theme: follow this device", svg: icons.contrast },
+  { value: "light", label: "Light", title: "Theme: always light", svg: icons.sun },
+  { value: "dark", label: "Dark", title: "Theme: always dark", svg: icons.moon },
+];
+
+/**
+ * Auto / Light / Dark, in the desktop sidebar and on Settings. Saved to the
+ * account (POST /preferences/theme) and applied as the page is built, so the
+ * right colours are there from the first paint on every device.
+ */
+export function themeSwitch(current: Theme): string {
+  const buttons = THEME_CHOICES.map(
+    (c) =>
+      `<button type="submit" name="theme" value="${c.value}" title="${c.title}" aria-pressed="${c.value === current}">${c.svg}<span>${c.label}</span></button>`,
+  ).join("");
+
+  return `<form method="post" action="/preferences/theme" class="theme-switch" aria-label="Colour theme">${buttons}</form>`;
+}
+
+/** Forced themes stamp the root; "auto" leaves it to prefers-color-scheme. */
+function themeAttributes(theme: Theme): string {
+  return theme === "auto" ? "" : ` data-theme="${theme}"`;
+}
+
+/** Tells the browser which palette its own controls and scrollbars should use. */
+function colorSchemeMeta(theme: Theme): string {
+  return `<meta name="color-scheme" content="${theme === "auto" ? "light dark" : theme}">`;
 }
 
 export interface LayoutOptions {
@@ -106,6 +162,7 @@ export interface LayoutOptions {
 export function layout(ctx: NavContext, opts: LayoutOptions): string {
   const links = navLinks(ctx.currentLanguage?.id ?? null);
   const initial = (ctx.user.email[0] ?? "?").toUpperCase();
+  const theme = ctx.user.theme;
 
   const sidebarNav = links
     .map(
@@ -114,7 +171,11 @@ export function layout(ctx: NavContext, opts: LayoutOptions): string {
     )
     .join("\n");
 
-  const mobileNav = links
+  // A phone has no sidebar, so Settings (language, account, theme) gets a tab.
+  const mobileNav = [
+    ...links,
+    { href: "/settings", label: "Settings", short: "Settings", key: "settings", svg: icons.cog },
+  ]
     .map(
       (l) =>
         `<a href="${l.href}"${l.key === ctx.active ? ' aria-current="page"' : ""}>${l.svg}<span>${l.short}</span></a>`,
@@ -122,11 +183,11 @@ export function layout(ctx: NavContext, opts: LayoutOptions): string {
     .join("\n");
 
   return `<!doctype html>
-<html lang="en">
+<html lang="en"${themeAttributes(theme)}>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="color-scheme" content="light dark">
+${colorSchemeMeta(theme)}
 <title>${esc(opts.title)} · Lingo</title>
 <link rel="stylesheet" href="/static/styles.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📖</text></svg>">
@@ -143,6 +204,7 @@ export function layout(ctx: NavContext, opts: LayoutOptions): string {
         <span class="avatar">${esc(initial)}</span>
         <span class="sidebar-email">${esc(ctx.user.email)}</span>
       </div>
+      <div class="sidebar-theme">${themeSwitch(theme)}</div>
       <a class="nav-item" href="/settings"${ctx.active === "settings" ? ' aria-current="page"' : ""}>${icons.cog}<span>Settings</span></a>
       <form method="post" action="/logout">
         <button class="nav-item" type="submit" style="width:100%;border:0;background:none;font:inherit;cursor:pointer;text-align:left">
@@ -153,7 +215,10 @@ export function layout(ctx: NavContext, opts: LayoutOptions): string {
   </aside>
 
   <main class="main">
-    <div class="mobile-head"><span class="brand-mark">L</span><span>Lingo</span></div>
+    <div class="mobile-head">
+      <a class="mobile-brand" href="/"><span class="brand-mark">L</span><span>Lingo</span></a>
+      ${mobileLanguagePicker(ctx)}
+    </div>
     <div class="container">
       ${opts.body}
     </div>

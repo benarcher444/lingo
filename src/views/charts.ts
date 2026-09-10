@@ -139,7 +139,7 @@ export function barChart(
 }
 
 /** Listening's colour wherever the two modes appear side by side. */
-export const LISTENING_COLOUR = "#2f7dc4";
+export const LISTENING_COLOUR = "var(--listening)";
 
 /** One day's answers, split by mode. */
 export interface ActivityDay {

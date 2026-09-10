@@ -24,6 +24,10 @@
   --accent-border: #cfc9f5;
   --on-accent: #ffffff;
 
+  /* Listening, beside Written's indigo accent on every chart. Raspberry rather
+     than the earlier blue, which sat too close to indigo to tell apart. */
+  --listening: #d63f8c;
+
   --learnt: #16855f;
   --learnt-soft: #e2f4ed;
   --learnt-border: #b3e0ce;
@@ -32,9 +36,12 @@
   --status-solid: #0f6e4d;
   --status-learnt: #5fbf97;
 
-  --learning: #b8761b;
-  --learning-soft: #fdf1de;
-  --learning-border: #f0d6a8;
+  /* Learning: a vivid amber for bars and dots, a deeper one for text, which
+     has to stay readable on white. One colour for both was a muddy mustard. */
+  --learning: #b45309;
+  --learning-fill: #f59e0b;
+  --learning-soft: #fef3e2;
+  --learning-border: #f7d7a1;
 
   --new: #857f74;
   --new-soft: #efece7;
@@ -82,6 +89,8 @@
     --accent-border: #3d3470;
     --on-accent: #16131f;
 
+    --listening: #f472b6;
+
     --learnt: #3fc79a;
     --learnt-soft: #12302a;
     --learnt-border: #1e5245;
@@ -90,6 +99,7 @@
     --status-learnt: #5fd6a9;
 
     --learning: #e0a548;
+    --learning-fill: #e0a548;
     --learning-soft: #322612;
     --learning-border: #574122;
 
@@ -127,6 +137,8 @@
   --accent-border: #3d3470;
   --on-accent: #16131f;
 
+  --listening: #f472b6;
+
   --learnt: #3fc79a;
   --learnt-soft: #12302a;
   --learnt-border: #1e5245;
@@ -135,6 +147,7 @@
   --status-learnt: #5fd6a9;
 
   --learning: #e0a548;
+  --learning-fill: #e0a548;
   --learning-soft: #322612;
   --learning-border: #574122;
 
@@ -339,6 +352,71 @@ img { max-width: 100%; }
   white-space: nowrap;
   font-size: 0.8rem;
   color: var(--text-muted);
+}
+
+/* Auto / Light / Dark, in the sidebar and on Settings. */
+.theme-switch {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+}
+
+.theme-switch button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 30px;
+  padding: 4px 6px;
+  white-space: nowrap;
+  border: 0;
+  border-radius: 5px;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 560;
+  cursor: pointer;
+}
+
+.theme-switch button:hover { color: var(--text); }
+
+.theme-switch button[aria-pressed="true"] {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-sm);
+}
+
+.theme-switch svg { width: 15px; height: 15px; stroke-width: 1.8; flex: none; }
+
+/* The sidebar's full width: inset like the nav items, "Dark" ran into the edge. */
+.sidebar-theme { padding: 6px 0 8px; }
+
+/* Settings: the languages you can switch to. */
+.lang-list { display: grid; gap: 6px; }
+
+.lang-choice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-weight: 560;
+}
+
+.lang-choice:hover { background: var(--surface-2); text-decoration: none; }
+
+.lang-choice[aria-current="true"] {
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
 }
 
 /* ============================================================
@@ -587,7 +665,7 @@ img { max-width: 100%; }
 
 .bar i { display: block; height: 100%; }
 .bar i.learnt { background: var(--learnt); }
-.bar i.learning { background: var(--learning); }
+.bar i.learning { background: var(--learning-fill); }
 
 /* Nudge toward thin categories */
 .type-cell.is-thin { background: var(--learning-soft); }
@@ -662,6 +740,18 @@ img { max-width: 100%; }
   font-weight: 570;
   color: var(--text-muted);
 }
+
+/* A label with a note on its right, e.g. "How many … 45 available". Under the
+   input, the note made that field taller than its neighbours and knocked the
+   row out of line. */
+.field-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.field-label-row .hint { font-size: 0.74rem; white-space: nowrap; }
 
 .input,
 .select,
@@ -1751,14 +1841,32 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   .mobile-bar a:hover { text-decoration: none; }
   .mobile-bar svg { width: 19px; height: 19px; stroke-width: 1.8; }
 
+  /* Logo on the left, language on the right: on a phone the sidebar, and its
+     language picker, are hidden. Everything else lives on the Settings tab. */
   .mobile-head {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 10px;
     margin-bottom: 14px;
     font-weight: 640;
     letter-spacing: -0.02em;
   }
+
+  .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-right: auto;
+    padding-block: 7px;
+    color: var(--text);
+  }
+
+  .mobile-brand:hover { text-decoration: none; }
+
+  .mobile-lang { min-width: 0; }
+  .mobile-lang .select { width: auto; max-width: 48vw; font-weight: 560; }
+
+  .theme-switch button { min-height: 42px; }
 
   h1 { font-size: 1.34rem; }
   .quiz-prompt { font-size: 1.75rem; }
@@ -1772,7 +1880,16 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   .type-cell { flex-basis: 132px; max-width: none; }
   .card-head { padding: 14px 16px; }
   .card-body { padding: 16px; }
-  .summary-grid { grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); }
+  /* Every figure on one row, however many there are (four after a session,
+     five on Progress). Wrapping left three on one row and two on the next. */
+  .summary-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+  }
+  .summary-cell { padding: 11px 6px; text-align: center; }
+  .summary-cell .value { font-size: 1.05rem; }
+  .summary-cell .label { font-size: 0.58rem; letter-spacing: 0.03em; }
   .chart-grid { grid-template-columns: 1fr; }
 
   /* Search row in the vocabulary card: stack rather than overflow. */
