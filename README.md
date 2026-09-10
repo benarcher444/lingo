@@ -45,6 +45,11 @@ Adding is keyboard-driven: pick the category once, then
 `word` → <kbd>Tab</kbd> → `translation` → <kbd>Enter</kbd>, repeatedly, with no
 page reload.
 
+Editing happens in place: Edit, change it, <kbd>Enter</kbd> to save or
+<kbd>Esc</kbd> to cancel, and the list stays where it was. A word already in the
+language can't be added twice, whatever its case, spacing or category, and the
+message points to the entry you already have.
+
 **Accents without changing keyboard layout.** Type the plain letter then the
 accent key:
 
@@ -68,8 +73,10 @@ the checker disagreed.
 
 **Listening practice** — the word is spoken in the target language and you type
 what it *means* in English, so it tests comprehension rather than spelling back
-what you just heard. Speech uses the browser's own voices, so there is no audio
-to download or cache and it works with no internet.
+what you just heard. Type `r` then <kbd>Enter</kbd> to hear it again, or just `r`
+once you've answered. Speech uses the browser's own voices, so there is no audio
+to download or cache. But voices vary by browser, and Chrome's French and
+Spanish ones are synthesised online, so they need a connection.
 
 **Conversation** — write in the language you are learning. Your sentence is
 quietly corrected into fluent text first, then answered in that language, and you
@@ -78,22 +85,32 @@ can ask for an English breakdown of anything.
 Which AI answers is configuration, not code. In `.env`:
 
 ```ini
-AI_PROVIDER=openai          # openai | anthropic | none
-OPENAI_API_KEY=sk-...       # or ANTHROPIC_API_KEY for anthropic
-# AI_MODEL=gpt-4o-mini      # optional; overrides the provider default
+AI_PROVIDER=anthropic         # anthropic | openai | none
+ANTHROPIC_API_KEY=sk-ant-...  # or OPENAI_API_KEY for openai
+AI_MODEL=claude-sonnet-5      # optional; overrides the provider default
 ```
 
-Defaults are `gpt-4o-mini` for OpenAI and `claude-opus-5` for Anthropic. To use
-Claude, set `AI_PROVIDER=anthropic` and `ANTHROPIC_API_KEY`; nothing else
-changes. Leave `AI_PROVIDER` unset and it uses whichever key is present,
-preferring OpenAI.
+Defaults are `claude-opus-5` for Anthropic and `gpt-4o-mini` for OpenAI. Sonnet
+costs far less than Opus and is plenty for a tutor. Leave `AI_PROVIDER` unset and
+it uses whichever key is present, preferring Anthropic. The key is **API**
+billing, separate from any Claude or ChatGPT subscription. Create one at
+console.anthropic.com (or platform.openai.com).
 Run `npm run ai:check` to confirm it works before relying on it. Without a
 provider the page says so and everything else still works.
 
-**Progress** — the chart leads: pick any recorded measure (percentage learnt,
-words solid, average accuracy, longest neglect…) and choose which categories to
-plot. Below it, where every word currently stands — solid, learnt, learning,
-untouched — as four bands that add up to the whole vocabulary.
+**Progress** — the chart leads: pick any recorded measure (it opens on words
+learnt; also percentage learnt, words solid, average accuracy, longest neglect…)
+and choose which categories to plot. Below it are three more views:
+
+- today's practice, per mode
+- where every word currently stands: solid, learnt, learning and untouched, four
+  bands that add up to the whole vocabulary
+- answers per day over the last month, with written and listening stacked
+
+**Settings** — your account, your languages (switch, or create a new one), and
+the theme: Auto (follow the device), Light or Dark. The theme is saved to your
+account, so it holds on every device. On a phone, Settings is a tab in the
+bottom bar.
 
 Clicking a word on the vocabulary page opens its full record: times tested,
 correct and wrong per direction, accuracy, streak, when it was last seen, an
@@ -134,7 +151,7 @@ Carried over from the original Python app; `npm test` covers it.
 | Command | What it does |
 |---|---|
 | `npm run dev` | Dev server with reload on `http://localhost:3000` |
-| `npm start` | Run without watching (what the Pi uses) |
+| `npm start` | Run without watching (what the server runs, under systemd) |
 | `npm test` | Scoring, matching and sampling checks |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run seed` | Demo account with vocabulary and history (`--reset` to wipe) |
@@ -145,12 +162,20 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:search` | Vocabulary search and category filter |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:listening` | Speech warm-up, and `r` to replay |
+| `npm run test:vocab-edit` | Editing words in place |
+| `npm run test:duplicates` | A word can't be added twice |
+| `npm run test:auth` | Invitation-only sign-up, lockout, secure cookie |
+| `npm run test:theme` | Theme saved per account; the phone's Settings tab |
+| `npm run test:daily` | Counting a day's practice by session |
 | `npm run test:all` | Every suite in sequence |
 | `npm run seed:clean` | Remove seeded demo accounts, keep your own |
 | `npm run test:ai` | Check AI_PROVIDER / AI_MODEL resolve correctly |
 | `npm run ai:check` | Send one real message to the configured provider |
 | `npm run reset:users` | Delete all accounts and their data (`--yes` to confirm) |
 | `npm run set-password` | Set a new password for an account (run bare to list them) |
+| `npm run unlock` | Unlock an account after 5 wrong passwords (run bare to list them) |
+| `npm run backup` | Consistent copy of the database into `data/backups/` |
 | `npm run db:generate` | Generate a migration after changing the schema |
 | `npm run db:studio` | Browse the database |
 
@@ -188,6 +213,9 @@ src/
   stats.ts           Scoring words in bulk, summaries, history snapshots
   auth.ts            Argon2 password hashing, session cookies
   context.ts         Signed-in user and selected language per request
+  env.ts             Loads .env before anything else reads it
+  allowlist.ts       Who may sign up (allowed_emails.csv)
+  rate-limit.ts      Per-address limit on sign-in and sign-up
   db/
     schema.ts        Drizzle schema
     index.ts         SQLite connection (WAL)
@@ -197,11 +225,13 @@ src/
 public/              Stylesheet and browser JS — no build step
 scripts/             seed, screenshot, tests, diagnostics
 drizzle/             Generated migrations
+deploy/              systemd units, Caddyfile, deploy script (see DEPLOY.md)
+.github/workflows/   Checks, then a deploy, on every push to main
 ```
 
 Server-rendered HTML with small vanilla-JS modules for the quiz and chat. No
-bundler, no framework, nothing to compile at runtime — which is the point on a
-Pi.
+bundler, no framework, nothing to compile at runtime, which keeps a small
+server simple to run.
 
 **Storage** is SQLite via Drizzle. The schema is written so a move to Postgres
 for a hosted deployment is a driver change rather than a rewrite; every table
@@ -216,8 +246,10 @@ against real history later. `stat_snapshots` is append-only.
 
 ## Using it on your phone
 
-The server binds to every interface, so any device on the same Wi-Fi can reach
-it. The startup log prints the address:
+The hosted site works on a phone from anywhere (see DEPLOY.md).
+
+The local development server binds to every interface, so any device on the same
+Wi-Fi can reach it too. Its startup log prints the address:
 
 ```
 On this machine:  http://localhost:3000
