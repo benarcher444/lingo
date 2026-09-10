@@ -284,12 +284,9 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     /* ---- Status split ---- */
 
     const statusBands = [
-      { label: "Solid", count: summary.completelyLearnt, colour: "var(--learnt)" },
-      {
-        label: "Learnt",
-        count: summary.learntNotSolid,
-        colour: "color-mix(in srgb, var(--learnt) 55%, var(--surface))",
-      },
+      // The deeper green is the more learnt, in both themes.
+      { label: "Solid", count: summary.completelyLearnt, colour: "var(--status-solid)" },
+      { label: "Learnt", count: summary.learntNotSolid, colour: "var(--status-learnt)" },
       { label: "Learning", count: summary.inProgress, colour: "var(--learning)" },
       { label: "Untouched", count: summary.untouched, colour: "var(--new)" },
     ];

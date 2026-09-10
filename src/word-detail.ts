@@ -58,9 +58,14 @@ export interface WordDetail {
   writtenEnabled: boolean;
   audioEnabled: boolean;
   modes: ModeStats[];
-  recentAttempts: AttemptRow[];
-  /** Score after each answer, plus a final point for today. */
-  scoreHistory: { x: number; y: number }[];
+  /**
+   * Most recent misses, newest first. Only wrong answers: a list of rights says
+   * little, a list of what you actually got wrong shows where the word trips you
+   * up. Overridden answers are excluded — the learner judged those correct.
+   */
+  recentMisses: AttemptRow[];
+  /** Score after each answer, plus a final point for today — one series per mode. */
+  scoreHistory: Record<Mode, { x: number; y: number }[]>;
 }
 
 /** Loads everything known about one word. Returns null if it is not the user's. */
@@ -144,10 +149,25 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
     };
   });
 
+  // "I was right — count it" is stored as a second, overriding row straight
+  // after the miss, and the miss row stays. Those misses were judged right, so
+  // they are not wrong answers worth listing.
+  const overruled = new Set<number>();
+  attemptRows.forEach((attempt, i) => {
+    if (!attempt.overridden) return;
+    for (let j = i - 1; j >= 0; j--) {
+      const earlier = attemptRows[j]!;
+      if (earlier.mode !== attempt.mode || earlier.direction !== attempt.direction) continue;
+      if (!earlier.correct) overruled.add(j);
+      break;
+    }
+  });
+
   return {
     ...row,
     modes,
-    recentAttempts: [...attemptRows]
+    recentMisses: attemptRows
+      .filter((a, i) => !a.correct && !overruled.has(i))
       .reverse()
       .slice(0, 20)
       .map((a) => ({
@@ -158,13 +178,17 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
         givenAnswer: a.givenAnswer,
         answeredAt: a.answeredAt,
       })),
-    scoreHistory: replayScore(attemptRows, "written"),
+    scoreHistory: {
+      written: replayScore(attemptRows, "written"),
+      audio: replayScore(attemptRows, "audio"),
+    },
   };
 }
 
 /**
- * Reconstructs the written score after each answer by replaying the attempt
- * log — which is exactly what storing one row per answer was for.
+ * Reconstructs one mode's score after each answer by replaying the attempt
+ * log — which is exactly what storing one row per answer was for. Called once
+ * per mode, so the word record can plot written and listening side by side.
  *
  * At the moment of an answer the word has just been tested, so the neglect term
  * is zero; the decay between points is what the line shows as it falls. A final

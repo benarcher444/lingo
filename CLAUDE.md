@@ -246,9 +246,12 @@ I hard-coded Anthropic at first without asking — that was the wrong call, and
 the abstraction exists so the choice stays the user's. A third provider is a new
 class, not a change to the tutor pipeline.
 
-**Browser speech synthesis, not gTTS.** No network, no cache directory, no
-dependency — which matters on a Pi that may be offline. Voice availability
-varies by browser, which is the trade.
+**Browser speech synthesis, not gTTS.** No cache directory, no dependency, no
+service of our own. The trade is that voices vary by browser — and "works
+offline" only holds where a voice is installed on the device. In Chrome on the
+Windows laptop the only French and Spanish voices are Google's, synthesised
+over the network. Check what the Pi's browser offers before relying on it
+offline.
 
 **Email + password with a session cookie, argon2id.** No third-party identity
 provider: works offline, no dependency. Every table hangs off `user_id`, so
@@ -328,7 +331,50 @@ have a null id and coalesce to the date, so each such day reads as one session �
 historical days therefore under-report. That was accepted rather than
 backfilled.
 
+### Listening speech
+
+`public/practice.js` owns it. Three pieces, each for a reason:
+
+- **Voice choice** — exact language tag first (`fr-FR`), then the language
+  family, in the order the browser lists them. Deliberately *not* reordered to
+  prefer local voices: that would silently swap the voice the learner hears.
+- **Warm-up** — one silent syllable at the first tap or key on the page, and at
+  Start if nothing came before. The first utterance pays to start the engine
+  and, for a network voice, to open the connection. It has to be inside a user
+  gesture: browsers hold back speech a page starts on its own (iOS Safari most
+  of all), and the first card is spoken *after* the start request returns,
+  outside the gesture that pressed Start. `cancel()` is only called when
+  something is speaking, because cancelling an idle engine can delay what
+  follows.
+- **Replay** — `r` then Enter, as at the original terminal prompt. A bare `r`
+  cannot mean replay while typing: English answers contain r. A lone "r" is
+  never an English meaning, so that submission is safe to intercept. Once the
+  answer is locked (verdict showing), a bare `r` does replay.
+
+**What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
+~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
+after it, because Google's network jitter is larger than the cold cost there. A
+multi-second first-word lag was reported but *not reproduced* on desktop
+Chrome. The warm-up targets the gesture rule, which cannot be tested from here.
+If the lag persists, establish the device and browser before changing more.
+
 ### Traps worth remembering
+
+- **An override is a second row.** "I was right — count it" records a new,
+  correct, `overridden` attempt after the miss, and the miss row stays. So the
+  counters take both — one overridden question is tested +2, correct +1 — and
+  anything listing misses must drop the overridden ones. The word record lists
+  recent *wrong* answers only (what was typed against what was wanted), and
+  `word-detail.ts` filters overridden misses out.
+- **Status colours are their own tokens.** `--status-solid` is the deeper green
+  in both themes and `--status-learnt` the lighter: darker reads as more learnt.
+  Mixing `--learnt` toward `--surface` looked right in light mode and inverted
+  in dark, where the mix *darkens*.
+- **Playwright hides Chrome's Google voices.** They live in a component
+  extension that automation disables, so a test browser shows only the OS's
+  local voices — none French on this laptop. `measure-speech.ts` re-enables it
+  with `ignoreDefaultArgs`; `test-listening.ts` records speech instead of
+  playing it, so it does not care.
 
 - **`Number("")` is `0`, not `NaN`, and `Number.isInteger(0)` is `true`.** A
   select whose default option has an empty value submits `type=`, which read as
@@ -397,6 +443,7 @@ the demo account seeded.
 | `npm run test:ai` | Provider/model resolution, all permutations |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |
 | `npm run test:entry` | Keyboard word entry |
 | `npm run test:daily` | Session-based daily counting |
 | `npm run audit:mobile` | Touch targets, iOS input zoom, overflow |
@@ -420,6 +467,8 @@ Read-only checks and one-off fixes live in `scripts/`:
   timestamped database backup, checkpoints WAL first.
 - `set-password.ts` — replaces a password hash.
 - `clean-test-words.ts` — removes words left by the entry test.
+- `measure-speech.ts` — times Start-to-first-sound in listening practice and
+  lists the voices on offer. Muted; `--direct`, `--headed`, `--runs=N`.
 
 **`npm run seed` writes to the live database.** It only adds, so real data is
 safe, but always follow it with `npm run seed:clean`.

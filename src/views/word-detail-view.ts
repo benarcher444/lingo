@@ -4,7 +4,7 @@ import {
   type Direction,
 } from "../algorithm.js";
 import type { ModeStats, WordDetail } from "../word-detail.js";
-import { lineChart } from "./charts.js";
+import { legend, lineChart, type Series } from "./charts.js";
 import { scorePill } from "./components.js";
 import { esc, icons } from "./layout.js";
 
@@ -93,40 +93,51 @@ function modeCard(stats: ModeStats, languageName: string): string {
 }
 
 export function wordDetailPanel(detail: WordDetail, closeHref: string): string {
-  const history = detail.scoreHistory;
+  // One line per mode that has any history, in the same colours the Today
+  // card uses, so written and listening read the same way everywhere.
+  const series: Series[] = [
+    { name: "Written", colour: "var(--accent)", points: detail.scoreHistory.written },
+    { name: "Listening", colour: "#2f7dc4", points: detail.scoreHistory.audio },
+  ].filter((s) => s.points.length > 0);
+
+  const pointCount = series.reduce((n, s) => n + s.points.length, 0);
 
   const chart =
-    history.length >= 2
-      ? lineChart([{ name: "Score", colour: "var(--accent)", points: history }], {
+    series.length > 0
+      ? lineChart(series, {
           yLabel: "Score",
           thresholds: [
-            { value: LEARNT_THRESHOLD, label: "learnt", colour: "var(--learnt)" },
+            { value: LEARNT_THRESHOLD, label: "learnt", colour: "var(--status-learnt)" },
             {
               value: COMPLETELY_LEARNT_THRESHOLD,
               label: "solid",
-              colour: "var(--learnt)",
+              colour: "var(--status-solid)",
             },
           ],
         })
       : `<div class="empty" style="padding:28px 20px"><p>${
-          history.length === 0
+          pointCount === 0
             ? "No practice recorded yet — the score history appears after your first session."
             : "One answer so far. The line builds as you practise."
         }</p></div>`;
 
-  const attempts =
-    detail.recentAttempts.length === 0
-      ? `<p class="hint">Nothing yet.</p>`
-      : `<div class="attempt-list">${detail.recentAttempts
+  // What was typed next to what was wanted — that pairing is the useful part.
+  const expectedFor = (direction: Direction) =>
+    direction === "from_english" ? detail.term : detail.english;
+
+  const misses =
+    detail.recentMisses.length === 0
+      ? `<p class="hint">No wrong answers yet.</p>`
+      : `<div class="attempt-list">${detail.recentMisses
           .map(
             (a) => `
-        <div class="attempt ${a.correct ? "attempt-right" : "attempt-wrong"}">
-          <span class="attempt-mark">${a.correct ? "✓" : "✗"}</span>
+        <div class="attempt attempt-wrong">
+          <span class="attempt-mark">✗</span>
           <span class="attempt-dir">${esc(DIRECTION_LABEL[a.direction])}</span>
           <span class="attempt-given">${
             a.givenAnswer ? esc(a.givenAnswer) : '<span class="hint">skipped</span>'
           }</span>
-          ${a.overridden ? '<span class="pill pill-plain">overridden</span>' : ""}
+          <span class="attempt-expected hint">→ ${esc(expectedFor(a.direction))}</span>
           <span class="attempt-when hint">${esc(a.answeredAt.slice(0, 10))}</span>
         </div>`,
           )
@@ -147,6 +158,7 @@ export function wordDetailPanel(detail: WordDetail, closeHref: string): string {
         <div class="card-head"><div><h2>Score over time</h2>
           <div class="sub">Replayed from every answer. It climbs when you practise and drifts down when you do not.</div></div></div>
         <div class="card-body chart-box">${chart}</div>
+        ${series.length > 1 ? legend(series.map((s) => ({ name: s.name, colour: s.colour }))) : ""}
       </div>
 
       <div class="detail-modes">
@@ -154,8 +166,8 @@ export function wordDetailPanel(detail: WordDetail, closeHref: string): string {
       </div>
 
       <div>
-        <div class="detail-breakdown-title">Recent answers</div>
-        ${attempts}
+        <div class="detail-breakdown-title">Recent wrong answers</div>
+        ${misses}
       </div>
 
       <div class="hint">Added ${esc(detail.createdAt.slice(0, 10))} ${icons.book ? "" : ""}</div>

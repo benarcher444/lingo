@@ -38,6 +38,7 @@ const SHOTS: Shot[] = [
   { key: "login", path: "/login", authenticated: false },
   { key: "register", path: "/register", authenticated: false },
   { key: "vocab", path: "/vocab", authenticated: true },
+  { key: "vocab-listening", path: "/vocab?mode=audio", authenticated: true },
   { key: "written", path: "/practice/written", authenticated: true },
   {
     key: "written-quiz",

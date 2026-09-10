@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 
 import { accentConfigFor } from "../accents.js";
+import type { Mode } from "../algorithm.js";
 import { loadWordDetail } from "../word-detail.js";
 import { wordDetailPanel } from "../views/word-detail-view.js";
 import type { FastifyInstance } from "fastify";
@@ -43,6 +44,8 @@ interface ListFilters {
   type?: number | null;
   q?: string;
   sort?: SortKey;
+  /** Which practice mode the banner and status column report on. */
+  mode?: Mode;
 }
 
 /** Sort orders offered on the word list. */
@@ -66,6 +69,7 @@ function vocabUrl(
   if (filters.type) params.set("type", String(filters.type));
   if (filters.q) params.set("q", filters.q);
   if (filters.sort && filters.sort !== "added_desc") params.set("sort", filters.sort);
+  if (filters.mode === "audio") params.set("mode", "audio");
   for (const [key, value] of Object.entries(extra)) params.set(key, String(value));
   return `/vocab?${params.toString()}`;
 }
@@ -289,6 +293,11 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     const filters: ListFilters = {
       type: optionalId(typeof body["_type"] === "string" ? body["_type"] : undefined),
       q: typeof body["_q"] === "string" ? body["_q"] : "",
+      sort:
+        typeof body["_sort"] === "string" && body["_sort"] in SORTS
+          ? (body["_sort"] as SortKey)
+          : undefined,
+      mode: body["_mode"] === "audio" ? "audio" : "written",
     };
 
     if (body["_action"] === "delete") {
@@ -348,9 +357,13 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
     const language = ctx.currentLanguage;
     const types = typesFor(language);
-    const scored = loadScoredWords(language.id, "written");
-    const summary = summarise(scored, "written");
-    const typeSummaries = summariseByType(scored, "written");
+    // Written or listening — the banner and the status column both follow it,
+    // as the progress page does.
+    const mode: Mode = query["mode"] === "audio" ? "audio" : "written";
+
+    const scored = loadScoredWords(language.id, mode);
+    const summary = summarise(scored, mode);
+    const typeSummaries = summariseByType(scored, mode);
 
     // The "All types" option submits an empty value, so these must treat "" as
     // absent rather than as the number 0.
@@ -363,7 +376,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     const detailId = optionalId(query["word"]);
 
     /** Carried through Edit, Cancel and the post-save redirect. */
-    const listFilters: ListFilters = { type: selectedType, q: search, sort };
+    const listFilters: ListFilters = { type: selectedType, q: search, sort, mode };
 
     const scoreByWord = new Map(scored.map((s) => [s.wordId, s.score]));
 
@@ -397,17 +410,23 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       .orderBy(desc(words.createdAt), asc(words.term))
       .all();
 
-    const scoreOf = (id: number) => scoreByWord.get(id) ?? 0;
+    // Words switched off for this mode have no score; they sink to the bottom
+    // in either direction rather than posing as zero.
+    const scoreOr = (id: number, missing: number) => scoreByWord.get(id) ?? missing;
 
     switch (sort) {
       case "added_asc":
         rows.reverse();
         break;
       case "score_desc":
-        rows.sort((a, b) => scoreOf(b.id) - scoreOf(a.id) || a.term.localeCompare(b.term));
+        rows.sort(
+          (a, b) => scoreOr(b.id, -1e9) - scoreOr(a.id, -1e9) || a.term.localeCompare(b.term),
+        );
         break;
       case "score_asc":
-        rows.sort((a, b) => scoreOf(a.id) - scoreOf(b.id) || a.term.localeCompare(b.term));
+        rows.sort(
+          (a, b) => scoreOr(a.id, 1e9) - scoreOr(b.id, 1e9) || a.term.localeCompare(b.term),
+        );
         break;
       case "alpha":
         rows.sort((a, b) => a.term.localeCompare(b.term));
@@ -427,7 +446,12 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       ${pageHead({
         title: "Vocabulary",
         sub: `Add and edit the words you are learning. The breakdown below shows where your ${esc(language.name)} is thin.`,
-        actions: `<a class="btn" href="/progress?language=${language.id}">${icons.chart}View progress</a>`,
+        actions: `
+          <a class="btn${mode === "written" ? " btn-primary" : ""}"
+             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "written" }))}">Written</a>
+          <a class="btn${mode === "audio" ? " btn-primary" : ""}"
+             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "audio" }))}">Listening</a>
+          <a class="btn" href="/progress?language=${language.id}${mode === "audio" ? "&mode=audio" : ""}">${icons.chart}View progress</a>`,
       })}
 
       <div class="stack">
@@ -435,7 +459,8 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
           summary,
           types: typeSummaries,
           languageName: language.name,
-          linkBase: `/vocab?language=${language.id}`,
+          mode,
+          linkBase: vocabUrl(language.id, { mode }),
         })}
 
         ${flash}
@@ -463,6 +488,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                stacked one per line. -->
           <form class="list-toolbar" method="get" action="/vocab">
             <input type="hidden" name="language" value="${language.id}">
+            ${mode === "audio" ? `<input type="hidden" name="mode" value="audio">` : ""}
 
             <label class="toolbar-field">
               <span>Sort</span>
@@ -498,7 +524,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
             <button class="btn" type="submit">Search</button>
             ${
               search || selectedType !== null || sort !== "added_desc"
-                ? `<a class="btn btn-ghost btn-sm" href="${esc(vocabUrl(language.id, {}))}">Clear</a>`
+                ? `<a class="btn btn-ghost btn-sm" href="${esc(vocabUrl(language.id, { mode }))}">Clear</a>`
                 : ""
             }
           </form>
@@ -515,7 +541,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                  </div>`
               : `<div class="table-wrap"><table class="data">
                   <thead><tr>
-                    <th>Word</th><th>English</th><th class="col-type">Type</th><th>Status</th>
+                    <th>Word</th><th>English</th><th class="col-type">Type</th><th><span class="col-mode-label">${mode === "audio" ? "Listening" : "Written"} </span>status</th>
                     <th class="col-modes">Modes</th><th style="width:1%"></th>
                   </tr></thead>
                   <tbody>
@@ -523,7 +549,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                       .map((row) =>
                         row.id === editId
                           ? editRow(row, types, language.id, listFilters)
-                          : displayRow(row, scoreByWord.get(row.id) ?? 0, language.id, listFilters),
+                          : displayRow(row, scoreByWord.get(row.id) ?? null, language.id, listFilters),
                       )
                       .join("\n")}
                   </tbody>
@@ -645,7 +671,8 @@ function displayRow(
     audioEnabled: boolean;
     notes: string | null;
   },
-  score: number,
+  /** null when the word is switched off for the mode being shown. */
+  score: number | null,
   languageId: number,
   filters: ListFilters,
 ): string {
@@ -662,7 +689,11 @@ function displayRow(
     }</td>
     <td>${esc(row.english)}</td>
     <td class="col-type"><span class="pill pill-plain">${esc(row.wordTypeName)}</span></td>
-    <td>${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span></td>
+    <td>${
+      score === null
+        ? `<span class="pill pill-plain" title="Not included in ${filters.mode === "audio" ? "listening" : "written"} practice">Off</span>`
+        : `${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span>`
+    }</td>
     <td class="col-modes">${modes || `<span class="hint">none</span>`}</td>
     <td><a class="btn btn-sm btn-ghost" href="${esc(vocabUrl(languageId, filters, { edit: row.id }))}">Edit</a></td>
   </tr>`;
@@ -687,6 +718,8 @@ function editRow(
       <form method="post" action="/words/${row.id}" class="stack-sm">
         <input type="hidden" name="_type" value="${filters.type ?? ""}">
         <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
+        <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
+        <input type="hidden" name="_mode" value="${filters.mode ?? ""}">
         <div class="form-grid">
           <div class="field"><label>Word</label>
             <input class="input" name="term" required value="${esc(row.term)}"></div>
@@ -718,6 +751,8 @@ function editRow(
         <input type="hidden" name="_action" value="delete">
         <input type="hidden" name="_type" value="${filters.type ?? ""}">
         <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
+        <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
+        <input type="hidden" name="_mode" value="${filters.mode ?? ""}">
         <button class="btn btn-sm btn-danger" type="submit">${icons.trash}Delete word</button>
       </form>
     </td>

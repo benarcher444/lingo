@@ -79,6 +79,8 @@ refreshCountHint();
 
 form?.addEventListener("submit", async (event) => {
   event.preventDefault();
+  // Inside the gesture, before the request: see warmUpSpeech.
+  warmUpSpeech();
 
   const data = new FormData(form);
   const wordTypeId = data.get("wordTypeId");
@@ -175,7 +177,7 @@ function render() {
                    <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
                  </svg>
                </button>
-               <div class="quiz-meta">Tap to replay · what does it mean? · ${escapeHtml(card.wordType)}</div>`
+               <div class="quiz-meta">Tap or type <kbd>r</kbd> ↵ to replay · what does it mean? · ${escapeHtml(card.wordType)}</div>`
             : `<div class="quiz-prompt">${escapeHtml(prompt)}</div>
                <div class="quiz-meta">${escapeHtml(card.wordType)}</div>`
         }
@@ -219,6 +221,15 @@ async function onAnswer(event) {
   // An empty answer is a legitimate "I don't know" — it is sent and recorded as
   // a miss rather than ignored. Forcing a guess would only pollute the history.
   const answer = input.value;
+
+  // "r" on its own replays the word, as it did at the original terminal prompt.
+  // Safe because no English meaning is a bare "r" — a plain r keypress could not
+  // be used, since the answer is being typed into this box.
+  if (current.direction === "listen" && answer.trim().toLowerCase() === "r") {
+    input.value = "";
+    speakTerm(current.card.term);
+    return;
+  }
 
   const response = await fetch("/api/practice/answer", {
     method: "POST",
@@ -330,6 +341,19 @@ async function override(given) {
   proceed();
 }
 
+// Once answered, a bare `r` replays the word: the answer box is locked then, so
+// the key cannot swallow typing.
+if (config.mode === "audio") {
+  document.addEventListener("keydown", (event) => {
+    if (event.key !== "r" && event.key !== "R") return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (!awaitingContinue || current?.direction !== "listen") return;
+
+    event.preventDefault();
+    speakTerm(current.card.term);
+  });
+}
+
 function releaseOverrideKey() {
   if (!overrideKeyHandler) return;
   document.removeEventListener("keydown", overrideKeyHandler);
@@ -389,14 +413,44 @@ async function finish() {
 }
 
 /**
- * Browser speech synthesis rather than a server-side TTS service: no network
- * round trip, no audio cache to manage, and it keeps working on a Pi with no
- * internet connection.
+ * Browser speech synthesis rather than a server-side TTS service: no audio
+ * cache to manage, no service of our own to run, and with a voice installed on
+ * the device it keeps working on a Pi with no internet connection.
  */
-function speakTerm(text) {
-  if (!("speechSynthesis" in window)) return;
+const synth = "speechSynthesis" in window ? window.speechSynthesis : null;
 
-  window.speechSynthesis.cancel();
+/** Chosen once voices have loaded; cleared if the list changes. */
+let chosenVoice = null;
+
+function pickVoice() {
+  if (!synth) return null;
+  if (chosenVoice) return chosenVoice;
+
+  const lang = (config.languageCode || "en-GB").toLowerCase();
+  const tag = (voice) => (voice.lang || "").toLowerCase().replace("_", "-");
+  const voices = synth.getVoices();
+
+  chosenVoice =
+    voices.find((v) => tag(v) === lang) ??
+    voices.find((v) => tag(v).startsWith(lang.slice(0, 2))) ??
+    null;
+  return chosenVoice;
+}
+
+function utteranceFor(text) {
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = config.languageCode || "en-GB";
+  const voice = pickVoice();
+  if (voice) utterance.voice = voice;
+  return utterance;
+}
+
+function speakTerm(text) {
+  if (!synth) return;
+
+  // Only cut off something actually playing (or the silent warm-up) —
+  // cancelling an idle engine can delay what is spoken straight after it.
+  if (synth.speaking || synth.pending) synth.cancel();
 
   // Speak the plain word: drop parenthetical notes (otherwise it reads "because
   // open bracket p q") and take the first alternative before a slash (otherwise
@@ -407,25 +461,42 @@ function speakTerm(text) {
     .replace(/\s+/g, " ")
     .trim();
 
-  const utterance = new SpeechSynthesisUtterance(spoken || text);
-  utterance.lang = config.languageCode || "en-GB";
+  const utterance = utteranceFor(spoken || text);
   utterance.rate = 0.9;
-
-  const voice = window.speechSynthesis
-    .getVoices()
-    .find((v) => v.lang?.toLowerCase().startsWith(utterance.lang.slice(0, 2).toLowerCase()));
-
-  if (voice) utterance.voice = voice;
-
-  window.speechSynthesis.speak(utterance);
+  synth.speak(utterance);
 }
 
-// Voices load asynchronously in most browsers.
-if ("speechSynthesis" in window) {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.addEventListener?.("voiceschanged", () => {
-    window.speechSynthesis.getVoices();
+/**
+ * Why the first word lagged: the first utterance pays to start the speech
+ * engine and — for Chrome's French and Spanish voices, which Google synthesises
+ * over the network — to open that connection. One silent syllable at the first
+ * touch of the page moves that cost ahead of the first card.
+ *
+ * It must happen inside a user gesture. Browsers hold back speech a page starts
+ * on its own, iOS Safari most of all, and the first card is spoken after the
+ * start request returns, outside the gesture that pressed Start.
+ */
+let warmedUp = false;
+
+function warmUpSpeech() {
+  if (warmedUp || !synth || config.mode !== "audio") return;
+  warmedUp = true;
+
+  const utterance = utteranceFor("a");
+  utterance.volume = 0;
+  synth.speak(utterance);
+}
+
+if (synth) {
+  // Voices load asynchronously in most browsers.
+  synth.getVoices();
+  synth.addEventListener?.("voiceschanged", () => {
+    chosenVoice = null;
   });
+
+  // Whichever comes first: a tap, a click or a key.
+  document.addEventListener("pointerdown", warmUpSpeech, { capture: true, once: true });
+  document.addEventListener("keydown", warmUpSpeech, { capture: true, once: true });
 }
 
 function escapeHtml(value) {
