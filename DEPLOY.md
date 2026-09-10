@@ -49,7 +49,9 @@ with `nslookup lingo.yourdomain.com`.
 ```bash
 apt update && apt upgrade -y
 curl -fsSL https://deb.nodesource.com/setup_24.x | bash -
-apt install -y nodejs git caddy
+# build-essential and python3 are there in case argon2 or better-sqlite3 has
+# to compile its native module rather than use a prebuilt one.
+apt install -y nodejs git caddy build-essential python3
 node --version                          # v24.x
 systemctl status unattended-upgrades    # security updates install themselves
 ```

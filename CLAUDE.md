@@ -408,6 +408,12 @@ If the lag persists, establish the device and browser before changing more.
   had read `DATABASE_PATH`, and after `ai.ts` had chosen its provider (it does
   that at import). `src/env.ts` is imported first to fix it. Keep it first.
   Scripts that need `.env` load it themselves (`check-ai.ts`).
+- **npm 11 wants install scripts approved.** `allowScripts` in `package.json`
+  covers argon2 and better-sqlite3 (native modules) and esbuild (which `tsx`
+  runs on). Without that, an npm that enforces approval skips their builds, and
+  the server cannot start or run TypeScript. A new dependency with an install
+  script needs `npm install-scripts approve <pkg>`. The server also has
+  `build-essential` and `python3`, in case no prebuilt binary matches.
 - **The running server does not reload.** It is started with `npm start` —
   plain `tsx`, no watch — so a server-side edit is invisible until a restart,
   while files in `public/` are served fresh. A screenshot pass after editing

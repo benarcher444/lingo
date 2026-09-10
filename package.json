@@ -63,5 +63,12 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/benarcher444/lingo.git"
+  },
+  "allowScripts": {
+    "argon2@0.45.1": true,
+    "better-sqlite3@13.0.3": true,
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true
   }
 }
