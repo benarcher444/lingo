@@ -27,6 +27,14 @@ let history = [];
 let session = null;
 let busy = false;
 
+/** Tutor messages heard but not yet shown. Each entry reveals its message. */
+const unrevealed = new Set();
+const LISTEN_FIRST = "Listen, then reply. The words appear once you have answered.";
+
+function revealAll() {
+  for (const reveal of [...unrevealed]) reveal();
+}
+
 /* ------------------------------------------------------------------
    Speech — the original app spoke every reply, with repeat and slow
    ------------------------------------------------------------------ */
@@ -58,7 +66,11 @@ muteButton?.addEventListener("click", () => {
   } catch {
     // Nothing to remember with; it holds for this visit.
   }
-  if (muted) synth?.cancel();
+  // Nothing to listen to with the sound off, so show whatever is waiting.
+  if (muted) {
+    synth?.cancel();
+    revealAll();
+  }
   renderMute();
 });
 
@@ -194,6 +206,7 @@ restartButton?.addEventListener("click", () => {
   synth?.cancel();
   history = [];
   session = null;
+  unrevealed.clear();
   log.replaceChildren();
   log.hidden = true;
   form.hidden = true;
@@ -209,6 +222,9 @@ form?.addEventListener("submit", async (event) => {
   event.preventDefault();
   const text = input.value.trim();
   if (!text || busy || !session) return;
+
+  // Answering is what shows the words you have been listening to.
+  revealAll();
 
   const mine = bubble(log, { who: "You", text, fromUser: true });
   history.push({ role: "user", content: text });
@@ -253,8 +269,20 @@ form?.addEventListener("submit", async (event) => {
   input.focus();
 });
 
+/**
+ * Heard before it is read, as in the original app, which spoke each reply and
+ * only then printed it: the words appear once you have answered, so every turn
+ * is listening practice too. "Show text" gives in early. With the sound off, or
+ * no speech in this browser, there is nothing to listen to, so the text shows.
+ */
 function addTutor(text) {
-  bubble(log, { who: "Tutor", text, speakable: true, teacher: `The tutor said: "${text}"` });
+  bubble(log, {
+    who: "Tutor",
+    text,
+    speakable: true,
+    teacher: `The tutor said: "${text}"`,
+    hidden: Boolean(synth) && !muted,
+  });
   history.push({ role: "assistant", content: text });
   say(text);
 }
@@ -336,7 +364,10 @@ function openTeacher(anchor, context) {
  * "Ask the teacher", seeded with that context — the original app offered the
  * teacher after every correction and every reply.
  */
-function bubble(container, { who, text, fromUser = false, tone = "", speakable = false, teacher = null, before = null }) {
+function bubble(
+  container,
+  { who, text, fromUser = false, tone = "", speakable = false, teacher = null, hidden = false, before = null },
+) {
   const wrapper = document.createElement("div");
   wrapper.className = `msg${fromUser ? " from-user" : ""}`;
 
@@ -345,8 +376,8 @@ function bubble(container, { who, text, fromUser = false, tone = "", speakable =
   label.textContent = who;
 
   const body = document.createElement("div");
-  body.className = `bubble${tone ? ` bubble-${tone}` : ""}`;
-  body.textContent = text;
+  body.className = `bubble${tone ? ` bubble-${tone}` : ""}${hidden ? " bubble-hidden" : ""}`;
+  body.textContent = hidden ? LISTEN_FIRST : text;
 
   wrapper.append(label, body);
 
@@ -359,12 +390,29 @@ function bubble(container, { who, text, fromUser = false, tone = "", speakable =
         actionButton("Slow", () => say(text, { now: true, slow: true })),
       );
     }
-    if (teacher) {
+    const teacherButton = () => {
       const button = actionButton("Ask the teacher", () => {
         button.remove();
         openTeacher(wrapper, teacher);
       });
-      actions.append(button);
+      return button;
+    };
+
+    if (hidden) {
+      // The teacher would give the words away, so it waits for the reveal too.
+      const show = actionButton("Show text", () => reveal());
+      const reveal = () => {
+        if (!unrevealed.has(reveal)) return;
+        unrevealed.delete(reveal);
+        body.textContent = text;
+        body.classList.remove("bubble-hidden");
+        show.remove();
+        if (teacher) actions.append(teacherButton());
+      };
+      unrevealed.add(reveal);
+      actions.append(show);
+    } else if (teacher) {
+      actions.append(teacherButton());
     }
     wrapper.append(actions);
   }

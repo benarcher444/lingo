@@ -420,6 +420,13 @@ The level is picked from A1 to C1; the original was fixed at A1. Replies and
 corrections are read aloud automatically, with Play, Slow and a mute, as the
 original spoke everything with repeat and slow.
 
+**Heard before read.** Each tutor message is spoken, and its text held back
+until the learner answers, because the original spoke each reply before
+printing it. That makes every turn listening practice. "Show text" gives in
+early. "Ask the teacher" waits for the reveal too, since it would give the
+words away. With the sound off, or no speech in the browser, the text shows
+at once. Corrections show immediately: they are the learner's own sentence.
+
 **Out of credit is its own error.** OpenAI reports it as a 429
 (`insufficient_quota` / `credit_balance_exhausted`) that looks like rate
 limiting; Anthropic as a 400 mentioning the credit balance. `classifyAIError` in

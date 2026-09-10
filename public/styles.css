@@ -1777,6 +1777,13 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 
 .bubble-note { margin-top: 6px; font-size: 0.85rem; }
 
+/* A tutor message heard but not yet shown: its words appear once you answer. */
+.bubble-hidden {
+  color: var(--text-muted);
+  font-style: italic;
+  border-style: dashed;
+}
+
 #chat-mute[aria-pressed="true"] { color: var(--text-faint); }
 
 /* ============================================================

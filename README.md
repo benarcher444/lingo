@@ -82,8 +82,10 @@ Spanish ones are synthesised online, so they need a connection.
 **Conversation** — pick general conversation, a scene (restaurant, hotel, train
 station…), "Surprise me", or describe your own, and a level from A1 to C1. The
 tutor opens in the language you are learning and keeps the conversation moving.
-What you write is corrected first, then answered, and replies are read aloud,
-with replay and slow buttons. Ask the teacher about any message for an English
+What you write is corrected first, then answered. Each reply is spoken before
+its words appear, and they show once you have answered, so every turn is
+listening practice too. There are replay and slow buttons, and "Show text" if
+you're stuck. Ask the teacher about any message for an English
 breakdown, then keep asking follow-ups. Only accounts marked `yes` in the `ai`
 column of `allowed_emails.csv` can use it, because every message costs money.
 

@@ -92,7 +92,8 @@ await page.selectOption("#chat-level", "A2");
 await page.click('#chat-setup button[type="submit"]');
 await waitForTutor(1);
 
-const opener = await lastTutor();
+// Heard before it is read: the opener's words are in what was spoken.
+const opener = (await audible()).at(-1)?.text ?? "";
 if (!opener.startsWith("[")) {
   console.log(`\nThe server is not using the stand-in AI (got "${opener.slice(0, 60)}").`);
   console.log("Start it with AI_PROVIDER=mock, then run this again.\n");
@@ -102,6 +103,10 @@ if (!opener.startsWith("[")) {
 check("it opens without being asked", opener.includes("Réponse 1"), `"${opener}"`);
 check("in the chosen scene", opener.includes("At a restaurant"));
 check("at the chosen level", opener.includes("A2"));
+check(
+  "the words wait until you answer",
+  (await page.locator("#chat-log .bubble-hidden").count()) === 1 && !(await lastTutor()).includes("Réponse"),
+);
 check("the setup gives way to the chat", (await page.locator("#chat-setup").isHidden()) && (await page.locator("#chat-form").isVisible()));
 check("the header names scene and level", ((await page.textContent("#chat-sub")) ?? "").includes("At a restaurant · level A2"));
 
@@ -118,9 +123,13 @@ await waitForTutor(3);
 
 const corrected = await page.locator(".bubble-corrected").last().textContent();
 check("the interpreter's correction is shown", corrected === "Corrigé : je veux un cafe", `"${corrected}"`);
-check("then the partner replies", (await lastTutor()).includes("Réponse 2"), `"${await lastTutor()}"`);
 const heard = (await audible()).slice(before).map((s) => s.text);
-check("correction then reply, both read aloud, in order", heard.length === 2 && heard[0] === corrected && heard[1] === (await lastTutor()));
+const reply = heard[1] ?? "";
+check("then the partner replies", reply.includes("Réponse 2"), `"${reply}"`);
+check("correction then reply, both read aloud, in order", heard.length === 2 && heard[0] === corrected);
+const shown = await tutorTexts();
+check("answering showed the opener's words", shown.some((t) => t.includes("Réponse 1")));
+check("while the new reply waits to be heard", !shown.some((t) => t.includes("Réponse 2")));
 
 console.log("\nReplay, slow, mute\n");
 
@@ -129,8 +138,18 @@ const lastMsg = page.locator("#chat-log > .msg:not(.from-user)").last();
 await lastMsg.locator("button", { hasText: "Play" }).click();
 await lastMsg.locator("button", { hasText: "Slow" }).click();
 const replays = (await audible()).slice(before);
-check("Play reads it again", replays[0]?.text === (await lastTutor()));
+check("Play reads it again", replays[0]?.text === reply);
 check("Slow reads it slower", (replays[1]?.rate ?? 1) < (replays[0]?.rate ?? 1));
+check(
+  "the teacher waits for the reveal too",
+  (await lastMsg.locator("button", { hasText: "Ask the teacher" }).count()) === 0,
+);
+await lastMsg.locator("button", { hasText: "Show text" }).click();
+check("Show text gives the words early", (await lastTutor()) === reply, `"${await lastTutor()}"`);
+check(
+  "and then offers the teacher",
+  (await lastMsg.locator("button", { hasText: "Ask the teacher" }).count()) === 1,
+);
 
 await page.click("#chat-mute");
 check("mute shows as on", (await page.getAttribute("#chat-mute", "aria-pressed")) === "true");
@@ -139,6 +158,7 @@ await page.fill("#chat-input", "merci");
 await page.press("#chat-input", "Enter");
 await waitForTutor(5);
 check("muted: nothing read aloud by itself", (await audible()).length === before);
+check("so the reply shows straight away", (await lastTutor()).includes("Réponse 3"), `"${await lastTutor()}"`);
 await page.locator("#chat-log > .msg:not(.from-user)").last().locator("button", { hasText: "Play" }).click();
 check("but Play still works", (await audible()).length === before + 1);
 await page.click("#chat-mute");
@@ -181,7 +201,8 @@ check("it will not start without a scene", await page.locator("#chat-setup").isV
 await page.fill("#chat-custom", "at the bank");
 await page.click('#chat-setup button[type="submit"]');
 await waitForTutor(1);
-check("it opens in the learner's own scene", (await lastTutor()).includes("learner's own"), `"${await lastTutor()}"`);
+const ownOpener = (await audible()).at(-1)?.text ?? "";
+check("it opens in the learner's own scene", ownOpener.includes("learner's own"), `"${ownOpener}"`);
 
 await page.reload({ waitUntil: "networkidle" });
 check("the level is remembered", (await page.inputValue("#chat-level")) === "A2");
