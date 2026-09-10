@@ -290,8 +290,17 @@ is meant to be reachable from anywhere, so:
 
 Deployment is in `DEPLOY.md` with the files in `deploy/`: Hetzner, Caddy,
 systemd with hardening, a nightly backup timer, and `deploy.sh` (back up, pull,
-`npm ci --omit=dev`, restart). `tsx` is in `dependencies`, not dev, because
-production runs through it.
+`npm ci --omit=dev`, restart, then wait for `/login` to answer or fail). `tsx`
+is in `dependencies`, not dev, because production runs through it.
+
+**Pushes to `main` deploy themselves.** `.github/workflows/deploy.yml` runs the
+typecheck and the server-free suites (`npm test`, `test:accents`, `test:ai`),
+then SSHes in. The deploy key's `authorized_keys` entry forces
+`command="/usr/local/bin/lingo-deploy",restrict`. That is a copy of `deploy.sh`
+**installed by hand**, so a push — and this repo is public — cannot change what
+runs as root. Reinstall it after editing `deploy.sh`. The deploy job is skipped
+until the repo variable `DEPLOY_ENABLED` is `true`. The browser suites don't
+run in CI, so run them locally before pushing anything visual.
 
 **Charts are hand-written inline SVG.** No charting library: nothing to fetch,
 nothing to bundle, works offline. Colours come from CSS custom properties so

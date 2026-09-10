@@ -110,6 +110,7 @@ or the two will drift apart.
 
 ```bash
 cp deploy/lingo.service deploy/lingo-backup.service deploy/lingo-backup.timer /etc/systemd/system/
+install -m 755 deploy/deploy.sh /usr/local/bin/lingo-deploy     # the update command
 systemctl daemon-reload
 systemctl enable --now lingo lingo-backup.timer
 systemctl status lingo        # active (running)
@@ -126,13 +127,53 @@ systemctl reload caddy
 Open `https://lingo.yourdomain.com`. The very first load can take a few
 seconds while Caddy fetches the certificate. Then sign in.
 
+## 9. Deploy on every push — GitHub Actions
+
+`.github/workflows/deploy.yml` checks each push to `main` (the typecheck and
+unit tests). If they pass, it logs in to the server and runs `lingo-deploy`. The
+key it uses can run that one command and nothing else, and `lingo-deploy` is a
+copy installed by hand, so a push cannot change what runs as root.
+
+**Laptop.** Make a key just for GitHub. Press Enter at both passphrase prompts
+to leave it empty, because Actions cannot type one:
+
+```powershell
+ssh-keygen -t ed25519 -C github-deploy -f $HOME\.ssh\lingo_deploy
+Get-Content $HOME\.ssh\lingo_deploy.pub        # the public half, for the server
+ssh-keyscan -t ed25519 <server-ip>             # the server's identity, for GitHub
+```
+
+**Server.** Let that key run the deploy and nothing else. Paste the public key
+in place of `ssh-ed25519 AAAA… github-deploy`:
+
+```bash
+echo 'command="/usr/local/bin/lingo-deploy",restrict ssh-ed25519 AAAA… github-deploy' >> /root/.ssh/authorized_keys
+```
+
+**GitHub.** In the repo, go to **Settings → Secrets and variables → Actions**.
+
+| Secrets tab | Value |
+|---|---|
+| `DEPLOY_HOST` | the server's IPv4 address |
+| `DEPLOY_SSH_KEY` | the **private** key. Copy it with `Get-Content $HOME\.ssh\lingo_deploy -Raw \| Set-Clipboard` |
+| `DEPLOY_KNOWN_HOSTS` | the line `ssh-keyscan` printed |
+
+| Variables tab | Value |
+|---|---|
+| `DEPLOY_ENABLED` | `true` |
+
+Until `DEPLOY_ENABLED` is set, pushes run the checks and skip the deploy. To
+test it, push a commit or use **Actions → Deploy → Run workflow**, and watch it
+finish with "✓ Lingo is up".
+
 ---
 
 ## Day to day
 
 | To… | Run |
 |---|---|
-| Update to the latest code (after pushing from the laptop) | **laptop:** `ssh root@<server-ip> bash /opt/lingo/deploy/deploy.sh` |
+| Update to the latest code | Push to `main`: GitHub Actions deploys it (step 9). By hand: **laptop:** `ssh root@<server-ip> lingo-deploy` |
+| Change `deploy/deploy.sh` itself | **server:** `install -m 755 /opt/lingo/deploy/deploy.sh /usr/local/bin/lingo-deploy` — the installed copy is what runs |
 | Invite someone | **laptop:** `ssh root@<server-ip> nano /opt/lingo/allowed_emails.csv` |
 | Unlock an account (5 wrong passwords) | **server:** `cd /opt/lingo && sudo -u lingo -H npm run unlock -- them@example.com` |
 | Reset a forgotten password (also unlocks) | **server:** `cd /opt/lingo && sudo -u lingo -H npm run set-password -- them@example.com 'new password'` |
