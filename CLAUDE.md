@@ -302,6 +302,12 @@ runs as root. Reinstall it after editing `deploy.sh`. The deploy job is skipped
 until the repo variable `DEPLOY_ENABLED` is `true`. The browser suites don't
 run in CI, so run them locally before pushing anything visual.
 
+**Backups live on the server's own disk only.** The owner left Hetzner Backups
+off on 2026-09-10; they can be switched on later. So nightly and pre-deploy
+copies undo mistakes but don't survive losing the server. If the data comes
+to matter more, the next step is an off-site copy: another server, or object
+storage via rclone.
+
 **Charts are hand-written inline SVG.** No charting library: nothing to fetch,
 nothing to bundle, works offline. Colours come from CSS custom properties so
 both themes are handled by the stylesheet rather than duplicated in JS.
@@ -547,8 +553,11 @@ Read-only checks and one-off fixes live in `scripts/`:
 - `unlock-account.ts` (`npm run unlock`) — lists locked accounts, or unlocks
   one.
 - `backup-db.ts` (`npm run backup`) — a consistent online copy into
-  `data/backups/`, keeping 14. Use this rather than copying the file, which
-  misses whatever is still in the WAL.
+  `data/backups/`. Use this rather than copying the file, which misses
+  whatever is still in the WAL. Labels keep kinds apart: `app-<date>.db`
+  nightly (14 kept), and `pre-deploy-<timestamp>.db` from `deploy.sh` (10
+  kept). They once shared one name per day, so a second deploy overwrote the
+  only good copy taken before a broken first one.
 
 **`npm run seed` writes to the live database.** It only adds, so real data is
 safe, but always follow it with `npm run seed:clean`.

@@ -31,7 +31,7 @@ In the Hetzner console: **New project → Add server**.
 | Type | The smallest shared plan (e.g. CX22 on Intel/AMD, or CAX11 on ARM). Either works: both compiled dependencies ship builds for both. |
 | SSH key | Paste the contents of `~/.ssh/id_ed25519.pub`. With a key added, root password login is off. |
 | Firewall | Create one allowing inbound TCP **22, 80, 443**. Everything else is dropped before it reaches the server. |
-| Backups | Tick it (+20% of the price): daily whole-disk snapshots, kept 7 days. That is the off-server copy of the nightly database backups. |
+| Backups | Optional (+20% of the price): daily whole-disk snapshots kept 7 days, the one copy that survives losing the server. You can switch it on later from the server's Backups tab. |
 
 Name it `lingo`, create it, and note its **IPv4 address**.
 
@@ -180,9 +180,19 @@ finish with "✓ Lingo is up".
 | Watch the logs | **server:** `journalctl -u lingo -f` |
 | Download a backup | **laptop:** `scp root@<server-ip>:/opt/lingo/data/backups/app-YYYY-MM-DD.db .` |
 
-**Backups.** A consistent copy goes to `/opt/lingo/data/backups/` nightly at
-03:30 and before every deploy, and the last 14 are kept. Hetzner's daily
-snapshots then hold them off the server.
+**Backups.** Consistent copies go to `/opt/lingo/data/backups/`:
+
+- **nightly at 03:30:** `app-<date>.db`, 14 kept, from `lingo-backup.timer`. It
+  runs at the next boot if the server was off at 03:30.
+- **before every deploy:** `pre-deploy-<date>T<time>.db`, 10 kept. These are
+  named apart from the nightly copies, so a run of deploys cannot push them out.
+
+Check them with `systemctl list-timers lingo-backup.timer` (next run),
+`journalctl -u lingo-backup` (past runs) and `ls /opt/lingo/data/backups`.
+
+These all sit on the server's own disk. They undo mistakes, but they don't
+survive losing the server. For that, turn on Hetzner Backups, or download a
+copy now and then.
 
 **Restoring.** Stop the service with `systemctl stop lingo`. Copy the backup
 over `data/app.db`, delete `data/app.db-wal` and `data/app.db-shm`, then

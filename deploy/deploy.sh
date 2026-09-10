@@ -21,7 +21,7 @@ APP=/opt/lingo
 cd "$APP"
 
 echo "→ Backing up the database"
-sudo -u lingo -H "$APP/node_modules/.bin/tsx" scripts/backup-db.ts
+sudo -u lingo -H "$APP/node_modules/.bin/tsx" scripts/backup-db.ts --label=pre-deploy --keep=10
 
 echo "→ Pulling the latest code"
 sudo -u lingo -H git pull --ff-only
