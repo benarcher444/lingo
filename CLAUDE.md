@@ -580,6 +580,9 @@ small — map each CSV to a category, insert, leave progress empty. Note that
   asserting a 200 response.
 - Never commit API keys. Secrets go in `.env`, which is gitignored. The template
   is `env.example` — no leading dot, so the `.env*` ignore rule does not catch it.
+  `.env` is off-limits to me for writing as well as reading: the permission
+  deny rule covers both. Hand the user the contents or a copy command, and
+  never work around the rule through the shell.
 - The database at `data/app.db` holds real vocabulary and learning history.
   Back it up before destructive scripts; they take their own backups too.
 - Say plainly when something was my error. Several bugs this session were mine,
