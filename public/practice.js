@@ -3,6 +3,8 @@
  * owns all progress writes; this file only sequences the questions and renders.
  */
 
+import { chooseVoice } from "./voices.js";
+
 const config = window.__practice;
 
 const setupEl = document.getElementById("setup");
@@ -263,9 +265,11 @@ function render() {
                <div class="quiz-meta">${escapeHtml(card.wordType)}</div>`
         }
 
-        <form class="quiz-form" id="answer-form">
+        <form class="quiz-form" id="answer-form" autocomplete="off">
+          <!-- Not a login, address or card: see NO_AUTOFILL in src/views/components.ts. -->
           <input class="quiz-input" id="answer" autocomplete="off" autocapitalize="off"
-                 autocorrect="off" spellcheck="false" placeholder="Your answer" />
+                 autocorrect="off" spellcheck="false" placeholder="Your answer"
+                 data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" />
           <!-- Verdict sits between the answer and the button so the result is
                read before the action that dismisses it. -->
           <div id="verdict"></div>
@@ -510,14 +514,7 @@ function pickVoice() {
   if (!synth) return null;
   if (chosenVoice) return chosenVoice;
 
-  const lang = (config.languageCode || "en-GB").toLowerCase();
-  const tag = (voice) => (voice.lang || "").toLowerCase().replace("_", "-");
-  const voices = synth.getVoices();
-
-  chosenVoice =
-    voices.find((v) => tag(v) === lang) ??
-    voices.find((v) => tag(v).startsWith(lang.slice(0, 2))) ??
-    null;
+  chosenVoice = chooseVoice(synth.getVoices(), config.languageCode);
   return chosenVoice;
 }
 

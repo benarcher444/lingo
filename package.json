@@ -12,7 +12,7 @@
     "db:studio": "drizzle-kit studio",
     "seed": "tsx scripts/seed.ts",
     "shot": "tsx scripts/screenshot.ts",
-    "test": "tsx scripts/test-algorithm.ts",
+    "test": "tsx scripts/test-algorithm.ts && tsx scripts/test-voices.ts",
     "audit:mobile": "tsx scripts/audit-mobile.ts",
     "test:entry": "tsx scripts/test-fast-entry.ts",
     "ai:check": "tsx scripts/check-ai.ts",

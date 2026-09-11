@@ -11,7 +11,7 @@ import { fileURLToPath } from "node:url";
 
 import { provider, providerLabel } from "./ai.js";
 import { pruneSessions } from "./auth.js";
-import { loadContext, requireContext } from "./context.js";
+import { loadContext, rememberLanguage, requireContext } from "./context.js";
 import { eq } from "drizzle-orm";
 
 import { databasePath, db } from "./db/index.js";
@@ -23,7 +23,7 @@ import { practiceRoutes } from "./routes/practice.js";
 import { progressRoutes } from "./routes/progress.js";
 import { vocabRoutes } from "./routes/vocab.js";
 import { loadScoredWords } from "./stats.js";
-import { pageHead } from "./views/components.js";
+import { NO_AUTOFILL, pageHead } from "./views/components.js";
 import { esc, icons, layout, themeSwitch } from "./views/layout.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -89,6 +89,7 @@ app.get("/switch-language", async (request, reply) => {
   const languageId = Number(query["language"]);
   const owned = ctx.languages.some((l) => l.id === languageId);
   const target = owned ? languageId : ctx.currentLanguage?.id;
+  if (owned) rememberLanguage(request, reply, languageId);
 
   const returnTo = query["return"] ?? "vocab";
   const routes: Record<string, string> = {
@@ -169,8 +170,8 @@ app.get("/settings", async (request, reply) => {
           <div class="sub">Each language has its own words and progress.</div></div></div>
         <div class="card-body stack">
           ${ctx.languages.length > 0 ? `<div class="lang-list">${languageChoices}</div>` : `<p class="hint">No languages yet.</p>`}
-          <form method="post" action="/languages" class="row">
-            <input class="input" name="name" placeholder="Add a language, e.g. Italian" required style="flex:1 1 200px">
+          <form method="post" action="/languages" class="row" autocomplete="off">
+            <input class="input" name="name" placeholder="Add a language, e.g. Italian" required style="flex:1 1 200px" ${NO_AUTOFILL}>
             <button class="btn btn-primary" type="submit">${icons.plus}Create language</button>
           </form>
           <div class="hint">A new language starts with a set of categories (nouns, verbs and so on) that you can change.</div>

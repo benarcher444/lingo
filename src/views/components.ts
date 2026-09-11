@@ -121,6 +121,15 @@ export function pageHead(opts: {
   </div>`;
 }
 
+/**
+ * For fields that are not a login, an address or a card, so a phone does not
+ * offer to fill one above the keyboard. `autocomplete="off"` alone is not
+ * honoured everywhere; the data- attributes are the opt-outs password managers
+ * read (1Password, LastPass, Bitwarden, Dashlane).
+ */
+export const NO_AUTOFILL =
+  'autocomplete="off" data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other"';
+
 export function alert(kind: "error" | "ok" | "info", message: string): string {
   return `<div class="alert alert-${kind}">${esc(message)}</div>`;
 }

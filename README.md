@@ -79,7 +79,8 @@ what it *means* in English, so it tests comprehension rather than spelling back
 what you just heard. Type `r` then <kbd>Enter</kbd> to hear it again, or just `r`
 once you've answered. Speech uses the browser's own voices, so there is no audio
 to download or cache. But voices vary by browser, and Chrome's French and
-Spanish ones are synthesised online, so they need a connection.
+Spanish ones are synthesised online, so they need a connection. Spanish is read
+with a Latin American accent wherever the device has one.
 
 **Conversation** — pick general conversation, a scene (restaurant, hotel, train
 station…), "Surprise me", or describe your own, and a level from A1 to C1. The
@@ -161,7 +162,7 @@ Carried over from the original Python app; `npm test` covers it.
 |---|---|
 | `npm run dev` | Dev server with reload on `http://localhost:3000` |
 | `npm start` | Run without watching (what the server runs, under systemd) |
-| `npm test` | Scoring, matching and sampling checks |
+| `npm test` | Scoring, matching and sampling checks, and which voice speaks |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run seed` | Demo account with vocabulary and history (`--reset` to wipe) |
 | `npm run shot` | Screenshot every page, both widths, both themes |

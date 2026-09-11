@@ -10,14 +10,31 @@ export interface AppContext extends NavContext {
   user: User;
 }
 
+const LANGUAGE_COOKIE = "ll_language";
+
+/**
+ * Remember the language last switched to, so a page reached without
+ * `?language=` — the home page, a fresh sign-in — opens on it rather than on
+ * whichever language sorts first.
+ */
+export function rememberLanguage(request: FastifyRequest, reply: FastifyReply, languageId: number): void {
+  reply.setCookie(LANGUAGE_COOKIE, String(languageId), {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: request.protocol === "https",
+    maxAge: 60 * 60 * 24 * 365,
+  });
+}
+
 /**
  * Resolve the signed-in user and their selected language. Returns null when
  * there is no valid session; callers redirect to /login.
  *
- * Language selection comes from `?language=`, falling back to the first
- * language the user owns. The id is always checked against the user's own
- * rows, so a guessed id from another account resolves to null rather than
- * leaking someone else's vocabulary.
+ * Language selection comes from `?language=`, then the language last switched
+ * to, then the first the user owns. The id is always checked against the
+ * user's own rows, so a guessed id from another account resolves to null
+ * rather than leaking someone else's vocabulary.
  */
 export function loadContext(
   request: FastifyRequest,
@@ -33,12 +50,12 @@ export function loadContext(
     .orderBy(asc(languages.name))
     .all();
 
-  const requested = Number(
-    (request.query as Record<string, unknown> | undefined)?.["language"] ?? NaN,
-  );
-
+  const ownedWithId = (value: unknown) => owned.find((l) => l.id === Number(value));
   const currentLanguage =
-    owned.find((l) => l.id === requested) ?? owned[0] ?? null;
+    ownedWithId((request.query as Record<string, unknown> | undefined)?.["language"]) ??
+    ownedWithId(request.cookies[LANGUAGE_COOKIE]) ??
+    owned[0] ??
+    null;
 
   return { user, languages: owned, currentLanguage, active };
 }
@@ -97,7 +114,9 @@ export const DEFAULT_WORD_TYPES = [
 /** Language name to a text-to-speech locale. Extend as languages are added. */
 export const TTS_CODES: Record<string, string> = {
   french: "fr-FR",
-  spanish: "es-ES",
+  // Latin American Spanish. public/voices.js falls back to the nearest accent
+  // the device has, and to Spain's only as a last resort.
+  spanish: "es-US",
   german: "de-DE",
   italian: "it-IT",
   portuguese: "pt-PT",

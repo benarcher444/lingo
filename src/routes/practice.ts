@@ -10,7 +10,7 @@ import type { Mode } from "../algorithm.js";
 import { requireContext, typesFor } from "../context.js";
 import { buildSession, recordAnswer } from "../practice.js";
 import { loadScoredWords, recordSnapshot, summarise, summariseByType } from "../stats.js";
-import { emptyState, pageHead, progressBanner } from "../views/components.js";
+import { NO_AUTOFILL, emptyState, pageHead, progressBanner } from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
 
 const MODE_COPY: Record<Mode, { title: string; sub: string }> = {
@@ -108,7 +108,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           <div id="setup" class="card">
             <div class="card-head"><div><h2>Start a session</h2><div class="sub">Words you know well come up far less often.</div></div></div>
             <div class="card-body">
-              <form id="setup-form" class="row setup-row">
+              <form id="setup-form" class="row setup-row" autocomplete="off">
                 <div class="field setup-category">
                   <label for="wordType">Category</label>
                   <select class="select" id="wordType" name="wordTypeId">
@@ -129,7 +129,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
                   <input class="input" id="count" name="count" type="number"
                          inputmode="numeric" min="0" max="${scored.length}"
                          value="${Math.min(20, scored.length)}" list="count-presets"
-                         autocomplete="off">
+                         ${NO_AUTOFILL}>
                   <datalist id="count-presets">
                     <option value="10"></option>
                     <option value="20"></option>
@@ -251,7 +251,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           </div>
 
           <!-- Before you start: what about, and at what level. The AI then opens. -->
-          <form class="chat-setup" id="chat-setup">
+          <form class="chat-setup" id="chat-setup" autocomplete="off">
             <div class="field chat-setup-scene">
               <label for="chat-scene">Conversation</label>
               <select class="select" id="chat-scene">${sceneOptions}</select>
@@ -262,7 +262,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
             </div>
             <div class="field chat-setup-custom" id="chat-custom-field" hidden>
               <label for="chat-custom">Your scene</label>
-              <input class="input" id="chat-custom" maxlength="200" autocomplete="off"
+              <input class="input" id="chat-custom" maxlength="200" ${NO_AUTOFILL}
                      placeholder="e.g. returning a jacket that doesn't fit">
             </div>
             <button class="btn btn-primary btn-lg" type="submit" ${hasKey ? "" : "disabled"}>${icons.arrowRight}Start</button>
@@ -270,8 +270,8 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
 
           <div class="chat-log" id="chat-log" hidden></div>
 
-          <form class="chat-compose" id="chat-form" hidden>
-            <input class="input" id="chat-input" placeholder="Write your reply…" autocomplete="off">
+          <form class="chat-compose" id="chat-form" autocomplete="off" hidden>
+            <input class="input" id="chat-input" placeholder="Write your reply…" ${NO_AUTOFILL}>
             <button class="btn btn-primary" type="submit">Send</button>
             <button class="btn btn-ghost" id="chat-restart" type="button">New</button>
           </form>

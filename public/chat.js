@@ -5,6 +5,8 @@
  * file handles the setup, the transcript, speech, and the teacher threads.
  */
 
+import { chooseVoice } from "./voices.js";
+
 const config = window.__chat;
 
 const setup = document.getElementById("chat-setup");
@@ -79,11 +81,7 @@ let chosenVoice = null;
 function pickVoice() {
   if (!synth) return null;
   if (chosenVoice) return chosenVoice;
-  const lang = (config.languageCode || "en-GB").toLowerCase();
-  const tag = (voice) => (voice.lang || "").toLowerCase().replace("_", "-");
-  const voices = synth.getVoices();
-  chosenVoice =
-    voices.find((v) => tag(v) === lang) ?? voices.find((v) => tag(v).startsWith(lang.slice(0, 2))) ?? null;
+  chosenVoice = chooseVoice(synth.getVoices(), config.languageCode);
   return chosenVoice;
 }
 
@@ -300,10 +298,15 @@ function openTeacher(anchor, context) {
 
   const ask = document.createElement("form");
   ask.className = "teacher-ask";
+  ask.autocomplete = "off";
   const field = document.createElement("input");
   field.className = "input";
   field.placeholder = "Ask the teacher a follow-up…";
+  // Not a login, address or card: see NO_AUTOFILL in src/views/components.ts.
   field.autocomplete = "off";
+  for (const [name, value] of [["data-1p-ignore", ""], ["data-lpignore", "true"], ["data-bwignore", ""], ["data-form-type", "other"]]) {
+    field.setAttribute(name, value);
+  }
   const send = document.createElement("button");
   send.type = "submit";
   send.className = "btn btn-sm";

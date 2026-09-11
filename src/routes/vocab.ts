@@ -11,6 +11,7 @@ import {
   DEFAULT_WORD_TYPES,
   guessTtsCode,
   optionalId,
+  rememberLanguage,
   requireContext,
   typesFor,
 } from "../context.js";
@@ -18,6 +19,7 @@ import { db } from "../db/index.js";
 import { languages, wordTypes, words } from "../db/schema.js";
 import { loadScoredWords, summarise, summariseByType } from "../stats.js";
 import {
+  NO_AUTOFILL,
   alert,
   pageHead,
   progressBanner,
@@ -208,7 +210,10 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       .where(and(eq(languages.userId, ctx.user.id), eq(languages.name, name)))
       .get();
 
-    if (existing) return reply.redirect(`/vocab?language=${existing.id}`);
+    if (existing) {
+      rememberLanguage(request, reply, existing.id);
+      return reply.redirect(`/vocab?language=${existing.id}`);
+    }
 
     const created = db
       .insert(languages)
@@ -227,6 +232,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       )
       .run();
 
+    rememberLanguage(request, reply, created.id);
     return reply.redirect(`/vocab?language=${created.id}&added=language`);
   });
 
@@ -619,7 +625,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
           <!-- Its own full-width bar rather than crammed into the card header,
                where three controls were squeezed into a narrow column and
                stacked one per line. -->
-          <form class="list-toolbar" method="get" action="/vocab">
+          <form class="list-toolbar" method="get" action="/vocab" autocomplete="off">
             <input type="hidden" name="language" value="${language.id}">
             ${mode === "audio" ? `<input type="hidden" name="mode" value="audio">` : ""}
 
@@ -650,7 +656,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
             <label class="toolbar-field toolbar-search">
               <span>Search</span>
-              <input class="input" type="search" name="q"
+              <input class="input" type="search" name="q" ${NO_AUTOFILL}
                      placeholder="Word or meaning…" value="${esc(search)}">
             </label>
 
@@ -731,8 +737,8 @@ function firstLanguageCard(): string {
     <div class="empty-icon">${icons.globe}</div>
     <h2>Add your first language</h2>
     <p>Name the language you are learning. A starter set of categories — nouns, verbs, phrases and so on — is created with it, and you can change them at any time.</p>
-    <form method="post" action="/languages" class="row" style="justify-content:center;margin-top:14px">
-      <input class="input" name="name" placeholder="French" required style="width:190px" autofocus>
+    <form method="post" action="/languages" class="row" style="justify-content:center;margin-top:14px" autocomplete="off">
+      <input class="input" name="name" placeholder="French" required style="width:190px" autofocus ${NO_AUTOFILL}>
       <button class="btn btn-primary" type="submit">${icons.plus}Create language</button>
     </form>
   </div></div>`;
@@ -785,7 +791,7 @@ function addWordCard(
       <span class="pill pill-plain" id="added-count" hidden>0 added</span>
     </div>
     <div class="card-body">
-      <form method="post" action="/words" class="stack-sm" id="add-word-form">
+      <form method="post" action="/words" class="stack-sm" id="add-word-form" autocomplete="off">
         <div class="row add-settings">
           <div class="field" style="flex:0 1 200px">
             <label for="wordTypeId">Category</label>
@@ -806,12 +812,12 @@ function addWordCard(
           <div class="field">
             <label for="term">Word or phrase</label>
             <input class="input" id="term" name="term" required${autofocus ? " data-autofocus" : ""}
-                   autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${esc(example.term)}">
+                   ${NO_AUTOFILL} autocapitalize="off" spellcheck="false" placeholder="${esc(example.term)}">
           </div>
           <div class="field">
             <label for="english">English</label>
             <input class="input" id="english" name="english" required
-                   autocomplete="off" spellcheck="false" placeholder="${esc(example.english)}">
+                   ${NO_AUTOFILL} spellcheck="false" placeholder="${esc(example.english)}">
           </div>
           <button class="btn btn-primary" type="submit">${icons.plus}Add</button>
         </div>
@@ -878,16 +884,16 @@ function editRow(
 ): string {
   return `<tr id="word-${row.id}" data-word-id="${row.id}" class="edit-row">
     <td colspan="6" style="padding:14px 16px">
-      <form method="post" action="/words/${row.id}" class="stack-sm" data-word-form>
+      <form method="post" action="/words/${row.id}" class="stack-sm" data-word-form autocomplete="off">
         <input type="hidden" name="_type" value="${filters.type ?? ""}">
         <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
         <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
         <input type="hidden" name="_mode" value="${filters.mode ?? ""}">
         <div class="form-grid">
           <div class="field"><label>Word</label>
-            <input class="input" name="term" required value="${esc(row.term)}"></div>
+            <input class="input" name="term" required value="${esc(row.term)}" ${NO_AUTOFILL}></div>
           <div class="field"><label>English</label>
-            <input class="input" name="english" required value="${esc(row.english)}"></div>
+            <input class="input" name="english" required value="${esc(row.english)}" ${NO_AUTOFILL}></div>
           <div class="field"><label>Category</label>
             <select class="select" name="wordTypeId">
               ${types
@@ -898,7 +904,7 @@ function editRow(
                 .join("")}
             </select></div>
           <div class="field"><label>Note</label>
-            <input class="input" name="notes" value="${esc(row.notes ?? "")}"></div>
+            <input class="input" name="notes" value="${esc(row.notes ?? "")}" ${NO_AUTOFILL}></div>
         </div>
         <div class="row">
           <label class="check"><input type="checkbox" name="writtenEnabled"${row.writtenEnabled ? " checked" : ""}> Written</label>
@@ -937,9 +943,9 @@ function manageTypesCard(
             : `<span class="hint">No categories yet.</span>`
         }
       </div>
-      <form method="post" action="/word-types" class="row">
+      <form method="post" action="/word-types" class="row" autocomplete="off">
         <input type="hidden" name="languageId" value="${languageId}">
-        <input class="input" name="name" placeholder="conjugations" required style="width:200px">
+        <input class="input" name="name" placeholder="conjugations" required style="width:200px" ${NO_AUTOFILL}>
         <button class="btn" type="submit">${icons.plus}Add category</button>
       </form>
     </div>

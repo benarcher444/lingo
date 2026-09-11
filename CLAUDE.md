@@ -482,9 +482,14 @@ time a word is added, which reads as going backwards.
 
 `public/practice.js` owns it. Three pieces, each for a reason:
 
-- **Voice choice** — exact language tag first (`fr-FR`), then the language
-  family, in the order the browser lists them. Deliberately *not* reordered to
-  prefer local voices: that would silently swap the voice the learner hears.
+- **Voice choice** — `public/voices.js`, shared with the chat page. Exact
+  language tag first (`fr-FR`), then the nearest accent the device has, then
+  the language family, each in the order the browser lists them. Spanish is
+  `es-US` (Latin American, as the user asked): Chrome has a Google US Spanish
+  voice, iOS has Mexican (`es-MX`), and Spain's `es-ES` is only the last resort.
+  Existing languages keep the `code` they were created with, so the server's
+  Spanish row was switched by hand. Deliberately *not* reordered to prefer local
+  voices: that would silently swap the voice the learner hears.
 - **Warm-up** — one silent syllable at the first tap or key on the page, and at
   Start if nothing came before. The first utterance pays to start the engine
   and, for a network voice, to open the connection. It has to be inside a user
@@ -565,6 +570,16 @@ If the lag persists, establish the device and browser before changing more.
 - **Grid and flex children default to `min-width: auto`.** They refuse to shrink
   below their content, so a wide table's own `overflow-x` never engages.
   `.stack > *`, `.container > *` and `.card` set `min-width: 0` for this.
+- **Every link carries the language.** `loadContext` takes `?language=`, then
+  the `ll_language` cookie (set by `/switch-language` and on creating a
+  language), then the first language by name. The Settings tab once had no
+  `?language=`, so it opened on French whatever you were working in, and
+  showed French as current.
+- **Phones offer to autofill any text field.** Above the keyboard, a phone
+  offers passwords, cards and addresses unless told the field is none of them.
+  Forms carry `autocomplete="off"` and text inputs `NO_AUTOFILL`
+  (`src/views/components.ts`), which adds the password managers' own opt-outs.
+  Browsers do not all honour these, and it is untested on the user's phone.
 - **Filters must travel — and editing must not reload.** Edit, Save, Cancel
   and Delete happen in place (`public/vocab.js` swaps the row, fetching
   `/vocab/words/:id/edit-row`; the save returns the new row as JSON when sent
@@ -619,7 +634,7 @@ the demo account seeded.
 
 | Command | Covers |
 |---|---|
-| `npm test` | Scoring, decay, sampling, answer matching |
+| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice |
 | `npm run test:accents` | Accent composition, per language |
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |

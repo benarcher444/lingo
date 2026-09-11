@@ -147,6 +147,9 @@ export function layout(ctx: NavContext, opts: LayoutOptions): string {
   const links = navLinks(ctx.currentLanguage?.id ?? null);
   const initial = (ctx.user.email[0] ?? "?").toUpperCase();
   const theme = ctx.user.theme;
+  // Settings carries the language like every other link, or it opens on
+  // whichever language sorts first and shows that one as current.
+  const settingsHref = ctx.currentLanguage ? `/settings?language=${ctx.currentLanguage.id}` : "/settings";
 
   const sidebarNav = links
     .map(
@@ -158,7 +161,7 @@ export function layout(ctx: NavContext, opts: LayoutOptions): string {
   // A phone has no sidebar, so Settings (language, account, theme) gets a tab.
   const mobileNav = [
     ...links,
-    { href: "/settings", label: "Settings", short: "Settings", key: "settings", svg: icons.cog },
+    { href: settingsHref, label: "Settings", short: "Settings", key: "settings", svg: icons.cog },
   ]
     .map(
       (l) =>
@@ -189,7 +192,7 @@ ${colorSchemeMeta(theme)}
         <span class="sidebar-email">${esc(ctx.user.email)}</span>
       </div>
       <div class="sidebar-theme">${themeSwitch(theme)}</div>
-      <a class="nav-item" href="/settings"${ctx.active === "settings" ? ' aria-current="page"' : ""}>${icons.cog}<span>Settings</span></a>
+      <a class="nav-item" href="${settingsHref}"${ctx.active === "settings" ? ' aria-current="page"' : ""}>${icons.cog}<span>Settings</span></a>
       <form method="post" action="/logout">
         <button class="nav-item" type="submit" style="width:100%;border:0;background:none;font:inherit;cursor:pointer;text-align:left">
           ${icons.logout}<span>Sign out</span>
