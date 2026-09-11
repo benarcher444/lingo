@@ -301,9 +301,22 @@ function expandAlternatives(text: string): string[] {
   return [...out];
 }
 
+const HYPHEN = /\s*[-‐‑–]\s*/g;
+
+/**
+ * A hyphen may be typed as a space or left out: "grand-mother" also reads as
+ * "grand mother" and "grandmother". Both sides of a comparison are expanded,
+ * so "grand-mother" is accepted for a stored "grandmother" as well.
+ */
+function hyphenReadings(text: string): string[] {
+  if (!/[-‐‑–]/.test(text)) return [text];
+  return [text, text.replace(HYPHEN, " "), text.replace(HYPHEN, "")];
+}
+
 /**
  * Every spelling that should be accepted for a stored value: with and without
- * the parenthetical note, and with slashes expanded.
+ * the parenthetical note, with slashes expanded, and with hyphens read as
+ * spaces or as nothing.
  */
 export function answerVariants(text: string): string[] {
   const bases = new Set<string>([text, stripParenthetical(text)]);
@@ -311,8 +324,10 @@ export function answerVariants(text: string): string[] {
 
   for (const base of bases) {
     for (const alternative of expandAlternatives(base)) {
-      const normalised = normaliseAnswer(alternative);
-      if (normalised) variants.add(normalised);
+      for (const spelling of hyphenReadings(alternative)) {
+        const normalised = normaliseAnswer(spelling);
+        if (normalised) variants.add(normalised);
+      }
     }
   }
 
@@ -332,4 +347,83 @@ export function answersMatch(given: string, expected: string): boolean {
   if (expectedVariants.size === 0) return false;
 
   return answerVariants(given).some((variant) => expectedVariants.has(variant));
+}
+
+/**
+ * What one word's answers in one direction add up to, oldest first: times
+ * tested, times right, and the streak — right answers in a row at the end,
+ * capped at 3.
+ *
+ * A progress row is this, stored. It is rebuilt from the answers rather than
+ * incremented, so it cannot drift from the record: an increment that goes
+ * wrong once stays wrong for good, which is how an override came to count
+ * twice.
+ */
+export function tallyAnswers(results: readonly boolean[]): {
+  tested: number;
+  correct: number;
+  streak: number;
+} {
+  let correct = 0;
+  let streak = 0;
+
+  for (const right of results) {
+    if (right) {
+      correct += 1;
+      streak = Math.min(STREAK_TARGET, streak + 1);
+    } else {
+      streak = 0;
+    }
+  }
+
+  return { tested: results.length, correct, streak };
+}
+
+export interface RecordedAnswer {
+  id: number;
+  correct: boolean;
+  overridden: boolean;
+}
+
+/**
+ * Undo how overrides used to be stored. "I was right — count it" once added a
+ * second, correct answer straight after the miss and left the miss in place,
+ * so one question counted as two answers, one wrong and one right. Now the
+ * miss itself is marked right.
+ *
+ * Given one word's answers in one direction, oldest first, and recorded the
+ * old way, this names the misses to mark right and the extra rows to delete.
+ * An override with nothing to correct in front of it — a second press — is
+ * deleted as well: it never stood for an answer of its own. `unmatched` lists
+ * the ones whose previous answer was right, which the page never allowed.
+ */
+export function mergeOverrides(rows: readonly RecordedAnswer[]): {
+  flip: number[];
+  remove: number[];
+  unmatched: number[];
+} {
+  const kept: RecordedAnswer[] = [];
+  const flip: number[] = [];
+  const remove: number[] = [];
+  const unmatched: number[] = [];
+
+  for (const row of rows) {
+    if (!row.overridden) {
+      kept.push({ ...row });
+      continue;
+    }
+
+    remove.push(row.id);
+    const previous = kept.at(-1);
+
+    if (previous && !previous.correct) {
+      previous.correct = true;
+      previous.overridden = true;
+      flip.push(previous.id);
+    } else if (!previous?.overridden) {
+      unmatched.push(row.id);
+    }
+  }
+
+  return { flip, remove, unmatched };
 }

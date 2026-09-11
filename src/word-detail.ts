@@ -149,25 +149,12 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
     };
   });
 
-  // "I was right — count it" is stored as a second, overriding row straight
-  // after the miss, and the miss row stays. Those misses were judged right, so
-  // they are not wrong answers worth listing.
-  const overruled = new Set<number>();
-  attemptRows.forEach((attempt, i) => {
-    if (!attempt.overridden) return;
-    for (let j = i - 1; j >= 0; j--) {
-      const earlier = attemptRows[j]!;
-      if (earlier.mode !== attempt.mode || earlier.direction !== attempt.direction) continue;
-      if (!earlier.correct) overruled.add(j);
-      break;
-    }
-  });
-
   return {
     ...row,
     modes,
+    // A miss overridden with "I was right" is stored as correct, so it is not here.
     recentMisses: attemptRows
-      .filter((a, i) => !a.correct && !overruled.has(i))
+      .filter((a) => !a.correct)
       .reverse()
       .slice(0, 20)
       .map((a) => ({

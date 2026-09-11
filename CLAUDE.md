@@ -345,7 +345,7 @@ both themes are handled by the stylesheet rather than duplicated in JS.
 ### Answer matching
 
 `answersMatch` in `src/algorithm.ts` accepts any shared reading of the two
-sides. Three rules, all driven by how the vocabulary is actually written:
+sides. Four rules, all driven by how the vocabulary is actually written:
 
 1. **Accents are optional** — `etre` for `être`, via Unicode NFD stripping.
 2. **Parenthesised notes are optional** — `because` for `because (pq)`. The
@@ -354,6 +354,10 @@ sides. Three rules, all driven by how the vocabulary is actually written:
    card, but nobody types them.
 3. **A slash means "either reading"** — `finally` for `at last/finally`, and
    `to make` for `to do/make`.
+4. **A hyphen is a space, or nothing** — `grand mother` and `grandmother` for
+   `grand-mother`. Both sides are expanded, so a typed hyphen also matches a
+   card without one. A space is *not* optional: `grandmother` does not match a
+   card reading `grand mother`.
 
 Rule 3 has two shapes: whole alternatives (`at last/finally`) and a shared
 prefix (`to do/make` = "to do" or "to make"). There is no reliable way to tell
@@ -518,12 +522,18 @@ If the lag persists, establish the device and browser before changing more.
   plain `tsx`, no watch — so a server-side edit is invisible until a restart,
   while files in `public/` are served fresh. A screenshot pass after editing
   `src/` without restarting verifies the *old* code; it happened once.
-- **An override is a second row.** "I was right — count it" records a new,
-  correct, `overridden` attempt after the miss, and the miss row stays. So the
-  counters take both — one overridden question is tested +2, correct +1 — and
-  anything listing misses must drop the overridden ones. The word record lists
-  recent *wrong* answers only (what was typed against what was wanted), and
-  `word-detail.ts` filters overridden misses out.
+- **An override corrects the miss; it is not an answer.** "I was right — count
+  it" marks the miss just recorded as `correct` and `overridden`, and adds no
+  row. Until 2026-09-11 it added a second, correct row and kept the miss, so
+  every override counted as tested +2, correct +1 and broke the streak. That
+  skewed scores, accuracy and the Progress chart. I had spotted the double
+  count and written it up here as a trap instead of fixing it; that was the
+  wrong call. `scripts/fix-overrides.ts` merged the history on the server.
+- **Progress rows are rebuilt, never incremented.** Every answer recomputes
+  its row from the attempts log (`tallyAnswers` in `algorithm.ts`), so the
+  counts cannot drift from the answers again. An increment that goes wrong once
+  stays wrong for good. `lastTested` is still stamped with `today()` (server
+  local time) rather than derived from `answered_at` (UTC).
 - **Status colours are their own tokens.** `--status-solid` is the deeper green
   in both themes and `--status-learnt` the lighter: darker reads as more learnt.
   Mixing `--learnt` toward `--surface` looked right in light mode and inverted
@@ -619,6 +629,7 @@ the demo account seeded.
 | `npm run test:chat` | Conversation end to end: scene and level, AI opens, corrected turn, speech, teacher thread, own scene, out-of-credit message. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |
 | `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
 | `npm run test:entry` | Keyboard word entry |
@@ -642,6 +653,14 @@ Read-only checks and one-off fixes live in `scripts/`:
   nothing else. Use after `npm run seed`.
 - `reset-users.ts` — clears every account. Dry-run by default, takes a
   timestamped database backup, checkpoints WAL first.
+- `fix-overrides.ts` — merged overrides stored the old way (a second row) into
+  the miss each one corrected, then corrected word counts and the Progress chart
+  history. It corrects the chart by replaying each affected word to every
+  snapshot both ways and applying the difference, and checks first that a
+  replay reproduces the stored snapshots. Needs `--before=` (when the fixed code
+  started), is a dry run without `--apply`, backs up first, and refuses a
+  second run (`data/override-fix.done`). A second pass would take corrected
+  misses for old overrides.
 - `set-password.ts` — replaces a password hash.
 - `clean-test-words.ts` — removes words left by the entry test.
 - `measure-speech.ts` — times Start-to-first-sound in listening practice and

@@ -1,11 +1,11 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, desc, eq } from "drizzle-orm";
 
 import {
   MODE_DIRECTIONS,
-  STREAK_TARGET,
   answersMatch,
   scoreWord,
   selectionOdds,
+  tallyAnswers,
   today,
   weightedSample,
   type Direction,
@@ -74,7 +74,7 @@ export function recordAnswer(opts: {
   mode: Mode;
   direction: Direction;
   given: string;
-  /** Learner overrode a miss to correct — recorded, but counted as correct. */
+  /** "I was right": marks the miss just recorded as correct. Adds no answer. */
   override?: boolean;
   /** Groups answers into one practice session. See attempts.sessionId. */
   sessionId?: string | null;
@@ -99,57 +99,44 @@ export function recordAnswer(opts: {
   // that tests comprehension rather than spelling back what you just heard.
   const expected = opts.direction === "from_english" ? word.term : word.english;
   const graded = opts.override === true || answersMatch(opts.given, expected);
-
   const previousScore = currentScore(opts.wordId, opts.mode);
-  const stamp = today();
 
-  const existing = db
-    .select()
-    .from(progress)
-    .where(
-      and(
-        eq(progress.wordId, opts.wordId),
-        eq(progress.mode, opts.mode),
-        eq(progress.direction, opts.direction),
-      ),
-    )
-    .get();
+  const sameCard = and(
+    eq(attempts.wordId, opts.wordId),
+    eq(attempts.mode, opts.mode),
+    eq(attempts.direction, opts.direction),
+  );
 
-  if (existing) {
-    db.update(progress)
-      .set({
-        tested: existing.tested + 1,
-        correct: existing.correct + (graded ? 1 : 0),
-        streak: graded ? Math.min(STREAK_TARGET, existing.streak + 1) : 0,
-        lastTested: stamp,
-      })
-      .where(eq(progress.id, existing.id))
-      .run();
-  } else {
-    db.insert(progress)
-      .values({
-        wordId: opts.wordId,
-        mode: opts.mode,
-        direction: opts.direction,
-        tested: 1,
-        correct: graded ? 1 : 0,
-        streak: graded ? 1 : 0,
-        lastTested: stamp,
-      })
-      .run();
-  }
+  db.transaction(() => {
+    if (opts.override === true) {
+      // "I was right — count it" corrects the miss just recorded. It is not an
+      // answer of its own: it once added a second, correct row and kept the
+      // miss, so one question counted as tested twice, wrong once, right once.
+      const last = db.select().from(attempts).where(sameCard).orderBy(desc(attempts.id)).get();
+      const correctable = last && !last.correct && last.sessionId === (opts.sessionId ?? null);
 
-  db.insert(attempts)
-    .values({
-      wordId: opts.wordId,
-      mode: opts.mode,
-      direction: opts.direction,
-      correct: graded,
-      overridden: opts.override === true,
-      givenAnswer: opts.given.slice(0, 200),
-      sessionId: opts.sessionId ?? null,
-    })
-    .run();
+      // Nothing to correct — a second press, or a page left open — changes nothing.
+      if (!correctable) return;
+
+      db.update(attempts)
+        .set({ correct: true, overridden: true })
+        .where(eq(attempts.id, last.id))
+        .run();
+    } else {
+      db.insert(attempts)
+        .values({
+          wordId: opts.wordId,
+          mode: opts.mode,
+          direction: opts.direction,
+          correct: graded,
+          givenAnswer: opts.given.slice(0, 200),
+          sessionId: opts.sessionId ?? null,
+        })
+        .run();
+    }
+
+    rebuildProgress(opts.wordId, opts.mode, opts.direction);
+  });
 
   const score = currentScore(opts.wordId, opts.mode);
   const streakRow = db
@@ -172,6 +159,32 @@ export function recordAnswer(opts: {
     streak: streakRow?.streak ?? 0,
     justLearnt: previousScore <= 2.3 && score > 2.3,
   };
+}
+
+/**
+ * Rebuild one progress row from the answers behind it, rather than adding to
+ * it, so the counts are always exactly what the answers say. See tallyAnswers.
+ */
+function rebuildProgress(wordId: number, mode: Mode, direction: Direction): void {
+  const results = db
+    .select({ correct: attempts.correct })
+    .from(attempts)
+    .where(
+      and(eq(attempts.wordId, wordId), eq(attempts.mode, mode), eq(attempts.direction, direction)),
+    )
+    .orderBy(asc(attempts.id))
+    .all()
+    .map((row) => row.correct);
+
+  const counts = { ...tallyAnswers(results), lastTested: today() };
+
+  db.insert(progress)
+    .values({ wordId, mode, direction, ...counts })
+    .onConflictDoUpdate({
+      target: [progress.wordId, progress.mode, progress.direction],
+      set: counts,
+    })
+    .run();
 }
 
 /** Recompute one word's score for a mode from its stored direction rows. */

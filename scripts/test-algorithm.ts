@@ -9,8 +9,10 @@ import {
   answersMatch,
   stripParenthetical,
   daysBetween,
+  mergeOverrides,
   scoreWord,
   selectionOdds,
+  tallyAnswers,
   weightedSample,
   type WordProgress,
 } from "../src/algorithm.js";
@@ -86,6 +88,42 @@ check("slash plus an accent", answersMatch("etre", "être/exister"), true);
 check("a wrong answer still fails", answersMatch("never", "at last/finally"), false);
 check("a fragment does not pass", answersMatch("at", "at last/finally"), false);
 check("empty still never passes", answersMatch("", "at last/finally"), false);
+
+console.log("\nA hyphen is a space, or nothing");
+check("as written", answersMatch("grand-mother", "grand-mother"), true);
+check("hyphen typed as a space", answersMatch("grand mother", "grand-mother"), true);
+check("hyphen left out", answersMatch("grandmother", "grand-mother"), true);
+check("hyphen typed where the card has none", answersMatch("grand-mother", "grandmother"), true);
+check("French: peut etre for peut-être", answersMatch("peut etre", "peut-être"), true);
+check("with an article", answersMatch("la grand mere", "la grand-mère"), true);
+check("alongside a slash", answersMatch("well known", "famous/well-known"), true);
+check("a wrong answer still fails", answersMatch("grandfather", "grand-mother"), false);
+check("a bare hyphen is not an answer", answersMatch("-", "grand-mother"), false);
+
+console.log("\nCounting a word's answers");
+check("nothing yet", tallyAnswers([]), { tested: 0, correct: 0, streak: 0 });
+check("right, wrong, right", tallyAnswers([true, false, true]), { tested: 3, correct: 2, streak: 1 });
+check("the streak stops at 3", tallyAnswers([true, true, true, true]), { tested: 4, correct: 4, streak: 3 });
+check("a miss resets it", tallyAnswers([true, true, true, false]), { tested: 4, correct: 3, streak: 0 });
+
+console.log("\nMerging overrides stored the old way");
+{
+  const miss = (id: number) => ({ id, correct: false, overridden: false });
+  const right = (id: number) => ({ id, correct: true, overridden: false });
+  const override = (id: number) => ({ id, correct: true, overridden: true });
+
+  check("a miss then its override: the miss is marked right, the extra row goes",
+    mergeOverrides([miss(1), override(2)]), { flip: [1], remove: [2], unmatched: [] });
+  check("earlier answers are left alone",
+    mergeOverrides([right(1), miss(2), miss(3), override(4)]), { flip: [3], remove: [4], unmatched: [] });
+  check("pressed twice: one correction, both extra rows go",
+    mergeOverrides([miss(1), override(2), override(3)]), { flip: [1], remove: [2, 3], unmatched: [] });
+  check("an override after a right answer is flagged",
+    mergeOverrides([right(1), override(2)]), { flip: [], remove: [2], unmatched: [2] });
+  check("several in one history",
+    mergeOverrides([miss(1), override(2), right(3), miss(4), override(5)]), { flip: [1, 4], remove: [2, 5], unmatched: [] });
+  check("nothing to merge", mergeOverrides([miss(1), right(2)]), { flip: [], remove: [], unmatched: [] });
+}
 
 console.log("\nScoring");
 check("never-tested word scores 0", scoreWord({ directions: [], lastTested: null }, "written"), 0);

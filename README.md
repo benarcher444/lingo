@@ -69,8 +69,10 @@ for the common ones.
 
 **Written practice** — each word is tested in both directions and keeps coming
 back until you get both right. Answers are matched case- and accent-insensitively
-(`etre` is accepted for `être`), with a manual override when you were right and
-the checker disagreed. Leave the page mid-session and it picks up where you were.
+(`etre` is accepted for `être`), and a hyphen can be typed as a space or left out
+(`grand mother` or `grandmother` for `grand-mother`). When you were right and the
+checker disagreed, "I was right — count it" turns that miss into a correct
+answer. Leave the page mid-session and it picks up where you were.
 
 **Listening practice** — the word is spoken in the target language and you type
 what it *means* in English, so it tests comprehension rather than spelling back
@@ -169,6 +171,7 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:search` | Vocabulary search and category filter |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:override` | "I was right" counts a miss as right, once |
 | `npm run test:listening` | Speech warm-up, and `r` to replay |
 | `npm run test:vocab-edit` | Editing words in place |
 | `npm run test:duplicates` | A word can't be added twice |
