@@ -14,6 +14,7 @@ import {
   selectionOdds,
   tallyAnswers,
   weightedSample,
+  wordStatus,
   type WordProgress,
 } from "../src/algorithm.js";
 
@@ -124,6 +125,13 @@ console.log("\nMerging overrides stored the old way");
     mergeOverrides([miss(1), override(2), right(3), miss(4), override(5)]), { flip: [1, 4], remove: [2, 5], unmatched: [] });
   check("nothing to merge", mergeOverrides([miss(1), right(2)]), { flip: [], remove: [], unmatched: [] });
 }
+
+console.log("\nWhere a word stands");
+check("never tested is new", wordStatus(0, 0), "new");
+check("tested, however badly, is learning", wordStatus(0, 3), "learning");
+check("over 2.3 is learnt", wordStatus(2.4, 6), "learnt");
+check("over 2.556 is solid", wordStatus(2.6, 8), "solid");
+check("on the line is not over it", wordStatus(2.3, 5), "learning");
 
 console.log("\nScoring");
 check("never-tested word scores 0", scoreWord({ directions: [], lastTested: null }, "written"), 0);

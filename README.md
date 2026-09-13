@@ -72,7 +72,9 @@ back until you get both right. Answers are matched case- and accent-insensitivel
 (`etre` is accepted for `être`), and a hyphen can be typed as a space or left out
 (`grand mother` or `grandmother` for `grand-mother`). When you were right and the
 checker disagreed, "I was right — count it" turns that miss into a correct
-answer. Leave the page mid-session and it picks up where you were.
+answer. After each answer you see where the word stands (New, Learning, Learnt
+or Solid), and any move between them, such as Learnt → Solid. Leave the page
+mid-session and it picks up where you were.
 
 **Listening practice** — the word is spoken in the target language and you type
 what it *means* in English, so it tests comprehension rather than spelling back

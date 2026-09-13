@@ -11,6 +11,7 @@
 
 import { and, desc, eq } from "drizzle-orm";
 
+import { wordStatus } from "../src/algorithm.js";
 import { db } from "../src/db/index.js";
 import { attempts, languages, progress, users } from "../src/db/schema.js";
 
@@ -91,6 +92,11 @@ check("is marked wrong", miss.data.correct === false);
 check("adds one answer", answers().length === before + 1);
 check("and the counts match the answers", matchesAnswers(), JSON.stringify(row()));
 check("the streak resets", row()?.streak === 0);
+check(
+  "it says where the word stands, by its score",
+  miss.data.status === wordStatus(miss.data.score as number, 1) && typeof miss.data.previousStatus === "string",
+  `${miss.data.previousStatus} -> ${miss.data.status} at ${miss.data.score}`,
+);
 
 console.log("\nThen \"I was right\"\n");
 

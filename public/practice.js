@@ -344,6 +344,28 @@ async function onAnswer(event) {
   saveSession();
 }
 
+/** The bands a word moves through, lowest first. The server says which applies. */
+const STATUS_LABELS = { new: "New", learning: "Learning", learnt: "Learnt", solid: "Solid" };
+const STATUS_ORDER = ["new", "learning", "learnt", "solid"];
+
+/**
+ * Where the word stands after this answer — "Learnt" — or, if it moved,
+ * where it came from: "Learnt → Solid" after a right answer, "Learnt →
+ * Learning" after a miss. Leaving New is neither up nor down.
+ */
+function statusLine(result) {
+  const now = result.status;
+  const was = result.previousStatus;
+  if (!STATUS_LABELS[now]) return "";
+
+  const pill = (status) => `<span class="pill pill-${status}">${STATUS_LABELS[status]}</span>`;
+  if (!STATUS_LABELS[was] || was === now) return `<div class="word-status">${pill(now)}</div>`;
+
+  const move =
+    was === "new" ? "" : STATUS_ORDER.indexOf(now) > STATUS_ORDER.indexOf(was) ? " up" : " down";
+  return `<div class="word-status${move}">${pill(was)}<span class="arrow" aria-hidden="true">→</span>${pill(now)}</div>`;
+}
+
 function showVerdict(result, given) {
   const verdict = document.getElementById("verdict");
   const input = document.getElementById("answer");
@@ -357,7 +379,7 @@ function showVerdict(result, given) {
       <div class="verdict verdict-right">
         <div class="headline">Correct</div>
         <div class="answer">${escapeHtml(result.expected)}</div>
-        ${result.justLearnt ? `<div class="delta up">Now counted as learnt</div>` : ""}
+        ${statusLine(result)}
       </div>`;
   } else {
     const skipped = given.trim() === "";
@@ -367,6 +389,7 @@ function showVerdict(result, given) {
         <div class="headline">${skipped ? "Skipped" : "Not quite"}</div>
         <div class="answer">${escapeHtml(result.expected)}</div>
         ${skipped ? "" : `<div class="given">${escapeHtml(given)}</div>`}
+        ${statusLine(result)}
       </div>
       ${
         // "I was right" makes no sense when nothing was entered.

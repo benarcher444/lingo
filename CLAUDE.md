@@ -341,6 +341,11 @@ both themes are handled by the stylesheet rather than duplicated in JS.
   the target language.
 - An empty answer is recorded as a miss rather than ignored: "I don't know" is
   a real answer and forcing a guess only pollutes the history.
+- **Every verdict shows where the word stands** — New, Learning, Learnt or
+  Solid — and any move, as "Learnt → Solid" (or "Learnt → Learning" after a
+  miss). The owner asked for it on 2026-09-13; it replaced "Now counted as
+  learnt". The server sends `status` and `previousStatus` (`wordStatus` in
+  `algorithm.ts`), so the thresholds live in one place.
 
 ### Answer matching
 

@@ -1406,6 +1406,8 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 }
 
 .pill-learnt { background: var(--learnt-soft); border-color: var(--learnt-border); color: var(--learnt); }
+/* Deeper than learnt, as on the banner bars: darker reads as more learnt. */
+.pill-solid { background: var(--status-solid); border-color: var(--status-solid); color: #fff; }
 .pill-learning { background: var(--learning-soft); border-color: var(--learning-border); color: var(--learning); }
 .pill-new { background: var(--new-soft); border-color: var(--new-border); color: var(--new); }
 .pill-accent { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
@@ -1648,6 +1650,19 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   font-size: 0.85rem;
   text-decoration: line-through;
 }
+
+/* Where the word stands after the answer: "Learnt", or "Learnt → Solid". */
+.verdict .word-status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+.word-status .arrow { color: var(--text-muted); font-weight: 600; }
+.word-status.up .arrow { color: var(--learnt); }
+.word-status.down .arrow { color: var(--danger); }
 
 /* The key hint inside the override button. */
 .btn kbd {

@@ -184,6 +184,20 @@ export function isCompletelyLearnt(score: number): boolean {
   return score > COMPLETELY_LEARNT_THRESHOLD;
 }
 
+/** The bands a word moves through, as shown after each answer. */
+export type WordStatus = "new" | "learning" | "learnt" | "solid";
+
+/**
+ * Which band a word is in for one mode. Untested is "new" whatever the score,
+ * the same line the Progress page draws between untouched and learning.
+ */
+export function wordStatus(score: number, tested: number): WordStatus {
+  if (tested === 0) return "new";
+  if (isCompletelyLearnt(score)) return "solid";
+  if (isLearnt(score)) return "learnt";
+  return "learning";
+}
+
 /**
  * Selection weight. Flat 50 at or below 0.6, then exponential decay, so a
  * learnt word is roughly 50x less likely to come up than an unseen one.

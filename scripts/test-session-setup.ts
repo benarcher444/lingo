@@ -100,6 +100,8 @@ await page.waitForSelector("#override", { timeout: 10_000 });
 check("override button offered after a real miss", true);
 const kbdHint = await page.locator("#override kbd").textContent();
 check("button shows the Y hint", kbdHint?.trim() === "Y", `"${kbdHint?.trim()}"`);
+const standing = (await page.locator(".verdict .word-status").textContent()) ?? "";
+check("the verdict says where the word stands", /New|Learning|Learnt|Solid/.test(standing), `"${standing}"`);
 
 const beforeY = await page.locator(".quiz-progress span").first().textContent();
 await page.keyboard.press("y");

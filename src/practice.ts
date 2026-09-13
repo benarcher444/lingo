@@ -8,6 +8,8 @@ import {
   tallyAnswers,
   today,
   weightedSample,
+  wordStatus,
+  type WordStatus,
   type Direction,
   type Mode,
 } from "./algorithm.js";
@@ -60,6 +62,9 @@ export interface AnswerResult {
   expected: string;
   score: number;
   previousScore: number;
+  /** The word's band after this answer, and before it. */
+  status: WordStatus;
+  previousStatus: WordStatus;
   streak: number;
   justLearnt: boolean;
 }
@@ -99,7 +104,7 @@ export function recordAnswer(opts: {
   // that tests comprehension rather than spelling back what you just heard.
   const expected = opts.direction === "from_english" ? word.term : word.english;
   const graded = opts.override === true || answersMatch(opts.given, expected);
-  const previousScore = currentScore(opts.wordId, opts.mode);
+  const before = currentStanding(opts.wordId, opts.mode);
 
   const sameCard = and(
     eq(attempts.wordId, opts.wordId),
@@ -138,7 +143,7 @@ export function recordAnswer(opts: {
     rebuildProgress(opts.wordId, opts.mode, opts.direction);
   });
 
-  const score = currentScore(opts.wordId, opts.mode);
+  const after = currentStanding(opts.wordId, opts.mode);
   const streakRow = db
     .select({ streak: progress.streak })
     .from(progress)
@@ -154,10 +159,12 @@ export function recordAnswer(opts: {
   return {
     correct: graded,
     expected,
-    score,
-    previousScore,
+    score: after.score,
+    previousScore: before.score,
+    status: wordStatus(after.score, after.tested),
+    previousStatus: wordStatus(before.score, before.tested),
     streak: streakRow?.streak ?? 0,
-    justLearnt: previousScore <= 2.3 && score > 2.3,
+    justLearnt: before.score <= 2.3 && after.score > 2.3,
   };
 }
 
@@ -187,15 +194,15 @@ function rebuildProgress(wordId: number, mode: Mode, direction: Direction): void
     .run();
 }
 
-/** Recompute one word's score for a mode from its stored direction rows. */
-function currentScore(wordId: number, mode: Mode): number {
+/** One word's score for a mode, and how often it has been tested in it. */
+function currentStanding(wordId: number, mode: Mode): { score: number; tested: number } {
   const rows = db
     .select()
     .from(progress)
     .where(and(eq(progress.wordId, wordId), eq(progress.mode, mode)))
     .all();
 
-  if (rows.length === 0) return 0;
+  if (rows.length === 0) return { score: 0, tested: 0 };
 
   let lastTested: string | null = null;
   for (const row of rows) {
@@ -204,7 +211,7 @@ function currentScore(wordId: number, mode: Mode): number {
     }
   }
 
-  return scoreWord(
+  const score = scoreWord(
     {
       directions: rows.map((row) => ({
         direction: row.direction as Direction,
@@ -216,4 +223,6 @@ function currentScore(wordId: number, mode: Mode): number {
     },
     mode,
   );
+
+  return { score, tested: rows.reduce((sum, row) => sum + row.tested, 0) };
 }
