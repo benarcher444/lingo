@@ -489,13 +489,23 @@ historical days therefore under-report. That was accepted rather than
 backfilled.
 
 The **Practice activity** chart counts *answers*, not words, stacked written
-under listening — always both modes, whatever the page's Written/Listening
-toggle says. It once followed the toggle, so with Written selected a day of
+under listening — always both modes, whatever the chart's Written/Listening
+switch says. It once followed the toggle, so with Written selected a day of
 listening vanished from it while the Today card counted it, and the two looked
 contradictory. It still honours the category checkboxes.
 
 The progress graph defaults to **Words learnt**: a percentage also drops every
 time a word is added, which reads as going backwards.
+
+**The Progress page shows both modes at once.** "Where it stands" has a
+Written block and a Listening block. Completion by category draws two bars
+per category, and the headline figures are a table with a Written and a
+Listening column (measures down the side, because six measure columns ran off
+a phone). Only the chart has
+a Written/Listening switch, inside its own card. Its links and forms end in
+`#chart`, so switching lands back on the chart. Until 2026-09-14 one switch at
+the top of the page changed just a few sections, and the owner had to scroll
+back up to use it.
 
 ### Listening speech
 

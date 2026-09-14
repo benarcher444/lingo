@@ -114,12 +114,15 @@ provider the page says so and everything else still works.
 
 **Progress** — the chart leads: pick any recorded measure (it opens on words
 learnt; also percentage learnt, words solid, average accuracy, longest neglect…)
-and choose which categories to plot. Below it are three more views:
+and choose which categories to plot, for written or listening (the switch is in
+the chart's own card). Everything below it shows both modes together:
 
 - today's practice, per mode
-- where every word currently stands: solid, learnt, learning and untouched, four
-  bands that add up to the whole vocabulary
+- where every word currently stands, per mode: solid, learnt, learning and
+  untouched, four bands that add up to the whole vocabulary
+- how complete each category is, written and listening side by side
 - answers per day over the last month, with written and listening stacked
+- the headline figures, in a Written and a Listening column
 
 **Settings** — your account, your languages (switch, or create a new one), and
 the theme: Auto (follow the device), Light or Dark. The theme is saved to your

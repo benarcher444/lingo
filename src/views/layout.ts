@@ -71,7 +71,7 @@ function navLinks(languageId: number | null): NavLink[] {
     { href: `/practice/written${q}`, label: "Written practice", short: "Written", key: "written", svg: icons.pen },
     { href: `/practice/audio${q}`, label: "Listening practice", short: "Listen", key: "audio", svg: icons.ear },
     { href: `/practice/chat${q}`, label: "Conversation", short: "Chat", key: "chat", svg: icons.chat },
-    { href: `/vocab${q}`, label: "Vocabulary", short: "Words", key: "vocab", svg: icons.book },
+    { href: `/vocab${q}`, label: "Vocabulary", short: "Vocab", key: "vocab", svg: icons.book },
     { href: `/progress${q}`, label: "Progress", short: "Progress", key: "progress", svg: icons.chart },
   ];
 }

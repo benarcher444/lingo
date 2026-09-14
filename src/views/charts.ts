@@ -108,30 +108,43 @@ export function lineChart(
   </svg>`;
 }
 
+/**
+ * Percentage learnt per category. Give rows a `value2`/`total2` and each gets
+ * a second, thinner bar beneath the first, so written and listening can sit
+ * side by side; `colours` then says which is which.
+ */
 export function barChart(
-  rows: { label: string; value: number; total: number }[],
+  rows: { label: string; value: number; total: number; value2?: number; total2?: number }[],
+  opts: { colours?: [string, string] } = {},
 ): string {
   if (rows.length === 0) return emptyChart("No categories yet");
 
-  const rowH = 32;
+  const paired = rows.some((row) => row.value2 !== undefined);
+  const [first, second] = opts.colours ?? ["var(--learnt)", LISTENING_COLOUR];
+  const rowH = paired ? 40 : 32;
   const height = rows.length * rowH + 8;
   // labelX inset: the text used to start at x=0, flush against the card border.
   const labelX = 10;
   const labelW = 150;
   const barW = W - labelW - 66;
 
+  const bar = (value: number, total: number, top: number, h: number, colour: string) => {
+    const pct = total > 0 ? (value / total) * 100 : 0;
+    const w = (pct / 100) * barW;
+    return `
+        <rect x="${labelW}" y="${top}" width="${barW}" height="${h}" rx="${h / 2}" fill="var(--surface-sunken)" />
+        <rect x="${labelW}" y="${top}" width="${Math.max(0, w).toFixed(1)}" height="${h}" rx="${h / 2}" fill="${colour}" />
+        <text x="${labelW + barW + 9}" y="${top + h - 3}" font-size="${h >= 13 ? 13 : 11.5}" fill="var(--text-faint)"
+          font-variant-numeric="tabular-nums">${pct.toFixed(0)}%</text>`;
+  };
+
   const bars = rows
     .map((row, i) => {
       const y = i * rowH + 6;
-      const pct = row.total > 0 ? (row.value / row.total) * 100 : 0;
-      const w = (pct / 100) * barW;
-
-      return `
-        <text x="${labelX}" y="${y + 13}" font-size="14" fill="var(--text-muted)">${esc(truncate(row.label, 15))}</text>
-        <rect x="${labelW}" y="${y + 3}" width="${barW}" height="13" rx="6.5" fill="var(--surface-sunken)" />
-        <rect x="${labelW}" y="${y + 3}" width="${Math.max(0, w).toFixed(1)}" height="13" rx="6.5" fill="var(--learnt)" />
-        <text x="${labelW + barW + 9}" y="${y + 13}" font-size="13" fill="var(--text-faint)"
-          font-variant-numeric="tabular-nums">${pct.toFixed(0)}%</text>`;
+      const label = `<text x="${labelX}" y="${y + (paired ? 19 : 13)}" font-size="14" fill="var(--text-muted)">${esc(truncate(row.label, 15))}</text>`;
+      return paired
+        ? label + bar(row.value, row.total, y + 2, 11, first) + bar(row.value2 ?? 0, row.total2 ?? 0, y + 17, 11, second)
+        : label + bar(row.value, row.total, y + 3, 13, first);
     })
     .join("");
 

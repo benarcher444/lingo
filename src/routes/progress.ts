@@ -5,7 +5,7 @@ import type { Mode } from "../algorithm.js";
 import { requireContext } from "../context.js";
 import { db } from "../db/index.js";
 import { attempts, statSnapshots, wordTypes, words } from "../db/schema.js";
-import { loadScoredWords, summarise, summariseByType } from "../stats.js";
+import { loadScoredWords, summarise, summariseByType, type Summary } from "../stats.js";
 import {
   LISTENING_COLOUR,
   activityChart,
@@ -72,11 +72,17 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
     const language = ctx.currentLanguage;
     const query = request.query as Record<string, string | string[] | undefined>;
+    // Only the chart has a mode, switched inside its own card. The rest of the
+    // page shows written and listening together: a page-wide switch meant
+    // scrolling back to the top for the few parts that followed it.
     const mode: Mode = query["mode"] === "audio" ? "audio" : "written";
 
-    const scored = loadScoredWords(language.id, mode);
+    const scoredBy = {
+      written: loadScoredWords(language.id, "written"),
+      audio: loadScoredWords(language.id, "audio"),
+    };
 
-    if (scored.length === 0) {
+    if (scoredBy.written.length === 0 && scoredBy.audio.length === 0) {
       return reply.type("text/html").send(
         layout(ctx, {
           title: "Progress",
@@ -93,8 +99,16 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       );
     }
 
-    const summary = summarise(scored, mode);
-    const types = summariseByType(scored, mode);
+    const summaryBy = {
+      written: summarise(scoredBy.written, "written"),
+      audio: summarise(scoredBy.audio, "audio"),
+    };
+    const typesBy = {
+      written: summariseByType(scoredBy.written, "written"),
+      audio: summariseByType(scoredBy.audio, "audio"),
+    };
+    // The chart's categories, for its checkboxes and series.
+    const types = typesBy[mode];
 
     /* ---- What to plot ---- */
 
@@ -290,44 +304,114 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
     const todayTotalTested = todayWritten.wordsWithRepeats + todayAudio.wordsWithRepeats;
 
-    /* ---- Status split ---- */
+    /* ---- Where the words stand: one block per mode ---- */
 
-    const statusBands = [
-      // The deeper green is the more learnt, in both themes.
-      { label: "Solid", count: summary.completelyLearnt, colour: "var(--status-solid)" },
-      { label: "Learnt", count: summary.learntNotSolid, colour: "var(--status-learnt)" },
-      { label: "Learning", count: summary.inProgress, colour: "var(--learning-fill)" },
-      { label: "Untouched", count: summary.untouched, colour: "var(--new)" },
+    const standing = (title: string, icon: string, s: Summary) => {
+      if (s.total === 0) {
+        return `<div class="standing"><div class="standing-head">${icon}<strong>${esc(title)}</strong>
+          <span class="hint">No words marked for ${esc(title.toLowerCase())} practice</span></div></div>`;
+      }
+
+      const bands = [
+        // The deeper green is the more learnt, in both themes.
+        { label: "Solid", count: s.completelyLearnt, colour: "var(--status-solid)" },
+        { label: "Learnt", count: s.learntNotSolid, colour: "var(--status-learnt)" },
+        { label: "Learning", count: s.inProgress, colour: "var(--learning-fill)" },
+        { label: "Untouched", count: s.untouched, colour: "var(--new)" },
+      ];
+
+      const share = (count: number) => (100 * count) / s.total;
+
+      return `<div class="standing">
+        <div class="standing-head">${icon}<strong>${esc(title)}</strong>
+          <span class="hint">${s.total} words · ${s.pctLearnt.toFixed(1)}% learnt</span></div>
+        <div class="split-bar">${bands
+          .filter((b) => b.count > 0)
+          .map(
+            (b) =>
+              `<i style="width:${share(b.count).toFixed(2)}%;background:${b.colour}" title="${esc(b.label)}: ${b.count}"></i>`,
+          )
+          .join("")}</div>
+        <div class="split-legend">${bands
+          .map(
+            (b) => `
+          <div class="split-item">
+            <i style="background:${b.colour}"></i>
+            <span class="split-count">${b.count}</span>
+            <span class="split-label">${esc(b.label)}</span>
+            <span class="hint">${share(b.count).toFixed(0)}%</span>
+          </div>`,
+          )
+          .join("")}</div>
+      </div>`;
+    };
+
+    /* ---- Completion by category: both modes per category ---- */
+
+    const categoryIds = [...new Set([...typesBy.written, ...typesBy.audio].map((t) => t.wordTypeId))];
+    const completionRows = categoryIds
+      .map((id) => {
+        const w = typesBy.written.find((t) => t.wordTypeId === id);
+        const a = typesBy.audio.find((t) => t.wordTypeId === id);
+        return {
+          label: (w ?? a)!.wordTypeName,
+          value: w?.learnt ?? 0,
+          total: w?.total ?? 0,
+          value2: a?.learnt ?? 0,
+          total2: a?.total ?? 0,
+        };
+      })
+      .sort((x, y) => x.label.localeCompare(y.label));
+
+    // Measures down the side, modes across: three columns fit any phone, where
+    // one column per measure ran off the side of it.
+    const glance: [string, (s: Summary) => string][] = [
+      ["Words", (s) => String(s.total)],
+      ["Learnt", (s) => `${s.pctLearnt.toFixed(1)}%`],
+      ["Average score", (s) => s.averageScore.toFixed(2)],
+      ["Average accuracy", (s) => `${s.averageAccuracy.toFixed(0)}%`],
+      ["Longest neglect", (s) => `${s.staleDays} day${s.staleDays === 1 ? "" : "s"}`],
     ];
-
-    const splitBar = statusBands
-      .filter((b) => b.count > 0)
+    const glanceRows = glance
       .map(
-        (b) =>
-          `<i style="width:${((100 * b.count) / summary.total).toFixed(2)}%;background:${b.colour}"
-             title="${esc(b.label)}: ${b.count}"></i>`,
+        ([label, value]) =>
+          `<tr><th scope="row">${label}</th><td>${value(summaryBy.written)}</td><td>${value(summaryBy.audio)}</td></tr>`,
       )
       .join("");
+
+    /** This page again with the chart switched, keeping its measure and categories. */
+    const chartHref = (chartMode: Mode) => {
+      const params = new URLSearchParams({ language: String(language.id), mode: chartMode, measure });
+      if (!(showAllCategories && includeOverall)) {
+        params.set("filtered", "1");
+        if (includeOverall) params.set("overall", "1");
+        for (const id of selectedCats) params.append("cats", String(id));
+      }
+      return `/progress?${params}#chart`;
+    };
 
     const body = `
       ${pageHead({
         title: "Progress",
         sub: `How much of your ${esc(language.name)} is holding, and where the gaps are.`,
-        actions: `
-          <a class="btn${mode === "written" ? " btn-primary" : ""}" href="/progress?language=${language.id}&mode=written">Written</a>
-          <a class="btn${mode === "audio" ? " btn-primary" : ""}" href="/progress?language=${language.id}&mode=audio">Listening</a>`,
       })}
 
       <div class="stack">
 
-        <!-- The chart leads: it is the reason to open this page. -->
-        <div class="card">
+        <!-- The chart leads: it is the reason to open this page. Its
+             Written/Listening switch is the page's only one, kept in the card
+             so switching never means scrolling back up. -->
+        <div class="card" id="chart">
           <div class="card-head">
             <div>
               <h2>${esc(MEASURES[measure].label)} over time</h2>
-              <div class="sub">Recorded at the start and end of every session.</div>
+              <div class="sub">${mode === "audio" ? "Listening" : "Written"} practice · recorded at the start and end of every session</div>
             </div>
-            <form method="get" action="/progress" class="row" id="measure-form">
+            <form method="get" action="/progress#chart" class="row" id="measure-form">
+              <div class="chart-mode" role="group" aria-label="Practice mode">
+                <a class="btn btn-sm${mode === "written" ? " btn-primary" : ""}" href="${esc(chartHref("written"))}">Written</a>
+                <a class="btn btn-sm${mode === "audio" ? " btn-primary" : ""}" href="${esc(chartHref("audio"))}">Listening</a>
+              </div>
               <input type="hidden" name="language" value="${language.id}">
               <input type="hidden" name="mode" value="${mode}">
               ${
@@ -354,7 +438,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
           ${series.length > 0 ? legend(series.map((s) => ({ name: s.name, colour: s.colour }))) : ""}
 
-          <form method="get" action="/progress" class="chart-filters">
+          <form method="get" action="/progress#chart" class="chart-filters">
             <input type="hidden" name="language" value="${language.id}">
             <input type="hidden" name="mode" value="${mode}">
             <input type="hidden" name="measure" value="${measure}">
@@ -383,7 +467,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
             <div class="chart-filters-foot">
               <a class="btn btn-sm btn-ghost"
-                 href="/progress?language=${language.id}&mode=${mode}&measure=${measure}">Reset</a>
+                 href="/progress?language=${language.id}&mode=${mode}&measure=${measure}#chart">Reset</a>
             </div>
           </form>
         </div>
@@ -407,27 +491,15 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
           </div>
         </div>
 
-        <!-- Where every word currently sits. These four sum to the total. -->
+        <!-- Where every word currently sits, both modes. Each mode's four
+             bands sum to its total. -->
         <div class="card">
           <div class="card-head">
-            <div><h2>Where your ${esc(language.name)} stands</h2>
-              <div class="sub">${summary.total} words · ${summary.pctLearnt.toFixed(1)}% learnt</div></div>
+            <div><h2>Where your ${esc(language.name)} stands</h2></div>
           </div>
           <div class="card-body">
-            <div class="split-bar">${splitBar}</div>
-            <div class="split-legend">
-              ${statusBands
-                .map(
-                  (b) => `
-                <div class="split-item">
-                  <i style="background:${b.colour}"></i>
-                  <span class="split-count">${b.count}</span>
-                  <span class="split-label">${esc(b.label)}</span>
-                  <span class="hint">${((100 * b.count) / summary.total).toFixed(0)}%</span>
-                </div>`,
-                )
-                .join("")}
-            </div>
+            ${standing("Written", icons.pen, summaryBy.written)}
+            ${standing("Listening", icons.ear, summaryBy.audio)}
             <div class="hint" style="margin-top:12px">
               Solid is above ${(2.556).toFixed(3)}, learnt above ${(2.3).toFixed(1)}.
               Scores decay about 0.01 a day, so words move back down if left alone.
@@ -440,8 +512,12 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
             <div class="card-head"><div><h2>Completion by category</h2>
               <div class="sub">Where your vocabulary is strong and where it is thin.</div></div></div>
             <div class="card-body chart-box">
-              ${barChart(types.map((t) => ({ label: t.wordTypeName, value: t.learnt, total: t.total })))}
+              ${barChart(completionRows, { colours: ["var(--accent)", LISTENING_COLOUR] })}
             </div>
+            ${legend([
+              { name: "Written", colour: "var(--accent)" },
+              { name: "Listening", colour: LISTENING_COLOUR },
+            ])}
           </div>
 
           <div class="card">
@@ -462,25 +538,13 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
           </div>
         </div>
 
-        <div class="summary-grid">
-          <div class="summary-cell">
-            <div class="value">${summary.total}</div><div class="label">Words</div>
-          </div>
-          <div class="summary-cell">
-            <div class="value" style="color:var(--learnt)">${summary.pctLearnt.toFixed(1)}%</div>
-            <div class="label">Learnt</div>
-          </div>
-          <div class="summary-cell">
-            <div class="value">${summary.averageScore.toFixed(2)}</div>
-            <div class="label">Avg score</div>
-          </div>
-          <div class="summary-cell">
-            <div class="value">${summary.averageAccuracy.toFixed(0)}%</div>
-            <div class="label">Avg accuracy</div>
-          </div>
-          <div class="summary-cell">
-            <div class="value">${summary.staleDays}</div>
-            <div class="label">Longest neglect</div>
+        <!-- The headline figures, one row per mode. -->
+        <div class="card">
+          <div class="table-wrap">
+            <table class="data glance">
+              <thead><tr><th></th><th>Written</th><th>Listening</th></tr></thead>
+              <tbody>${glanceRows}</tbody>
+            </table>
           </div>
         </div>
       </div>`;

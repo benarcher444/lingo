@@ -855,7 +855,12 @@ kbd {
   padding-bottom: 12px;
   margin-bottom: 12px;
   border-bottom: 1px dashed var(--border);
+  /* The tick boxes line up with the category box, not its label above it:
+     centred on the whole field, they sat 20px higher than the select. */
+  align-items: flex-end;
 }
+
+.add-settings .check { min-height: 40px; }
 
 /* The two text fields plus the button sit on one line so Tab runs straight
    through them; the button drops below on narrow screens. */
@@ -1182,6 +1187,26 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 }
 
 /* Where every word sits — the four bands sum to the whole vocabulary. */
+/* Progress: one block per mode in "Where it stands". */
+.standing + .standing {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px dashed var(--border);
+}
+.standing-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  margin-bottom: 10px;
+}
+.standing-head svg { width: 17px; height: 17px; stroke-width: 1.8; color: var(--text-muted); }
+
+/* The chart's own Written/Listening switch. */
+.chart-mode { display: inline-flex; gap: 4px; }
+
+table.glance td,
+table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: nowrap; }
 .split-bar {
   display: flex;
   height: 22px;
