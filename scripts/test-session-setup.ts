@@ -102,6 +102,7 @@ const kbdHint = await page.locator("#override kbd").textContent();
 check("button shows the Y hint", kbdHint?.trim() === "Y", `"${kbdHint?.trim()}"`);
 const standing = (await page.locator(".verdict .word-status").textContent()) ?? "";
 check("the verdict says where the word stands", /New|Learning|Learnt|Solid/.test(standing), `"${standing}"`);
+check("written practice has no 'You heard' line", (await page.locator(".verdict .heard").count()) === 0);
 
 const beforeY = await page.locator(".quiz-progress span").first().textContent();
 await page.keyboard.press("y");

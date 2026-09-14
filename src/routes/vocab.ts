@@ -605,7 +605,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
         ${
           detail
-            ? wordDetailPanel(detail, vocabUrl(language.id, listFilters))
+            ? wordDetailPanel(detail, vocabUrl(language.id, listFilters), language.code)
             : // Not when landing back on a row: autofocus would scroll up to this form.
               addWordCard(language.id, types, selectedType, editId === null && !query["saved"], language.code)
         }

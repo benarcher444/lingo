@@ -1265,6 +1265,9 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 
 .detail-card { border-color: var(--accent-border); }
 
+/* The word, with its Hear it button beside it. */
+.detail-term-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; }
+
 .detail-modes {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
@@ -1650,6 +1653,10 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   font-size: 0.85rem;
   text-decoration: line-through;
 }
+
+/* Listening: the word that was spoken, spelled out after the answer. */
+.verdict .heard { color: var(--text-muted); font-size: 0.85rem; }
+.verdict .heard-term { margin-left: 4px; font-family: var(--serif); font-size: 1.1rem; color: var(--text); }
 
 /* Where the word stands after the answer: "Learnt", or "Learnt → Solid". */
 .verdict .word-status {

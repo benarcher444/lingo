@@ -9,8 +9,9 @@
 type Voice = { lang: string; name: string };
 
 // Imported by path so the compiler does not try to type-check browser code.
-const { chooseVoice } = (await import("../public/voices.js" as string)) as {
+const { chooseVoice, spokenForm } = (await import("../public/voices.js" as string)) as {
   chooseVoice: (voices: Voice[], languageCode: string) => Voice | null;
+  spokenForm: (text: string) => string;
 };
 
 let passed = 0;
@@ -40,6 +41,12 @@ console.log("\nOther languages are unchanged");
 check("exact accent first", pick(["fr-CA", "fr-FR"], "fr-FR"), "fr-FR");
 check("then the language, in the browser's order", pick(["fr-CA", "fr-BE"], "fr-FR"), "fr-CA");
 check("nothing suitable", pick(["en-GB"], "es-US"), null);
+
+console.log("\nWhat is said");
+check("the word as written", spokenForm("la femme"), "la femme");
+check("without its note", spokenForm("car (c)"), "car");
+check("only the first alternative", spokenForm("fin/mince"), "fin");
+check("a note on its own is still said", spokenForm("(pq)"), "(pq)");
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

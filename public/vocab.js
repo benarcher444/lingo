@@ -10,6 +10,7 @@
  */
 
 import { attachAccents, buildAccentBar } from "/static/accents.js";
+import { speak } from "/static/voices.js";
 
 const form = document.getElementById("add-word-form");
 const term = document.getElementById("term");
@@ -35,6 +36,17 @@ buildAccentBar(document.getElementById("accent-bar-slot"), [term]);
 // The inline edit row is rendered server-side, so wire it up if it is present.
 for (const input of document.querySelectorAll("input[name=term]")) {
   if (input !== term) attachAccents(input);
+}
+
+// The word record's "Hear it" button. Hidden where the browser cannot speak.
+if ("speechSynthesis" in window) {
+  window.speechSynthesis.getVoices(); // Voices load asynchronously; start now.
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest?.("[data-speak]");
+    if (button) speak(button.dataset.speak, button.dataset.lang);
+  });
+} else {
+  for (const button of document.querySelectorAll("[data-speak]")) button.hidden = true;
 }
 
 /* ------------------------------------------------------------------

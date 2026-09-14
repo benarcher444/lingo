@@ -104,6 +104,9 @@ await page.fill(".quiz-input", "definitely wrong");
 await page.press(".quiz-input", "Enter");
 await page.waitForSelector(".verdict", { timeout: 10_000 });
 
+const heard = (await page.locator(".verdict .heard-term").textContent()) ?? "";
+check("the verdict spells out the word that was spoken", heard.includes(word), `"${heard}" for "${word}"`);
+
 const beforeBare = (await audible()).length;
 await page.keyboard.press("r");
 await page.waitForTimeout(150);

@@ -3,7 +3,7 @@
  * owns all progress writes; this file only sequences the questions and renders.
  */
 
-import { chooseVoice } from "./voices.js";
+import { chooseVoice, spokenForm } from "./voices.js";
 
 const config = window.__practice;
 
@@ -366,6 +366,16 @@ function statusLine(result) {
   return `<div class="word-status${move}">${pill(was)}<span class="arrow" aria-hidden="true">→</span>${pill(now)}</div>`;
 }
 
+/**
+ * Listening: the word that was spoken, spelled out once you have answered, so
+ * what you heard is tied to how it is written.
+ */
+function heardLine() {
+  if (current.direction !== "listen") return "";
+  return `<div class="heard"><span class="heard-label">You heard</span>
+    <span class="heard-term" lang="${escapeHtml(config.languageCode || "")}">${escapeHtml(current.card.term)}</span></div>`;
+}
+
 function showVerdict(result, given) {
   const verdict = document.getElementById("verdict");
   const input = document.getElementById("answer");
@@ -379,6 +389,7 @@ function showVerdict(result, given) {
       <div class="verdict verdict-right">
         <div class="headline">Correct</div>
         <div class="answer">${escapeHtml(result.expected)}</div>
+        ${heardLine()}
         ${statusLine(result)}
       </div>`;
   } else {
@@ -389,6 +400,7 @@ function showVerdict(result, given) {
         <div class="headline">${skipped ? "Skipped" : "Not quite"}</div>
         <div class="answer">${escapeHtml(result.expected)}</div>
         ${skipped ? "" : `<div class="given">${escapeHtml(given)}</div>`}
+        ${heardLine()}
         ${statusLine(result)}
       </div>
       ${
@@ -556,16 +568,7 @@ function speakTerm(text) {
   // cancelling an idle engine can delay what is spoken straight after it.
   if (synth.speaking || synth.pending) synth.cancel();
 
-  // Speak the plain word: drop parenthetical notes (otherwise it reads "because
-  // open bracket p q") and take the first alternative before a slash (otherwise
-  // "to do/make" is read as "to do slash make").
-  const spoken = String(text)
-    .replace(/\([^)]*\)/g, " ")
-    .split("/")[0]
-    .replace(/\s+/g, " ")
-    .trim();
-
-  const utterance = utteranceFor(spoken || text);
+  const utterance = utteranceFor(spokenForm(text));
   utterance.rate = 0.9;
   synth.speak(utterance);
 }

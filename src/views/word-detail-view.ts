@@ -92,7 +92,7 @@ function modeCard(stats: ModeStats, languageName: string): string {
   </div>`;
 }
 
-export function wordDetailPanel(detail: WordDetail, closeHref: string): string {
+export function wordDetailPanel(detail: WordDetail, closeHref: string, languageCode: string): string {
   // One line per mode that has any history, in the same colours the Today
   // card uses, so written and listening read the same way everywhere.
   const series: Series[] = [
@@ -146,7 +146,11 @@ export function wordDetailPanel(detail: WordDetail, closeHref: string): string {
   return `<div class="card detail-card">
     <div class="card-head">
       <div>
-        <h2 class="term" style="font-size:1.35rem">${esc(detail.term)}</h2>
+        <div class="detail-term-row">
+          <h2 class="term" style="font-size:1.35rem">${esc(detail.term)}</h2>
+          <!-- public/vocab.js speaks it, in the voice practice uses. -->
+          <button class="btn btn-sm" type="button" data-speak="${esc(detail.term)}" data-lang="${esc(languageCode)}">${icons.speaker}Hear it</button>
+        </div>
         <div class="sub">${esc(detail.english)} · <span class="pill pill-plain">${esc(detail.wordTypeName)}</span></div>
         ${detail.notes ? `<div class="hint" style="margin-top:4px">${esc(detail.notes)}</div>` : ""}
       </div>

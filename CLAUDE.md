@@ -372,7 +372,8 @@ rejecting a correct answer is worse than accepting a phrasing the learner
 plausibly meant. If it ever needs tightening, that is the decision to revisit.
 
 Speech strips both the notes and everything after the first slash, or it reads
-"because open bracket p q" and "to do slash make".
+"because open bracket p q" and "to do slash make". `spokenForm` in
+`public/voices.js` does it for every page that speaks.
 
 An empty answer never matches, whatever the rules — that is the skip path.
 
@@ -487,7 +488,8 @@ time a word is added, which reads as going backwards.
 
 `public/practice.js` owns it. Three pieces, each for a reason:
 
-- **Voice choice** — `public/voices.js`, shared with the chat page. Exact
+- **Voice choice** — `public/voices.js`, shared with the chat page and the
+  word record's Hear it button (`speak()`). Exact
   language tag first (`fr-FR`), then the nearest accent the device has, then
   the language family, each in the order the browser lists them. Spanish is
   `es-US` (Latin American, as the user asked): Chrome has a Google US Spanish
@@ -507,6 +509,9 @@ time a word is added, which reads as going backwards.
   cannot mean replay while typing: English answers contain r. A lone "r" is
   never an English meaning, so that submission is safe to intercept. Once the
   answer is locked (verdict showing), a bare `r` does replay.
+- **Spelled out after answering** — the listening verdict shows the word that
+  was spoken, under its meaning, so the sound is tied to the spelling. The
+  owner asked for it on 2026-09-14.
 
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
@@ -584,7 +589,11 @@ If the lag persists, establish the device and browser before changing more.
   offers passwords, cards and addresses unless told the field is none of them.
   Forms carry `autocomplete="off"` and text inputs `NO_AUTOFILL`
   (`src/views/components.ts`), which adds the password managers' own opt-outs.
-  Browsers do not all honour these, and it is untested on the user's phone.
+  They did not stop it: on 2026-09-14 the owner still saw the bar, showing
+  passwords, payment methods and addresses. On Android that bar is almost
+  certainly Chrome's own keyboard accessory. Nobody in Chrome's or Bitwarden's
+  forums reports a page attribute that hides it; only Chrome's settings do.
+  So don't keep adding attributes blind. Establish the phone and browser first.
 - **Filters must travel — and editing must not reload.** Edit, Save, Cancel
   and Delete happen in place (`public/vocab.js` swaps the row, fetching
   `/vocab/words/:id/edit-row`; the save returns the new row as JSON when sent
@@ -650,7 +659,8 @@ the demo account seeded.
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
-| `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched |
+| `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out |
+| `npm run test:hear` | The word record's Hear it button says the word in the language's voice |
 | `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
 | `npm run test:entry` | Keyboard word entry |
 | `npm run test:daily` | Session-based daily counting |

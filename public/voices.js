@@ -29,3 +29,38 @@ export function chooseVoice(voices, languageCode) {
 
   return voices.find((v) => tag(v).startsWith(lang.slice(0, 2))) ?? null;
 }
+
+/**
+ * The plain word to say: without parenthetical notes, or it reads "because
+ * open bracket p q", and only the first alternative before a slash, or "to
+ * do/make" is read as "to do slash make".
+ */
+export function spokenForm(text) {
+  const spoken = String(text)
+    .replace(/\([^)]*\)/g, " ")
+    .split("/")[0]
+    .replace(/\s+/g, " ")
+    .trim();
+  return spoken || String(text);
+}
+
+/**
+ * Say a word once in the language's voice, for pages with no speech set-up of
+ * their own. Call it from a tap or click: browsers hold back speech a page
+ * starts by itself.
+ */
+export function speak(text, languageCode) {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+
+  // Only cut off something actually playing: cancelling an idle engine can
+  // delay what is spoken straight after it.
+  if (synth.speaking || synth.pending) synth.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(spokenForm(text));
+  utterance.lang = languageCode || "en-GB";
+  const voice = chooseVoice(synth.getVoices(), languageCode);
+  if (voice) utterance.voice = voice;
+  utterance.rate = 0.9;
+  synth.speak(utterance);
+}

@@ -79,7 +79,8 @@ mid-session and it picks up where you were.
 **Listening practice** — the word is spoken in the target language and you type
 what it *means* in English, so it tests comprehension rather than spelling back
 what you just heard. Type `r` then <kbd>Enter</kbd> to hear it again, or just `r`
-once you've answered. Speech uses the browser's own voices, so there is no audio
+once you've answered, when the verdict also spells out the word you heard.
+Speech uses the browser's own voices, so there is no audio
 to download or cache. But voices vary by browser, and Chrome's French and
 Spanish ones are synthesised online, so they need a connection. Spanish is read
 with a Latin American accent wherever the device has one.
@@ -127,7 +128,8 @@ bottom bar.
 Clicking a word on the vocabulary page opens its full record: times tested,
 correct and wrong per direction, accuracy, streak, when it was last seen, an
 itemised breakdown of how its score is composed, and its score replayed over
-time from every answer ever given.
+time from every answer ever given. A Hear it button beside the word says it
+aloud.
 
 ---
 
@@ -175,7 +177,8 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:search` | Vocabulary search and category filter |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:override` | "I was right" counts a miss as right, once |
-| `npm run test:listening` | Speech warm-up, and `r` to replay |
+| `npm run test:listening` | Speech warm-up, `r` to replay, the heard word spelled out |
+| `npm run test:hear` | The word record's Hear it button |
 | `npm run test:vocab-edit` | Editing words in place |
 | `npm run test:duplicates` | A word can't be added twice |
 | `npm run test:auth` | Invitation-only sign-up, lockout, secure cookie |
