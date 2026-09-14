@@ -200,18 +200,27 @@ export function wordStatus(score: number, tested: number): WordStatus {
 
 /**
  * Selection weight. Flat 50 at or below 0.6, then exponential decay, so a
- * learnt word is roughly 50x less likely to come up than an unseen one.
+ * learnt word is about 50x less likely to come up than an unseen one. Past the
+ * solid line it is 0: 50·e^(−2(score − 0.6)) drops below 1 at exactly
+ * 0.6 + ln(50)/2 = 2.556, and rounds down to nothing. A solid word is not
+ * picked at all until neglect brings its score back under the line.
  *
- * Clamped to a floor of 1: the original let this reach 0, which made a
- * thoroughly-known word unreachable rather than merely rare.
+ * That is the original's rule, and the reason the solid threshold is 2.556:
+ * the owner set it where a word stops being drawn. The rebuild once clamped
+ * this to a floor of 1, taking the 0 for a bug, and solid words kept coming
+ * back. It was not a bug.
  */
 export function selectionOdds(score: number): number {
-  return Math.max(1, Math.floor(50 * Math.exp(-2 * Math.max(0, score - 0.6))));
+  return Math.floor(50 * Math.exp(-2 * Math.max(0, score - 0.6)));
 }
 
 /**
  * Weighted sample without replacement. `count` of 0 (or >= the pool size)
  * returns everything, matching the original's "blank means all".
+ *
+ * Items weighing 0 (solid words) are left out, so a session can come out
+ * smaller than asked. Only when nothing weighs more than 0 are they all
+ * treated alike, so a category that is entirely solid can still be practised.
  */
 export function weightedSample<T>(
   pool: T[],
@@ -221,7 +230,10 @@ export function weightedSample<T>(
 ): T[] {
   if (count <= 0 || count >= pool.length) return [...pool];
 
-  const remaining = pool.map((item) => ({ item, weight: Math.max(1, weight(item)) }));
+  const weighed = pool.map((item) => ({ item, weight: Math.max(0, weight(item)) }));
+  const remaining = weighed.some((entry) => entry.weight > 0)
+    ? weighed.filter((entry) => entry.weight > 0)
+    : weighed.map((entry) => ({ ...entry, weight: 1 }));
   const picked: T[] = [];
 
   while (picked.length < count && remaining.length > 0) {

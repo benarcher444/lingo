@@ -147,18 +147,14 @@ function spellingKey(term: string): string {
 }
 
 /**
- * A word already in the category's language spelled the same way, in any
- * category. `exceptId` skips the word being edited, so saving it unchanged is
- * never a clash.
+ * A word in the same category spelled the same way. `exceptId` skips the word
+ * being edited, so saving it unchanged is never a clash.
+ *
+ * Only within one category: one spelling can be two words, like como the
+ * conjunction (as) and como the conjugation (I eat), and every practice card
+ * shows its category to tell them apart.
  */
 function findSameSpelling(wordTypeId: number, term: string, exceptId?: number) {
-  const language = db
-    .select({ languageId: wordTypes.languageId })
-    .from(wordTypes)
-    .where(eq(wordTypes.id, wordTypeId))
-    .get();
-  if (!language) return undefined;
-
   const key = spellingKey(term);
   return db
     .select({
@@ -169,13 +165,13 @@ function findSameSpelling(wordTypeId: number, term: string, exceptId?: number) {
     })
     .from(words)
     .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
-    .where(eq(wordTypes.languageId, language.languageId))
+    .where(eq(words.wordTypeId, wordTypeId))
     .all()
     .find((w) => w.id !== exceptId && spellingKey(w.term) === key);
 }
 
 function duplicateMessage(existing: { term: string; english: string; wordTypeName: string }): string {
-  return `“${existing.term}” is already in your list, as “${existing.english}” (${existing.wordTypeName}). Edit that entry instead — a second meaning can go in with a slash.`;
+  return `“${existing.term}” is already in ${existing.wordTypeName}, as “${existing.english}”. Edit that entry instead (a second meaning can go in with a slash), or file this one under another category.`;
 }
 
 function loadListRow(languageId: number, wordId: number) {
@@ -724,7 +720,7 @@ function flashMessage(query: Record<string, string | undefined>): string {
   if (query["error"] === "duplicate")
     return alert(
       "error",
-      `“${query["dup"] ?? "That word"}” is already in your list. Edit that entry instead — a second meaning can go in with a slash.`,
+      `“${query["dup"] ?? "That word"}” is already in that category. Edit that entry instead (a second meaning can go in with a slash), or file this one under another category.`,
     );
   if (query["error"] === "word")
     return alert("error", "That word could not be saved — check the fields and try again.");

@@ -13,15 +13,11 @@ import { loadScoredWords, recordSnapshot, summarise, summariseByType } from "../
 import { NO_AUTOFILL, emptyState, pageHead, progressBanner } from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
 
-const MODE_COPY: Record<Mode, { title: string; sub: string }> = {
-  written: {
-    title: "Written practice",
-    sub: "Each word comes up in both directions and keeps coming back until you get both right.",
-  },
-  audio: {
-    title: "Listening practice",
-    sub: "Hear the word, then type what it means in English. Replay as often as you like.",
-  },
+// No explanation under the heading: the owner knows how the modes work and
+// asked for the lines to go.
+const MODE_COPY: Record<Mode, { title: string }> = {
+  written: { title: "Written practice" },
+  audio: { title: "Listening practice" },
 };
 
 export async function practiceRoutes(app: FastifyInstance): Promise<void> {
@@ -41,7 +37,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           layout(ctx, {
             title: copy.title,
             body:
-              pageHead({ title: copy.title, sub: copy.sub }) +
+              pageHead({ title: copy.title }) +
               emptyState({
                 title: "No language yet",
                 body: "Create a language and add some vocabulary, and this is where you will practise it.",
@@ -61,7 +57,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           layout(ctx, {
             title: copy.title,
             body:
-              pageHead({ title: copy.title, sub: copy.sub }) +
+              pageHead({ title: copy.title }) +
               emptyState({
                 title: "Please add some words to your vocabulary to start",
                 body:
@@ -91,10 +87,16 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
         countsByType: Object.fromEntries(
           typeSummaries.map((t) => [t.wordTypeId, t.total]),
         ) as Record<string, number>,
+        // Solid words are not picked (see selectionOdds), so the hint says how
+        // many a session can actually draw on.
+        due: summary.total - summary.completelyLearnt,
+        dueByType: Object.fromEntries(
+          typeSummaries.map((t) => [t.wordTypeId, t.total - t.completelyLearnt]),
+        ) as Record<string, number>,
       };
 
       const body = `
-        ${pageHead({ title: copy.title, sub: copy.sub })}
+        ${pageHead({ title: copy.title })}
         <div class="stack">
           <div id="overview">
             ${progressBanner({
@@ -106,7 +108,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
           </div>
 
           <div id="setup" class="card">
-            <div class="card-head"><div><h2>Start a session</h2><div class="sub">Words you know well come up far less often.</div></div></div>
+            <div class="card-head"><div><h2>Start a session</h2></div></div>
             <div class="card-body">
               <form id="setup-form" class="row setup-row" autocomplete="off">
                 <div class="field setup-category">
@@ -169,7 +171,6 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
 
     const head = pageHead({
       title: "Conversation",
-      sub: "The tutor starts the conversation and keeps it going. What you write is corrected first, then answered, and you can ask the teacher about anything.",
     });
 
     if (!ctx.currentLanguage) {
@@ -246,7 +247,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
         <div class="card">
           <div class="card-head">
             <div><h2>${esc(language.name)} conversation</h2>
-              <div class="sub" id="chat-sub">Choose what to talk about. The tutor opens, keeps it moving, and corrects what you write.</div></div>
+              <div class="sub" id="chat-sub"></div></div>
             <button class="btn btn-sm btn-ghost" id="chat-mute" type="button" aria-pressed="false">${icons.speaker}<span>Sound on</span></button>
           </div>
 

@@ -1,7 +1,8 @@
 /**
- * Checks that a word already in the language cannot be added again, or made by
- * renaming another word, whatever its case, spacing or category. Accents still
- * make a different word.
+ * Checks that a word already in a category cannot be added to it again, or
+ * made by renaming or moving another word, whatever its case or spacing.
+ * Another category may hold the same spelling (como the conjunction and como
+ * the conjugation), and accents still make a different word.
  *
  *   npx tsx scripts/test-duplicates.ts
  *
@@ -9,7 +10,7 @@
  * removed again, even if a check fails.
  */
 
-import { eq, inArray } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "../src/db/index.js";
 import { languages, users, wordTypes, words } from "../src/db/schema.js";
@@ -77,6 +78,8 @@ const save = (id: number, term: string, english: string, wordTypeId: number) =>
   });
 
 const idOf = (term: string) => db.select().from(words).where(eq(words.term, term)).get()?.id;
+const idIn = (term: string, wordTypeId: number) =>
+  db.select().from(words).where(and(eq(words.term, term), eq(words.wordTypeId, wordTypeId))).get()?.id;
 
 try {
   console.log("\nAdding\n");
@@ -93,7 +96,7 @@ try {
   check("different case and spacing are the same word", shouted.status === 409, `status ${shouted.status}`);
 
   const elsewhere = await add(TERM, second.id);
-  check(`another category (${second.name}) is still a duplicate`, elsewhere.status === 409, `status ${elsewhere.status}`);
+  check(`the same spelling in another category (${second.name}) is allowed`, elsewhere.status === 200, `status ${elsewhere.status}`);
 
   const accented = await add(ACCENTED, first.id);
   check("an accent makes a different word", accented.status === 200, `status ${accented.status}`);
@@ -117,8 +120,11 @@ try {
   check("renaming onto an existing spelling is refused", rename.status === 409, `status ${rename.status}`);
   check("and the word keeps its name", idOf(ACCENTED) === accentedId);
 
-  const keep = await save(idOf(TERM)!, TERM, "a new meaning", first.id);
+  const keep = await save(idIn(TERM, first.id)!, TERM, "a new meaning", first.id);
   check("saving a word under its own spelling is fine", keep.status === 200, `status ${keep.status}`);
+
+  const moved = await save(idIn(TERM, second.id)!, TERM, "test", first.id);
+  check("moving it into a category that already has it is refused", moved.status === 409, `status ${moved.status}`);
 } finally {
   db.delete(words).where(inArray(words.term, [TERM, ACCENTED])).run();
 }

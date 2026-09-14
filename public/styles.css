@@ -1596,7 +1596,18 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
   word-break: break-word;
 }
 
-.quiz-meta { color: var(--text-faint); font-size: 0.82rem; }
+.quiz-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 10px;
+  color: var(--text-faint);
+  font-size: 0.82rem;
+}
+/* The category is shown plainly: it tells apart words spelt the same, like
+   como the conjunction (as) and como the conjugation (I eat). */
+.quiz-meta .quiz-category { font-size: 0.82rem; }
 
 .quiz-form { margin-top: 24px; display: grid; gap: 11px; }
 
@@ -2061,13 +2072,24 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 
   /* Accent keys are tapped constantly while adding words, so they get a full
      thumb-sized target. They wrap onto more rows, which is the better trade. */
+  /* One row that scrolls sideways, not five lines of keys. The label and the
+     typing tip give way; a key cut off at the edge shows there is more. */
+  .accent-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    gap: 6px;
+    scrollbar-width: none;
+  }
+  .accent-bar::-webkit-scrollbar { display: none; }
+  .accent-bar-label,
+  .accent-bar-hint { display: none; }
+
   .accent-key {
+    flex: 0 0 auto;
     min-width: 44px;
     height: 44px;
     font-size: 1.15rem;
   }
-
-  .accent-bar { gap: 6px; }
 }
 
 @media (min-width: 861px) {

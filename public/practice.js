@@ -141,13 +141,18 @@ function refreshCountHint() {
   countInput.max = String(available);
 
   const asked = Number(countInput.value);
+  const chosen = typeSelect?.value;
+  const due = (chosen ? config.dueByType?.[chosen] : config.due) ?? available;
+  const solid = available - due;
 
-  if (!countInput.value.trim() || asked === 0) {
+  if (!countInput.value.trim() || asked === 0 || asked >= available) {
+    // "Everything" means everything, solid words included.
     countHint.textContent = `All ${available} words`;
-  } else if (asked >= available) {
-    countHint.textContent = `All ${available} available`;
+  } else if (due === 0) {
+    countHint.textContent = `All ${available} solid`;
   } else {
-    countHint.textContent = `${available} available`;
+    // Solid words are not picked, so a session stops at the due ones.
+    countHint.textContent = solid > 0 ? `${due} due · ${solid} solid` : `${due} available`;
   }
 }
 
@@ -260,9 +265,9 @@ function render() {
                    <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
                  </svg>
                </button>
-               <div class="quiz-meta">Tap or type <kbd>r</kbd> ↵ to replay · what does it mean? · ${escapeHtml(card.wordType)}</div>`
+               <div class="quiz-meta"><span class="pill pill-plain quiz-category">${escapeHtml(card.wordType)}</span><span><kbd>r</kbd> ↵ replays</span></div>`
             : `<div class="quiz-prompt">${escapeHtml(prompt)}</div>
-               <div class="quiz-meta">${escapeHtml(card.wordType)}</div>`
+               <div class="quiz-meta"><span class="pill pill-plain quiz-category">${escapeHtml(card.wordType)}</span></div>`
         }
 
         <form class="quiz-form" id="answer-form" autocomplete="off">

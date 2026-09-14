@@ -48,7 +48,8 @@ await page.waitForTimeout(120);
 check("accepts an arbitrary number", (await field.inputValue()) === "7");
 
 const hint = await page.locator("#count-hint").textContent();
-check("hint shows what is available", Boolean(hint && /available/.test(hint)), `"${hint?.trim()}"`);
+// "12 available", or "23 due · 19 solid" when some words are solid and so not picked.
+check("hint shows what is available", Boolean(hint && /\d+ (available|due)/.test(hint)), `"${hint?.trim()}"`);
 
 // Switching to a smaller category should pull an oversized number down.
 await field.fill("999");

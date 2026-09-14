@@ -319,7 +319,14 @@ both themes are handled by the stylesheet rather than duplicated in JS.
 
 - The score formula, both variants, including the negative neglect term.
 - The 2.3 / 2.556 thresholds.
-- Exponential-odds weighted sampling.
+- Exponential-odds weighted sampling, **including its 0 past the solid line**.
+  A solid word (over 2.556, where `50·e^(−2(score − 0.6))` rounds down to 0)
+  is not picked until neglect brings it back under. The owner set 2.556 there
+  on purpose. The rebuild clamped the odds to a floor of 1 until 2026-09-14,
+  calling the 0 a bug. On the live data that made about half of every 20-word
+  session solid words (11 in French written). A session only draws on
+  non-solid words, so it can come out smaller than asked. "All" still includes
+  solid words, and a category that is entirely solid still runs.
 - "Answer until correct in both directions" as the written session loop.
 - De-accented, case-insensitive matching with a manual override — and `y` as
   the override key, as it was at the terminal prompt.
@@ -334,7 +341,10 @@ both themes are handled by the stylesheet rather than duplicated in JS.
 - Snapshots are recorded at the **end** of a session as well as the start.
 - `attempts` stores one row per answer, which is what makes the per-word score
   history replayable and the daily count possible.
-- Selection odds are clamped to a floor of 1 — the original could reach 0.
+- No explanatory lines under the Written, Listening and Conversation
+  headings, or under "Start a session". The owner knows how the modes work
+  and asked for them to go (2026-09-14). Each practice card shows its
+  category as a tag.
 - `deaccent` is Unicode-normalised rather than a hand-written character table.
 - **Listening asks for the English meaning**, not the target word spelled back.
   It tests comprehension rather than transcription. Only `from_english` expects
@@ -379,8 +389,11 @@ An empty answer never matches, whatever the rules — that is the skip path.
 
 ### Duplicate words
 
-A word cannot be added twice within a language, in any category, and cannot
-be created by renaming another word through Edit. `spellingKey` in
+A word cannot be added twice within a category, or created by renaming or
+moving another word into it through Edit. Another category may hold the same
+spelling. The owner asked for that on 2026-09-14, for *como* the conjunction
+(as) and *como* the conjugation (I eat). The category tag on every practice
+card tells them apart. Before that, the check covered the whole language. `spellingKey` in
 `src/routes/vocab.ts` decides what "the same" means:
 
 - **Ignored:** case, extra spacing, and curly versus straight apostrophes.
@@ -639,6 +652,9 @@ are the ones that matter.
 
 The table carries its own reverse entries (`é` + `'` maps back to `e'`), so the
 browser needs no special case for "press twice to keep it literal".
+
+On a phone the accent bar is one row of 44px keys that scrolls sideways, with
+the label and typing tip hidden. Wrapping, French's 14 keys took five lines.
 
 ### Verification
 

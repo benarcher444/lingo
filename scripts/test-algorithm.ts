@@ -185,7 +185,9 @@ console.log("\nSelection weighting");
 check("unseen word gets the maximum weight", selectionOdds(0), 50);
 check("weight is flat below 0.6", selectionOdds(0.5), 50);
 check("a learnt word is rare but reachable", selectionOdds(2.3), 1);
-check("never returns 0 (the original could)", selectionOdds(99), 1);
+check("on the solid line, still reachable", selectionOdds(2.556), 1);
+check("a solid word is not picked (the original's rule)", selectionOdds(2.5561), 0);
+check("nor anything above it", selectionOdds(3.5), 0);
 
 console.log("\nSampling");
 {
@@ -195,6 +197,13 @@ console.log("\nSampling");
   check("without replacement", new Set(picked).size, 3);
   check("count 0 means everything", weightedSample(pool, 0, () => 1).length, 5);
   check("count above pool size returns pool", weightedSample(pool, 99, () => 1).length, 5);
+
+  // 1 and 3 weigh 0, as solid words do.
+  const weights = new Map([[1, 0], [2, 5], [3, 0], [4, 5], [5, 1]]);
+  const drawn = weightedSample(pool, 4, (n) => weights.get(n)!);
+  check("weight 0 is never drawn", drawn.every((n) => n !== 1 && n !== 3), true);
+  check("so a session can be smaller than asked", drawn.length, 3);
+  check("unless there is nothing else to draw", weightedSample([1, 3, 6], 2, (n) => weights.get(n) ?? 0).length, 2);
 }
 
 console.log("\nDates");

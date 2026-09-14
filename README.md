@@ -48,8 +48,9 @@ page reload.
 
 Editing happens in place: Edit, change it, <kbd>Enter</kbd> to save or
 <kbd>Esc</kbd> to cancel, and the list stays where it was. A word already in the
-language can't be added twice, whatever its case, spacing or category, and the
-message points to the entry you already have.
+category can't be added to it twice, whatever its case or spacing, and the
+message points to the entry you already have. The same spelling can sit in two
+categories, like *como* the conjunction and *como* the conjugation.
 
 **Accents without changing keyboard layout.** Type the plain letter then the
 accent key:
@@ -154,7 +155,9 @@ instead of only ever going up. Score is derived on every read rather than stored
 so it can never go stale as the calendar moves.
 
 Word selection weights by `floor(50 · e^(−2(score − 0.6)))` — a learnt word is
-about 50× less likely to come up than an unseen one, but never impossible.
+about 50× less likely to come up than an unseen one. A solid word (above 2.556,
+where the weight rounds down to 0) is not picked at all until neglect brings it
+back under the line.
 
 Carried over from the original Python app; `npm test` covers it.
 
