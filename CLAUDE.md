@@ -741,6 +741,17 @@ verbs_infinitive 405, adjectives 252, adverbs 182, phrases 155, nadj 52,
 prepositions 36, conjunctives 30. It is correctly accented throughout — every
 word in the live database was checked against it and none were wrong.
 
+**Corrected on 2026-09-17**, because the owner copies words out of these files:
+Spanish `lamo`→`malo`, `frio`→`frío`, `dificil`→`difícil`, `barao`→`barato`,
+`tempoco`→`tampoco`, `todavia`→`todavía`. 74 rows also carried a line break
+inside the word itself (`"les cheveux\n"`) or spaces around a field; those were
+tidied, which is why a naive line-by-line reader miscounts these files. Parse
+them as real CSV — quoted fields hold commas *and* newlines.
+
+Eight duplicate words remain, left alone pending the owner's call: French
+`moi`, `toi`, `la grammaire`, `un arbre`, `une affaire` (identical both times),
+and `le groupe`, `le mineur`, `la sécurité` (two different meanings each).
+
 Not imported, deliberately: a fresh start was asked for. An importer would be
 small — map each CSV to a category, insert, leave progress empty. Note that
 `conjugations` (523) are inflected forms rather than dictionary entries, and
@@ -758,8 +769,12 @@ small — map each CSV to a category, insert, leave progress empty. Note that
 
 ## Working agreements
 
-- `old_code_repo/` is read-only reference. Never edit it, never import from it.
-  Reading its CSVs as data for an audit is fine.
+- `old_code_repo/` is reference, and its **code** is frozen: never edit or
+  import from it. Its **vocabulary CSVs are the exception** — the owner copies
+  words from them into the app, so a typo there becomes a typo in the live
+  data. On 2026-09-17 they asked for those files to be corrected, and they
+  were. Fixing a wrong word there is expected; anything else in that folder
+  still is not.
 - Run `npm run typecheck` and the relevant suites before calling a change done.
   Run `npm run shot` when touching anything visual and keep the warnings at zero.
 - **Verify visually.** For UI work that means looking at real screenshots, not
