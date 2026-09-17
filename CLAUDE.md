@@ -774,6 +774,29 @@ small — map each CSV to a category, insert, leave progress empty. Note that
 - Say plainly when something was my error. Several bugs this session were mine,
   and a couple of "failures" were bad tests rather than broken features — report
   which it was.
+- **Keep this file current.** Update it as part of the change that makes it
+  true, unprompted — decisions, traps and anything surprising a future session
+  would otherwise rediscover.
+- **Fix a data bug; do not write it up and leave it.** Anything that miscounts
+  what the app records (progress, attempts, snapshots) gets fixed straight
+  away, with a regression test, or raised plainly with the owner. The override
+  double-count sat in this file as a known "trap" for weeks and skewed every
+  score before it was repaired; that was the wrong call.
+
+### Working from a phone (cloud sessions)
+
+The owner works from claude.ai/code or the Claude app's Code tab while away
+from the laptop. A cloud session clones this repo into an isolated VM, so:
+
+- **It cannot reach the live server.** No SSH, no `/opt/lingo/data/app.db`.
+  Data repairs and one-off scripts against real data wait for a laptop
+  session — say so rather than pretending a fix landed.
+- **`.env` and `allowed_emails.csv` are not in the repo**, so the AI
+  conversation and the invite list cannot be exercised there.
+- **Run `npm run typecheck` and `npm test`.** The browser suites need a running
+  server and a real Chrome; CI runs the server-free ones on every push.
+- **Merging to `main` deploys to the live site**, so the pull request is the
+  review step. Leave `main` green.
 
 ### Environment notes
 
