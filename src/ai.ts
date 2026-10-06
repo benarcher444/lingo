@@ -33,7 +33,7 @@ export interface CompletionRequest {
   effort: "low" | "medium";
   maxTokens?: number;
   /** Which tutor role is asking. Lets the test stand-in answer in kind. */
-  purpose?: "interpreter" | "partner" | "teacher";
+  purpose?: "interpreter" | "partner" | "teacher" | "composer" | "marker";
 }
 
 export interface Provider {
@@ -187,6 +187,26 @@ class MockProvider implements Provider {
         return `Corrigé : ${latest}`;
       case "teacher":
         return `Explication ${turn} : ${latest.slice(0, 60)}`;
+      // Translation practice reads JSON back, so the stand-in answers in JSON.
+      case "composer": {
+        const words = latest
+          .split("\n")
+          .map((line) => line.replace(/^-\s*/, "").split(" (")[0]?.trim() ?? "")
+          .filter(Boolean);
+        return JSON.stringify({
+          target: `[${level}] ${words.join(" ")}`,
+          english: `the sentence with ${words.join(", ")}`,
+        });
+      }
+      case "marker": {
+        const wrote = latest.match(/^Learner wrote: (.*)$/m)?.[1] ?? "";
+        return JSON.stringify({
+          verdict: wrote.includes("perfect") ? "right" : "close",
+          comment: `Marked ${wrote.slice(0, 30)}`,
+          corrected: `Corrigé : ${wrote}`,
+          notes: [{ wrote: wrote.slice(0, 20), better: "mieux", why: "mock note" }],
+        });
+      }
       default:
         return `[${scene} · ${level}] Réponse ${turn} ?`;
     }

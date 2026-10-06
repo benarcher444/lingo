@@ -1707,6 +1707,84 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
 .word-status.up .arrow { color: var(--learnt); }
 .word-status.down .arrow { color: var(--danger); }
 
+/* ============================================================
+   Translation practice — a sentence built from your own words
+   ============================================================ */
+
+.tr-prompt {
+  margin-top: 18px;
+  padding: 15px 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+}
+
+.tr-label {
+  font-size: 0.73rem;
+  font-weight: 570;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.tr-english { font-family: var(--serif); font-size: 1.25rem; }
+
+.tr-words { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+
+.tr-answer {
+  width: 100%;
+  margin-top: 14px;
+  min-height: 72px;
+  font-family: var(--serif);
+  font-size: 1.05rem;
+  resize: vertical;
+}
+
+#tr-form .row { margin-top: 11px; }
+
+.tr-verdict {
+  margin-top: 18px;
+  padding: 13px 16px;
+  border-radius: var(--radius);
+  border: 1px solid;
+  display: grid;
+  gap: 3px;
+}
+
+.tr-verdict .headline {
+  font-size: 0.78rem;
+  font-weight: 660;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.tr-verdict-right { background: var(--learnt-soft); border-color: var(--learnt-border); }
+.tr-verdict-right .headline { color: var(--learnt); }
+.tr-verdict-close { background: var(--learning-soft); border-color: var(--learning-border); }
+.tr-verdict-close .headline { color: var(--learning); }
+.tr-verdict-wrong { background: var(--danger-soft); border-color: var(--danger-border); }
+.tr-verdict-wrong .headline { color: var(--danger); }
+
+.tr-comment { font-size: 0.9rem; }
+
+.tr-notes { margin-top: 12px; display: grid; gap: 10px; }
+
+.tr-note {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+
+.tr-note-wrote { text-decoration: line-through; color: var(--text-muted); }
+.tr-note-arrow { margin: 0 6px; color: var(--text-faint); }
+.tr-note-better { font-weight: 600; color: var(--learnt); }
+.tr-note-why { margin-top: 4px; font-size: 0.83rem; color: var(--text-muted); }
+
+.tr-model { margin-top: 14px; }
+.tr-model-text { font-family: var(--serif); font-size: 1.05rem; }
+
 /* The key hint inside the override button. */
 .btn kbd {
   margin-left: 2px;

@@ -27,6 +27,10 @@ export const icons = {
     '<path d="M6 8.5a6 6 0 1 1 12 0c0 2.5-1.5 3.5-2.5 4.5S14 15 14 17a3 3 0 0 1-6 0"/><path d="M9.5 8.5a2.5 2.5 0 0 1 5 0"/>',
   ),
   chat: icon('<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4Z"/>'),
+  /** Letters crossing into letters: translation. */
+  translate: icon(
+    '<path d="M3 5h8M7 5v1.5c0 3.2-1.4 5.6-4 7"/><path d="M4.5 9.5c1.3 2.6 3.3 4.4 5.5 5.3"/><path d="M12.5 21l4.2-10 4.3 10M14.4 17.6h5.8"/>',
+  ),
   book: icon(
     '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2Z"/>',
   ),
@@ -71,6 +75,7 @@ function navLinks(languageId: number | null): NavLink[] {
     { href: `/practice/written${q}`, label: "Written practice", short: "Written", key: "written", svg: icons.pen },
     { href: `/practice/audio${q}`, label: "Listening practice", short: "Listen", key: "audio", svg: icons.ear },
     { href: `/practice/chat${q}`, label: "Conversation", short: "Chat", key: "chat", svg: icons.chat },
+    { href: `/practice/translate${q}`, label: "Translation practice", short: "Translate", key: "translate", svg: icons.translate },
     { href: `/vocab${q}`, label: "Vocabulary", short: "Vocab", key: "vocab", svg: icons.book },
     { href: `/progress${q}`, label: "Progress", short: "Progress", key: "progress", svg: icons.chart },
   ];

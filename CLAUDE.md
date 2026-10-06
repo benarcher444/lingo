@@ -462,6 +462,31 @@ so `npm run test:chat` can drive the page. "!nocredit" in a message fails the
 way an empty account does. Start the server with it for that test (in cmd,
 `set AI_PROVIDER=mock&& npm start`). It must never be set on the server.
 
+### Translation practice
+
+`src/sentences.ts`, `src/routes/sentences.ts`, `public/sentences.js`. The owner
+asked for it on 2026-10-06: pick some words from the vocabulary, have the AI
+build a sentence out of them, show it in English, and mark what you write back
+in the target language.
+
+- **It is built on the learner's own words**, which is the point: a sentence
+  made of words you have met sits at the level you are actually at. The prompt
+  insists every given word appears and that nothing else goes beyond the level.
+- **Weighted or flat, the owner's choice.** "Words you're learning" uses
+  `selectionOdds`, so solid words are skipped and the shaky ones come up; "Any
+  words" is a flat draw.
+- **It never writes to `progress` or `attempts`.** Getting a sentence wrong is
+  not the same as failing to recall a word, and mixing them would corrupt the
+  scores. `scripts/test-sentences.ts` asserts the row counts are unchanged.
+- **Two calls a round**, composer then marker, both answering JSON — that is
+  what lets mistakes be listed one by one rather than buried in prose. Models
+  fence JSON whatever the prompt says, so `parseJson` takes the outermost
+  braces. A reply that does not fit the schema is a 502, not a broken page.
+- **The model answer stays on the server** (`keepRound`, in memory, two hours)
+  until the round is marked, so it cannot be read out of the page mid-attempt.
+- **Missing accents and capitals are slips, not errors**, in the marker prompt —
+  the same lenience the written modes apply.
+
 ### Sessions survive leaving the page
 
 Written and listening sessions are saved to `localStorage` after every question
@@ -611,7 +636,9 @@ If the lag persists, establish the device and browser before changing more.
 - **Phones offer to autofill any text field.** Above the keyboard, a phone
   offers passwords, cards and addresses unless told the field is none of them.
   Forms carry `autocomplete="off"` and text inputs `NO_AUTOFILL`
-  (`src/views/components.ts`), which adds the password managers' own opt-outs.
+  (`src/views/components.ts`), which adds the password managers' own opt-outs
+  and `autocapitalize="none"` — the vocabulary is written lower case and the
+  owner was undoing the phone's capital on every word (2026-10-06).
   They did not stop it: on 2026-09-14 the owner still saw the bar, showing
   passwords, payment methods and addresses. On Android that bar is almost
   certainly Chrome's own keyboard accessory. Nobody in Chrome's or Bitwarden's
@@ -681,6 +708,7 @@ the demo account seeded.
 | `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
 | `npm run test:duplicates` | A word can't be added twice or renamed onto another, whatever case, spacing or category |
 | `npm run test:theme` | Theme saved per account and stamped on pages, safe redirect, phone language picker and Settings tab |
+| `npm run test:sentences` | Translation practice: a round from your words, the words revealed, marking, and that it records nothing. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:chat` | Conversation end to end: scene and level, AI opens, corrected turn, speech, teacher thread, own scene, out-of-credit message. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |

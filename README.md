@@ -96,6 +96,13 @@ you're stuck. Ask the teacher about any message for an English
 breakdown, then keep asking follow-ups. Only accounts marked `yes` in the `ai`
 column of `allowed_emails.csv` can use it, because every message costs money.
 
+**Translation practice** — choose how many of your own words to use, where they
+come from (the ones you are still learning, or any at all) and a level. The AI
+builds a sentence around those words, shows you the English, and you write it in
+the language you are learning. It marks what you wrote, lists what to fix one
+item at a time, and shows one way to say it. The words it used are hidden until
+you ask, or until you have answered. It never changes your scores.
+
 Which AI answers is configuration, not code. In `.env`:
 
 ```ini
@@ -185,6 +192,7 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:override` | "I was right" counts a miss as right, once |
 | `npm run test:listening` | Speech warm-up, `r` to replay, the heard word spelled out |
 | `npm run test:hear` | The word record's Hear it button |
+| `npm run test:sentences` | Translation practice, end to end |
 | `npm run test:vocab-edit` | Editing words in place |
 | `npm run test:duplicates` | A word can't be added twice |
 | `npm run test:auth` | Invitation-only sign-up, lockout, secure cookie |

@@ -21,6 +21,7 @@ import { authRoutes } from "./routes/auth.js";
 import { chatRoutes } from "./routes/chat.js";
 import { practiceRoutes } from "./routes/practice.js";
 import { progressRoutes } from "./routes/progress.js";
+import { sentenceRoutes } from "./routes/sentences.js";
 import { vocabRoutes } from "./routes/vocab.js";
 import { loadScoredWords } from "./stats.js";
 import { NO_AUTOFILL, pageHead } from "./views/components.js";
@@ -61,6 +62,7 @@ await app.register(chatRoutes);
 await app.register(vocabRoutes);
 await app.register(practiceRoutes);
 await app.register(progressRoutes);
+await app.register(sentenceRoutes);
 
 /* ------------------------------------------------------------------
    Home
