@@ -808,7 +808,7 @@ function addWordCard(
           <div class="field">
             <label for="term">Word or phrase</label>
             <input class="input" id="term" name="term" required${autofocus ? " data-autofocus" : ""}
-                   ${NO_AUTOFILL} autocapitalize="off" spellcheck="false" placeholder="${esc(example.term)}">
+                   ${NO_AUTOFILL} spellcheck="false" placeholder="${esc(example.term)}">
           </div>
           <div class="field">
             <label for="english">English</label>
