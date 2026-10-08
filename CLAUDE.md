@@ -373,6 +373,12 @@ sides. Four rules, all driven by how the vocabulary is actually written:
    `grand-mother`. Both sides are expanded, so a typed hyphen also matches a
    card without one. A space is *not* optional: `grandmother` does not match a
    card reading `grand mother`.
+5. **Punctuation never decides it** — quotation marks, apostrophes, question and
+   exclamation marks (`¿` and `¡` included), commas, full stops and brackets are
+   dropped and also read as a space, so `como estas` matches `¿cómo estás?` and
+   `c est` matches `c'est`. The owner asked for this on 2026-10-08. The slash is
+   exempt: it separates alternative readings, and stripping it would glue them
+   together. Translation practice is told the same, in `markerPrompt`.
 
 Rule 3 has two shapes: whole alternatives (`at last/finally`) and a shared
 prefix (`to do/make` = "to do" or "to make"). There is no reliable way to tell

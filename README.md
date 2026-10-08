@@ -70,8 +70,9 @@ for the common ones.
 
 **Written practice** — each word is tested in both directions and keeps coming
 back until you get both right. Answers are matched case- and accent-insensitively
-(`etre` is accepted for `être`), and a hyphen can be typed as a space or left out
-(`grand mother` or `grandmother` for `grand-mother`). When you were right and the
+(`etre` is accepted for `être`), a hyphen can be typed as a space or left out
+(`grand mother` or `grandmother` for `grand-mother`), and punctuation is ignored
+(`como estas` is accepted for `¿cómo estás?`). When you were right and the
 checker disagreed, "I was right — count it" turns that miss into a correct
 answer. After each answer you see where the word stands (New, Learning, Learnt
 or Solid), and any move between them, such as Learnt → Solid. Leave the page

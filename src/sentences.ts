@@ -134,6 +134,10 @@ Judge:
 A missing accent or a missing capital is a slip worth mentioning, never enough on
 its own to drop the verdict below "right".
 
+Ignore punctuation completely. Quotation marks, apostrophes, question and
+exclamation marks, commas and full stops are never a mistake, present or absent,
+and are not worth a note.
+
 For each real mistake, give what they wrote, what it should be, and one short
 reason a learner would understand. At most four, the most useful first. Say nothing
 about things they got right.

@@ -340,9 +340,26 @@ function hyphenReadings(text: string): string[] {
 }
 
 /**
+ * Punctuation never decides whether an answer is right: quotation marks,
+ * apostrophes, question and exclamation marks, commas, full stops, brackets.
+ * Dropped entirely and replaced with a space, so "qu'est-ce" is accepted as
+ * "quest ce" and as "qu est ce". The owner asked for this on 2026-10-08.
+ *
+ * The slash is left alone: it separates alternative readings (see
+ * expandAlternatives), so stripping it would glue them together.
+ */
+const PUNCTUATION = /["'’‘`«»“”?!¿¡.,;:…()]/;
+const PUNCTUATION_ALL = new RegExp(PUNCTUATION.source, "g");
+
+function punctuationReadings(text: string): string[] {
+  if (!PUNCTUATION.test(text)) return [text];
+  return [text, text.replace(PUNCTUATION_ALL, ""), text.replace(PUNCTUATION_ALL, " ")];
+}
+
+/**
  * Every spelling that should be accepted for a stored value: with and without
- * the parenthetical note, with slashes expanded, and with hyphens read as
- * spaces or as nothing.
+ * the parenthetical note, with slashes expanded, with hyphens read as spaces
+ * or as nothing, and with punctuation ignored.
  */
 export function answerVariants(text: string): string[] {
   const bases = new Set<string>([text, stripParenthetical(text)]);
@@ -351,8 +368,10 @@ export function answerVariants(text: string): string[] {
   for (const base of bases) {
     for (const alternative of expandAlternatives(base)) {
       for (const spelling of hyphenReadings(alternative)) {
-        const normalised = normaliseAnswer(spelling);
-        if (normalised) variants.add(normalised);
+        for (const reading of punctuationReadings(spelling)) {
+          const normalised = normaliseAnswer(reading);
+          if (normalised) variants.add(normalised);
+        }
       }
     }
   }

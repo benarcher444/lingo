@@ -101,6 +101,19 @@ check("alongside a slash", answersMatch("well known", "famous/well-known"), true
 check("a wrong answer still fails", answersMatch("grandfather", "grand-mother"), false);
 check("a bare hyphen is not an answer", answersMatch("-", "grand-mother"), false);
 
+console.log("\nPunctuation is ignored");
+check("a question mark", answersMatch("how are you", "how are you?"), true);
+check("the Spanish opener too", answersMatch("como estas", "¿cómo estás?"), true);
+check("typed with the punctuation", answersMatch("¿cómo estás?", "¿cómo estás?"), true);
+check("an apostrophe left out", answersMatch("cest", "c'est"), true);
+check("an apostrophe typed as a space", answersMatch("c est", "c'est"), true);
+check("an apostrophe added", answersMatch("l'eau", "leau"), true);
+check("quotation marks", answersMatch('"hello"', "hello"), true);
+check("a full stop and comma", answersMatch("well, hello.", "well hello"), true);
+check("the note's brackets", answersMatch("to know facts", "to know (facts)"), true);
+check("a slash still separates readings", answersMatch("finally", "at last/finally"), true);
+check("and a wrong answer still fails", answersMatch("goodbye", "how are you?"), false);
+
 console.log("\nCounting a word's answers");
 check("nothing yet", tallyAnswers([]), { tested: 0, correct: 0, streak: 0 });
 check("right, wrong, right", tallyAnswers([true, false, true]), { tested: 3, correct: 2, streak: 1 });
