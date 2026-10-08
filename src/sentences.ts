@@ -100,17 +100,27 @@ export function pickWords(languageId: number, count: number, weighting: Weightin
 export function composerPrompt(language: string, level: Level): string {
   return `You write short translation exercises for a learner of ${language} at level ${level}.
 
-You are given words the learner already knows. Write ONE natural sentence in ${language}
-that uses every one of them. Use two short sentences only if one would be contrived.
+You are given words the learner already knows. Write one to three short sentences in
+${language} using every one of them — something a real person might actually say.
 
-Rules:
-- Every given word must appear, in whatever form the grammar needs (conjugated,
-  pluralised, agreeing).
-- Make it a sentence somebody might actually say.
+How to use the words:
+- In any order. The order they are listed in means nothing; rearrange them freely.
+- In whatever form the grammar needs: conjugate verbs, agree adjectives, make nouns
+  plural, add articles and prepositions.
+- Each word must modify something it sensibly modifies. A colour describes a thing,
+  not a conversation; a feeling describes a person, not an action.
+- If the words do not sit together naturally, do NOT force them into one sentence.
+  Write two or three sentences that add up to a small scene instead, joined by "and",
+  "but", "because", or simply one after another.
+
+Naturalness comes first. A sentence no one would ever say is a failed exercise, even
+if every word is in it. Prefer three plain sentences that make sense to one clever
+sentence that does not.
 
 ${levelBrief(level)}
 
-Then translate what you wrote into natural English.
+Then translate what you wrote into natural English — what a native English speaker
+would say, not a word-by-word rendering.
 
 Reply with JSON and nothing else, no code fence:
 {"target": "<your ${language} sentence>", "english": "<its English translation>"}`;

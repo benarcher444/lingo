@@ -75,11 +75,11 @@ export const LEVEL_RULES: Record<Level, string> = {
 future tense, no conditional, no subjunctive, no perfect or compound tenses, no
 passive, no reported speech. Only the commonest few hundred words, the sort a
 first course teaches: family, food, home, work, days, weather, likes. Sentences
-of at most eight words, two per message.`,
+of at most eight words.`,
   A2: `Present, the simple past, the present perfect, and the near future
 ("going to"). No conditional, no subjunctive, no compound past tenses beyond
 the present perfect, no passive. Everyday vocabulary of roughly a thousand
-words. Sentences of at most twelve words, two or three per message.`,
+words. Sentences of at most twelve words.`,
   B1: `Present, past, imperfect, present perfect, future, and the conditional
 for polite requests and simple hypotheticals. The present subjunctive only in
 the fixed expressions a B1 course teaches. No compound conditionals, no past

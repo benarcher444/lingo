@@ -51,5 +51,15 @@ const composer = composerPrompt("Spanish", "A1");
 check("the composer gets the brief too", composer.includes(LEVEL_RULES.A1), true);
 check("and it names the language", composer.includes("Spanish"), true);
 
+// It once wrote "we spoke in black and sad about how to go to the party":
+// five words forced into one clause, in the order they were listed.
+console.log("\nThe composer is told how to use the words");
+const rules = composer.toLowerCase();
+check("any order, not the order given", rules.includes("in any order"), true);
+check("more than one sentence is allowed", rules.includes("one to three short sentences"), true);
+check("words must modify something sensible", rules.includes("sensibly modifies"), true);
+check("and naturalness wins", rules.includes("naturalness comes first"), true);
+check("the level no longer caps the sentence count", LEVEL_RULES.A1.includes("per message"), false);
+
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
