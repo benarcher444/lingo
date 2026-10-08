@@ -84,8 +84,12 @@ const words = [
   { term: "te", english: "you" },
 ];
 check("all present, conjugated and agreed", missingWords(words, "te hablamos de la música bonita"), []);
-check("one left out", missingWords(words, "hablamos de la música"), ["te"]);
+check("one left out", missingWords(words, "te hablamos de la fiesta"), ["la música"]);
 check("the article is not part of the word", missingWords([{ term: "la papa/la patata", english: "the potato" }], "comemos papas fritas"), []);
+// A trial flagged "ser" as missing from a sentence containing "es".
+check("short irregulars are never flagged", missingWords([{ term: "ser", english: "to be" }], "el país es bonito"), []);
+check("nor ir, which becomes va", missingWords([{ term: "ir", english: "to go" }], "ella va a casa"), []);
+check("but a real omission still shows", missingWords([{ term: "la chaqueta", english: "the jacket" }], "el hospital está cerca"), ["la chaqueta"]);
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);

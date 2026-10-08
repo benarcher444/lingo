@@ -241,6 +241,11 @@ export function missingWords(words: RoundWord[], sentence: string): string[] {
         .replace(/^(el|la|los|las|un|una|le|la|les|un|une|des)\s+/, "")
         .trim();
 
+      // Short words are usually the irregular ones — ser becomes es, ir becomes
+      // va — and a stem cannot follow that. Never claim those are missing: a
+      // wrong answer here costs a retry and may reject a good sentence.
+      if (bare.replace(/\s+/g, "").length < 5) return false;
+
       return !bare.split(/\s+/).every((part) => {
         // Verbs and adjectives change their ending; match on what stays put.
         const stem = part.length > 5 ? part.slice(0, -2) : part.slice(0, Math.max(3, part.length - 1));
