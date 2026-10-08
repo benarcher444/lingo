@@ -445,7 +445,14 @@ The owner's data had no duplicates when this went in (2026-09-10).
 - **Teacher.** A thread per message (`/api/chat/teacher`): it explains, then
   takes follow-ups. That is the original's "anything further explaining?" loop.
 
-The level is picked from A1 to C1; the original was fixed at A1. Replies and
+The level is picked from A1 to C1; the original was fixed at A1. **The level is
+enforced, not suggested.** `LEVEL_RULES` in `src/chat-scenarios.ts` names the
+tenses each level may and may not use, a vocabulary size and a sentence length,
+and `levelBrief()` wraps them with "that is a hard limit" and an instruction to
+re-read the message before sending. Translation practice uses the same brief, so
+both pitch alike. It came from an A1 conversation that produced a conditional
+perfect — which the same model called B2 when the owner asked it (2026-10-08).
+`npm test` covers the briefs (`scripts/test-levels.ts`); a weaker A1 rule fails it. Replies and
 corrections are read aloud automatically, with Play, Slow and a mute, as the
 original spoke everything with repeat and slow.
 
@@ -707,7 +714,7 @@ the demo account seeded.
 
 | Command | Covers |
 |---|---|
-| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice |
+| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice, the level briefs |
 | `npm run test:accents` | Accent composition, per language |
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |

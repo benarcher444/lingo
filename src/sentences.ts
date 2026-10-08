@@ -14,7 +14,7 @@
 import { randomUUID } from "node:crypto";
 
 import { selectionOdds, weightedSample } from "./algorithm.js";
-import type { Level } from "./chat-scenarios.js";
+import { levelBrief, type Level } from "./chat-scenarios.js";
 import { loadScoredWords, type ScoredWord } from "./stats.js";
 
 /** Which words a round draws on. */
@@ -106,10 +106,9 @@ that uses every one of them. Use two short sentences only if one would be contri
 Rules:
 - Every given word must appear, in whatever form the grammar needs (conjugated,
   pluralised, agreeing).
-- Everything else must stay within level ${level}: common function words, simple
-  tenses, no vocabulary the learner is unlikely to have met.
-- Keep it short — under 15 words per sentence.
 - Make it a sentence somebody might actually say.
+
+${levelBrief(level)}
 
 Then translate what you wrote into natural English.
 

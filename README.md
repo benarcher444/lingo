@@ -89,6 +89,8 @@ with a Latin American accent wherever the device has one.
 
 **Conversation** — pick general conversation, a scene (restaurant, hotel, train
 station…), "Surprise me", or describe your own, and a level from A1 to C1. The
+level is held to: each one spells out the tenses the tutor may and may not use,
+so an A1 conversation stays in the present tense. The
 tutor opens in the language you are learning and keeps the conversation moving.
 What you write is corrected first, then answered. Each reply is spoken before
 its words appear, and they show once you have answered, so every turn is

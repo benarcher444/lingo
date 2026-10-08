@@ -3,7 +3,7 @@ import { z } from "zod";
 
 import { classifyAIError, provider, type ChatTurn } from "../ai.js";
 import { mayUseAI } from "../allowlist.js";
-import { LEVELS, SCENES, SCENE_KEYS, type Level, type SceneKey } from "../chat-scenarios.js";
+import { LEVELS, SCENES, SCENE_KEYS, levelBrief, type Level, type SceneKey } from "../chat-scenarios.js";
 import { requireContext } from "../context.js";
 
 /**
@@ -79,7 +79,7 @@ with something for them to answer: a question, a choice, or a turn in the situat
 that needs a reply. Keep each message to two or three short sentences, so it can be
 read and heard in one go.
 
-The learner is level ${level}: match your vocabulary and grammar to it.
+${levelBrief(level)}
 
 Stay fully in character and never switch languages.`;
 }
