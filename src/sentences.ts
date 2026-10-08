@@ -72,14 +72,26 @@ export function dropRound(id: string): void {
 }
 
 /**
+ * Categories that carry little meaning on their own. A round built from "a",
+ * "te" and "y" cannot be turned into a sentence worth translating — they
+ * appear anyway, as the grammar of whatever the content words need.
+ */
+const FUNCTION_CATEGORIES = new Set(["prepositions", "conjunctions", "conjunctives", "other", "others"]);
+
+/**
  * The words a round is built from.
  *
  * "due" uses the same weighting as practice, so solid words are left out and
  * the shaky ones come up — the sentence then drills what needs drilling.
  * "any" is a flat draw across the whole vocabulary, for variety.
+ *
+ * Either way the draw is from content words, falling back to everything only
+ * where there are not enough of them.
  */
 export function pickWords(languageId: number, count: number, weighting: Weighting): ScoredWord[] {
-  const pool = loadScoredWords(languageId, "written");
+  const all = loadScoredWords(languageId, "written");
+  const content = all.filter((word) => !FUNCTION_CATEGORIES.has(word.wordTypeName.toLowerCase()));
+  const pool = content.length >= count ? content : all;
   if (pool.length === 0) return [];
 
   const wanted = Math.min(count, pool.length);
@@ -117,13 +129,18 @@ Naturalness comes first. A sentence no one would ever say is a failed exercise, 
 if every word is in it. Prefer three plain sentences that make sense to one clever
 sentence that does not.
 
+It must also be true of the world, or at least ordinary. "The music is on the wall"
+uses its words and means nothing. If a word will not sit with the others, give it a
+sentence of its own rather than forcing it in.
+
 ${levelBrief(level)}
 
 Then translate what you wrote into natural English — what a native English speaker
 would say, not a word-by-word rendering.
 
-Reply with JSON and nothing else, no code fence:
-{"target": "<your ${language} sentence>", "english": "<its English translation>"}`;
+Reply with ONE JSON object and nothing else, no code fence — all your sentences go
+in the one "target", not an object per sentence:
+{"target": "<your ${language} sentence(s)>", "english": "<the English translation>"}`;
 }
 
 export function markerPrompt(language: string, level: Level): string {
@@ -140,12 +157,11 @@ Judge:
   preposition, word order that is odd but clear).
 - "wrong" — it does not convey the English, or it could not be understood.
 
-A missing accent or a missing capital is a slip worth mentioning, never enough on
-its own to drop the verdict below "right".
-
-Ignore punctuation completely. Quotation marks, apostrophes, question and
-exclamation marks, commas and full stops are never a mistake, present or absent,
-and are not worth a note.
+Ignore accents, capital letters and punctuation completely — all three, present or
+absent. A missing accent, a lower-case first letter, a missing question mark or
+comma: none of these is a mistake, none changes the verdict, and none is worth a
+note. The learner writes in lower case on a phone keyboard by choice. Mark the
+words and the grammar, nothing else.
 
 For each real mistake, give what they wrote, what it should be, and one short
 reason a learner would understand. At most four, the most useful first. Say nothing
@@ -168,21 +184,68 @@ export function wordList(words: RoundWord[]): string {
    ------------------------------------------------------------------ */
 
 /**
- * Models wrap JSON in a code fence however firmly you ask them not to, so take
- * the outermost braces rather than trusting the whole string to parse.
+ * Models wrap JSON in a code fence however firmly you ask them not to, and one
+ * trial came back as two objects in a row, one per sentence. So: try the whole
+ * string, then the outermost braces, then the first balanced object.
  */
 export function parseJson(text: string): unknown {
   const trimmed = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start === -1 || end <= start) return null;
+
+  const attempt = (candidate: string): unknown => {
     try {
-      return JSON.parse(trimmed.slice(start, end + 1));
+      return JSON.parse(candidate);
     } catch {
       return null;
     }
+  };
+
+  const whole = attempt(trimmed);
+  if (whole) return whole;
+
+  const start = trimmed.indexOf("{");
+  if (start === -1) return null;
+
+  const outermost = attempt(trimmed.slice(start, trimmed.lastIndexOf("}") + 1));
+  if (outermost) return outermost;
+
+  // The first balanced object, ignoring braces inside strings.
+  let depth = 0;
+  let inString = false;
+  for (let i = start; i < trimmed.length; i++) {
+    const c = trimmed[i];
+    if (inString) {
+      if (c === "\\") i++;
+      else if (c === '"') inString = false;
+      continue;
+    }
+    if (c === '"') inString = true;
+    else if (c === "{") depth++;
+    else if (c === "}" && --depth === 0) return attempt(trimmed.slice(start, i + 1));
   }
+  return null;
+}
+
+/**
+ * Which of the words never made it into the sentence. Compared on a stem, since
+ * the composer is asked to conjugate and agree them, and without the article or
+ * anything after a slash, which are not part of the word as it will appear.
+ */
+export function missingWords(words: RoundWord[], sentence: string): string[] {
+  const deaccent = (text: string) => text.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const target = deaccent(sentence);
+
+  return words
+    .filter((word) => {
+      const bare = deaccent(word.term)
+        .split("/")[0]!
+        .replace(/^(el|la|los|las|un|una|le|la|les|un|une|des)\s+/, "")
+        .trim();
+
+      return !bare.split(/\s+/).every((part) => {
+        // Verbs and adjectives change their ending; match on what stays put.
+        const stem = part.length > 5 ? part.slice(0, -2) : part.slice(0, Math.max(3, part.length - 1));
+        return target.includes(stem);
+      });
+    })
+    .map((word) => word.term);
 }

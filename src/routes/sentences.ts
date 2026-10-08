@@ -11,6 +11,7 @@ import {
   findRound,
   keepRound,
   markerPrompt,
+  missingWords,
   parseJson,
   pickWords,
   wordList,
@@ -216,14 +217,32 @@ export async function sentenceRoutes(app: FastifyInstance): Promise<void> {
     const words = picked.map((w) => ({ term: w.term, english: w.english }));
 
     try {
-      const answer = await provider.complete({
-        purpose: "composer",
-        system: composerPrompt(language.name, level),
-        messages: [{ role: "user", content: wordList(words) }],
-        effort: "medium",
-      });
+      const compose = async (extra?: string) => {
+        const answer = await provider!.complete({
+          purpose: "composer",
+          system: composerPrompt(language.name, level),
+          messages: [{ role: "user", content: extra ? `${wordList(words)}\n\n${extra}` : wordList(words) }],
+          effort: "medium",
+        });
+        return composed.safeParse(parseJson(answer));
+      };
 
-      const sentence = composed.safeParse(parseJson(answer));
+      let sentence = await compose();
+
+      // A trial dropped a word it was given. One retry naming the ones it left
+      // out is cheaper than showing an exercise that is missing the point.
+      if (sentence.success) {
+        const missing = missingWords(words, sentence.data.target);
+        if (missing.length > 0) {
+          const retry = await compose(
+            `Your last attempt left out: ${missing.join(", ")}. Every word above must appear. Use more than one sentence if that is what it takes.`,
+          );
+          if (retry.success && missingWords(words, retry.data.target).length < missing.length) {
+            sentence = retry;
+          }
+        }
+      }
+
       if (!sentence.success) return reply.code(502).send({ error: "upstream" });
 
       const round = keepRound({

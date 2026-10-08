@@ -7,7 +7,7 @@
  */
 
 import { LEVELS, LEVEL_RULES, levelBrief } from "../src/chat-scenarios.js";
-import { composerPrompt } from "../src/sentences.js";
+import { composerPrompt, markerPrompt, missingWords, parseJson } from "../src/sentences.js";
 
 let passed = 0;
 let failed = 0;
@@ -60,6 +60,32 @@ check("more than one sentence is allowed", rules.includes("one to three short se
 check("words must modify something sensible", rules.includes("sensibly modifies"), true);
 check("and naturalness wins", rules.includes("naturalness comes first"), true);
 check("the level no longer caps the sentence count", LEVEL_RULES.A1.includes("per message"), false);
+
+console.log("\nMarking ignores how it is written");
+// Flattened: the prompt is wrapped, so a phrase can straddle two lines.
+const marker = markerPrompt("Spanish", "A1").toLowerCase().replace(/\s+/g, " ");
+check("accents, capitals and punctuation are all out of scope", marker.includes("ignore accents, capital letters and punctuation"), true);
+check("and not worth a note either", marker.includes("worth a note"), true);
+
+// A trial answered with two JSON objects, one per sentence, and the round died.
+console.log("\nReading the AI's answer");
+check("plain JSON", (parseJson('{"a":1}') as any)?.a, 1);
+check("in a code fence", (parseJson('```json\n{"a":2}\n```') as any)?.a, 2);
+check("with words either side", (parseJson('Here:\n{"a":3}\nhope that helps') as any)?.a, 3);
+check("two objects in a row: take the first", (parseJson('{"a":4}\n{"a":5}') as any)?.a, 4);
+check("braces inside a string do not confuse it", (parseJson('{"a":"} {"}') as any)?.a, "} {");
+check("nothing usable", parseJson("sorry, I cannot"), null);
+
+// One trial silently dropped a word it had been given.
+console.log("\nChecking every word was used");
+const words = [
+  { term: "la música", english: "the music" },
+  { term: "hablar", english: "to speak" },
+  { term: "te", english: "you" },
+];
+check("all present, conjugated and agreed", missingWords(words, "te hablamos de la música bonita"), []);
+check("one left out", missingWords(words, "hablamos de la música"), ["te"]);
+check("the article is not part of the word", missingWords([{ term: "la papa/la patata", english: "the potato" }], "comemos papas fritas"), []);
 
 console.log(`\n${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
