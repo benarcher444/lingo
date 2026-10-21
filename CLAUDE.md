@@ -387,6 +387,21 @@ with a slash rather than a bracket. The owner asked for it on 2026-10-21; the
 20 Spanish numbers were converted on the server that day, and a new one should
 be entered the same way.
 
+**What "add the numbers" means.** The owner set the shape on 2026-10-21, so a
+request to add numbers to a language is always this set, not a judgement call:
+
+- **every number to 30** — they are learnt individually, and in Spanish 16-19
+  and 21-29 are single fused words;
+- **about three scattered between 30 and 100**, to show the tens + `y` + unit
+  pattern. The tens themselves (40, 50, 60, 70, 80, 90) are separate words and
+  count as vocabulary in their own right, so they all go in;
+- **about three between 100 and 200**, which is where `ciento` replaces `cien`;
+- **each of the hundreds** (100, 200 … 900), because several are irregular —
+  Spanish *quinientos*, *setecientos*, *novecientos*;
+- **a thousand, a million and a billion.** In Spanish a billion is `mil
+  millones`: *un billón* is a million million, so entering it as "billion"
+  would teach the wrong number by a factor of a thousand.
+
 Rule 3 has two shapes: whole alternatives (`at last/finally`) and a shared
 prefix (`to do/make` = "to do" or "to make"). There is no reliable way to tell
 them apart, so **both readings are generated**. That makes matching lenient —
