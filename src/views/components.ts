@@ -24,6 +24,31 @@ export function progressBanner(opts: {
     `<i class="learnt-only" style="width:${share(s.learntNotSolid, s.total).toFixed(1)}%"></i>` +
     `<i class="learning" style="width:${share(s.inProgress, s.total).toFixed(1)}%"></i>`;
 
+  // The ring is drawn as four arcs in the same colours as the tiles beside it,
+  // so it shows the whole vocabulary rather than one "learnt" slice against a
+  // blank remainder. Each stop is cumulative: where one ends, the next begins.
+  const solidPct = share(summary.completelyLearnt, summary.total);
+  const learntPct = solidPct + share(summary.learntNotSolid, summary.total);
+  const learningPct = learntPct + share(summary.inProgress, summary.total);
+  const ringStyle =
+    `--solid:${solidPct.toFixed(1)};--learnt:${learntPct.toFixed(1)};` +
+    `--learning:${learningPct.toFixed(1)}`;
+  const ringTitle =
+    `${summary.completelyLearnt} solid · ${summary.learntNotSolid} learnt · ` +
+    `${summary.inProgress} learning · ${summary.untouched} untouched`;
+
+  /**
+   * Conjugations are forms of a verb you already have, and phrases are
+   * sentences — neither is a new word, so counting them flatters the total.
+   * "True words" is the learnt count without them, shown only where the
+   * language has such a category, or it would just repeat the headline.
+   */
+  const NOT_REALLY_WORDS = new Set(["conjugations", "phrases"]);
+  const trueTypes = types.filter((t) => !NOT_REALLY_WORDS.has(t.wordTypeName.toLowerCase()));
+  const hasExcluded = trueTypes.length < types.length;
+  const trueLearnt = trueTypes.reduce((n, t) => n + t.learnt, 0);
+  const trueTotal = trueTypes.reduce((n, t) => n + t.total, 0);
+
   const median = medianOf(types.map((t) => t.total));
 
   const cells = types
@@ -46,10 +71,15 @@ export function progressBanner(opts: {
   return `<section class="progress-banner">
   <div class="banner-top">
     <div class="banner-figure">
-      <div class="ring" style="--pct:${pct.toFixed(1)}"><span>${pct.toFixed(0)}%</span></div>
+      <div class="ring" style="${ringStyle}" title="${esc(ringTitle)}"><span>${pct.toFixed(0)}%</span></div>
       <div class="banner-figure-text">
         <div class="big">${summary.learnt} of ${summary.total} learnt</div>
         <div class="small">${esc(opts.languageName)} · ${opts.mode === "audio" ? "listening" : "written"}</div>
+        ${
+          hasExcluded
+            ? `<div class="true-words" title="Learnt, leaving out conjugations and phrases: those are forms of words you already have, and sentences, rather than new words">${trueLearnt} of ${trueTotal} true words</div>`
+            : ""
+        }
       </div>
     </div>
     <div class="banner-stats">

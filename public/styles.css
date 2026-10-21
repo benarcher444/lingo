@@ -529,16 +529,23 @@ img { max-width: 100%; }
   gap: 14px;
 }
 
+/* Four arcs, in the colours of the tiles beside it: solid, learnt, learning,
+   untouched. The stops are cumulative, so each 0 means "carry on from here".
+   The number in the middle stays the headline: percentage learnt. */
 .ring {
-  --pct: 0;
+  --solid: 0;
+  --learnt: 0;
+  --learning: 0;
   position: relative;
   width: 62px;
   height: 62px;
   flex: none;
   border-radius: 50%;
   background: conic-gradient(
-    var(--learnt) calc(var(--pct) * 1%),
-    var(--surface-sunken) 0
+    var(--status-solid) 0 calc(var(--solid) * 1%),
+    var(--status-learnt) 0 calc(var(--learnt) * 1%),
+    var(--learning-fill) 0 calc(var(--learning) * 1%),
+    var(--new) 0
   );
   display: grid;
   place-items: center;
@@ -569,6 +576,14 @@ img { max-width: 100%; }
 .banner-figure-text .small {
   color: var(--text-muted);
   font-size: 0.84rem;
+}
+
+/* Learnt without conjugations and phrases. Deliberately quiet: a second
+   opinion on the headline, not a rival to it. */
+.true-words {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  margin-top: 2px;
 }
 
 .banner-stats {

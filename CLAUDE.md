@@ -619,7 +619,18 @@ If the lag persists, establish the device and browser before changing more.
   `--listening` (raspberry), because the earlier blue sat too close to Written's
   indigo to tell apart on a chart. The banner bars draw solid and learnt as
   separate bands (`.bar i.solid`, `.bar i.learnt-only`). Plain `.bar i.learnt`
-  is the quiz's own progress bar and stays one green.
+  is the quiz's own progress bar and stays one green. The banner's **ring is
+  four arcs** in those same colours — solid, learnt, learning, untouched —
+  from cumulative percentages passed as `--solid`, `--learnt` and `--learning`
+  (each conic stop starts at `0`, meaning "carry on from the last"). It showed
+  one learnt arc against a blank remainder until the owner asked for the whole
+  picture (2026-10-21). The number in the middle stays percentage learnt.
+- **"True words" leaves out conjugations and phrases.** The banner carries a
+  quiet second figure beside the headline: learnt, counting only categories
+  that are really new words. A verb's six conjugated forms and a five-word
+  phrase are not six words and one word learnt, and they flattered the total.
+  It is hidden where the language has neither category, or it would just repeat
+  the headline. The owner asked for it on 2026-10-21.
 - **Playwright hides Chrome's Google voices.** They live in a component
   extension that automation disables, so a test browser shows only the OS's
   local voices — none French on this laptop. `measure-speech.ts` re-enables it
