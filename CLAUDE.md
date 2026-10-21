@@ -380,6 +380,13 @@ sides. Four rules, all driven by how the vocabulary is actually written:
    exempt: it separates alternative readings, and stripping it would glue them
    together. Translation practice is told the same, in `markerPrompt`.
 
+**Numbers carry their digits.** Every number in the vocabulary reads
+`four/4`, `fifteen/15`, `a hundred/100`, so either spelling is accepted and the
+card shows both. Rule 3 is what makes that work, which is why it was written
+with a slash rather than a bracket. The owner asked for it on 2026-10-21; the
+20 Spanish numbers were converted on the server that day, and a new one should
+be entered the same way.
+
 Rule 3 has two shapes: whole alternatives (`at last/finally`) and a shared
 prefix (`to do/make` = "to do" or "to make"). There is no reliable way to tell
 them apart, so **both readings are generated**. That makes matching lenient —
