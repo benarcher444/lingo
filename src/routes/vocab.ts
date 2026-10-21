@@ -22,6 +22,7 @@ import {
   NO_AUTOFILL,
   alert,
   pageHead,
+  MODE_LABEL,
   progressBanner,
   scorePill,
 } from "../views/components.js";
@@ -33,6 +34,7 @@ const wordInput = z.object({
   wordTypeId: z.coerce.number().int().positive(),
   writtenEnabled: z.coerce.boolean().optional().default(true),
   audioEnabled: z.coerce.boolean().optional().default(true),
+  speakEnabled: z.coerce.boolean().optional().default(true),
   notes: z.string().trim().max(500).optional(),
 });
 
@@ -78,7 +80,7 @@ function filtersFrom(source: Record<string, unknown>): {
     type: optionalId(text("type")),
     q: text("q").trim(),
     sort: Object.hasOwn(SORTS, sort) ? (sort as SortKey) : "added_desc",
-    mode: text("mode") === "audio" ? "audio" : "written",
+    mode: text("mode") === "audio" ? "audio" : text("mode") === "speak" ? "speak" : "written",
   };
 }
 
@@ -92,7 +94,7 @@ function vocabUrl(
   if (filters.type) params.set("type", String(filters.type));
   if (filters.q) params.set("q", filters.q);
   if (filters.sort && filters.sort !== "added_desc") params.set("sort", filters.sort);
-  if (filters.mode === "audio") params.set("mode", "audio");
+  if (filters.mode && filters.mode !== "written") params.set("mode", filters.mode);
   for (const [key, value] of Object.entries(extra)) params.set(key, String(value));
   return `/vocab?${params.toString()}`;
 }
@@ -128,6 +130,7 @@ const listColumns = {
   wordTypeName: wordTypes.name,
   writtenEnabled: words.writtenEnabled,
   audioEnabled: words.audioEnabled,
+  speakEnabled: words.speakEnabled,
   notes: words.notes,
   createdAt: words.createdAt,
 };
@@ -283,6 +286,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       ...body,
       writtenEnabled: body["writtenEnabled"] !== undefined,
       audioEnabled: body["audioEnabled"] !== undefined,
+      speakEnabled: body["speakEnabled"] !== undefined,
     });
 
     const languageId = ctx.currentLanguage?.id;
@@ -305,6 +309,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         english: parsed.data.english,
         writtenEnabled: parsed.data.writtenEnabled,
         audioEnabled: parsed.data.audioEnabled,
+        speakEnabled: parsed.data.speakEnabled,
         notes: parsed.data.notes || null,
       })
       .onConflictDoNothing()
@@ -350,6 +355,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         english: parsed.data.english,
         writtenEnabled: parsed.data.writtenEnabled,
         audioEnabled: parsed.data.audioEnabled,
+        speakEnabled: parsed.data.speakEnabled,
         notes: parsed.data.notes || null,
       })
       .onConflictDoNothing()
@@ -376,6 +382,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         wordTypeName: type?.name ?? "",
         writtenEnabled: created.writtenEnabled,
         audioEnabled: created.audioEnabled,
+        speakEnabled: created.speakEnabled,
       },
     });
   });
@@ -415,6 +422,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       ...body,
       writtenEnabled: body["writtenEnabled"] !== undefined,
       audioEnabled: body["audioEnabled"] !== undefined,
+      speakEnabled: body["speakEnabled"] !== undefined,
     });
 
     if (!parsed.success || !ownsWordType(ctx.user.id, parsed.data.wordTypeId)) {
@@ -442,6 +450,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         wordTypeId: parsed.data.wordTypeId,
         writtenEnabled: parsed.data.writtenEnabled,
         audioEnabled: parsed.data.audioEnabled,
+        speakEnabled: parsed.data.speakEnabled,
         notes: parsed.data.notes || null,
       })
       .where(eq(words.id, id))
@@ -585,7 +594,9 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
              href="${esc(vocabUrl(language.id, { ...listFilters, mode: "written" }))}">Written</a>
           <a class="btn${mode === "audio" ? " btn-primary" : ""}"
              href="${esc(vocabUrl(language.id, { ...listFilters, mode: "audio" }))}">Listening</a>
-          <a class="btn" href="/progress?language=${language.id}${mode === "audio" ? "&mode=audio" : ""}">${icons.chart}View progress</a>`,
+          <a class="btn${mode === "speak" ? " btn-primary" : ""}"
+             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "speak" }))}">Speaking</a>
+          <a class="btn" href="/progress?language=${language.id}${mode === "written" ? "" : `&mode=${mode}`}">${icons.chart}View progress</a>`,
       })}
 
       <div class="stack">
@@ -676,7 +687,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                  </div>`
               : `<div class="table-wrap"><table class="data">
                   <thead><tr>
-                    <th>Word</th><th>English</th><th class="col-type">Type</th><th><span class="col-mode-label">${mode === "audio" ? "Listening" : "Written"} </span>status</th>
+                    <th>Word</th><th>English</th><th class="col-type">Type</th><th><span class="col-mode-label">${MODE_LABEL[mode]} </span>status</th>
                     <th class="col-modes">Modes</th><th style="width:1%"></th>
                   </tr></thead>
                   <tbody>
@@ -802,6 +813,7 @@ function addWordCard(
           </div>
           <label class="check"><input type="checkbox" name="writtenEnabled" checked> Written practice</label>
           <label class="check"><input type="checkbox" name="audioEnabled" checked> Listening practice</label>
+          <label class="check"><input type="checkbox" name="speakEnabled" checked> Speaking practice</label>
         </div>
 
         <div class="add-row">
@@ -834,6 +846,7 @@ function displayRow(
     wordTypeName: string;
     writtenEnabled: boolean;
     audioEnabled: boolean;
+    speakEnabled: boolean;
     notes: string | null;
   },
   /** null when the word is switched off for the mode being shown. */
@@ -844,6 +857,7 @@ function displayRow(
   const modes = [
     row.writtenEnabled ? `<span class="pill pill-plain">Written</span>` : "",
     row.audioEnabled ? `<span class="pill pill-plain">Listen</span>` : "",
+    row.speakEnabled ? `<span class="pill pill-plain">Speak</span>` : "",
   ]
     .filter(Boolean)
     .join(" ");
@@ -856,7 +870,7 @@ function displayRow(
     <td class="col-type"><span class="pill pill-plain">${esc(row.wordTypeName)}</span></td>
     <td>${
       score === null
-        ? `<span class="pill pill-plain" title="Not included in ${filters.mode === "audio" ? "listening" : "written"} practice">Off</span>`
+        ? `<span class="pill pill-plain" title="Not included in ${MODE_LABEL[filters.mode ?? "written"].toLowerCase()} practice">Off</span>`
         : `${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span>`
     }</td>
     <td class="col-modes">${modes || `<span class="hint">none</span>`}</td>
@@ -872,6 +886,7 @@ function editRow(
     wordTypeId: number;
     writtenEnabled: boolean;
     audioEnabled: boolean;
+    speakEnabled: boolean;
     notes: string | null;
   },
   types: { id: number; name: string }[],
@@ -905,6 +920,7 @@ function editRow(
         <div class="row">
           <label class="check"><input type="checkbox" name="writtenEnabled"${row.writtenEnabled ? " checked" : ""}> Written</label>
           <label class="check"><input type="checkbox" name="audioEnabled"${row.audioEnabled ? " checked" : ""}> Listening</label>
+          <label class="check"><input type="checkbox" name="speakEnabled"${row.speakEnabled ? " checked" : ""}> Speaking</label>
           <span class="spacer"></span>
           <span class="hint edit-keys"><kbd>Enter</kbd> saves · <kbd>Esc</kbd> cancels</span>
           <a class="btn btn-sm" data-cancel href="${esc(`${vocabUrl(languageId, filters)}#word-${row.id}`)}">Cancel</a>

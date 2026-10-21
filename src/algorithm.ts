@@ -18,14 +18,30 @@ export const COMPLETELY_LEARNT_THRESHOLD = 2.556;
 /** Streak value at which the bonus lands. Matches the original's 3-in-a-row. */
 export const STREAK_TARGET = 3;
 
-export type Mode = "written" | "audio";
-export type Direction = "to_english" | "from_english" | "listen";
+export type Mode = "written" | "audio" | "speak";
+export type Direction = "to_english" | "from_english" | "listen" | "say";
 
 /** Directions that make up a session for each mode. */
 export const MODE_DIRECTIONS: Record<Mode, Direction[]> = {
   written: ["to_english", "from_english"],
   audio: ["listen"],
+  speak: ["say"],
 };
+
+/**
+ * The one direction a mode tests, or null where it tests more than one.
+ *
+ * Listening and speaking both ask a word once, so they share the original's
+ * audio formula: accuracy counts double and each right answer is worth twice
+ * what it is in written mode, because there is only one direction to earn it
+ * in. Speaking is scored by exactly the same arithmetic as listening — the
+ * owner asked for that — but keeps its own progress rows, so a self-marked
+ * "I said it right" never moves the listening score.
+ */
+export function soloDirection(mode: Mode): Direction | null {
+  const directions = MODE_DIRECTIONS[mode];
+  return directions.length === 1 ? (directions[0] as Direction) : null;
+}
 
 export interface DirectionProgress {
   direction: Direction;
@@ -95,11 +111,12 @@ function direction(progress: WordProgress, wanted: Direction): DirectionProgress
 export function scoreWord(progress: WordProgress, mode: Mode, now?: Date): number {
   const neglect = daysSinceTested(progress.lastTested, now) / 100;
 
-  if (mode === "audio") {
-    const listen = direction(progress, "listen");
-    const acc = accuracy(listen.correct, listen.tested);
-    const accuracyPart = (acc * 2) / 100 + listen.correct / 10;
-    const streakPart = listen.streak >= STREAK_TARGET ? 0.5 : 0;
+  const solo = soloDirection(mode);
+  if (solo) {
+    const only = direction(progress, solo);
+    const acc = accuracy(only.correct, only.tested);
+    const accuracyPart = (acc * 2) / 100 + only.correct / 10;
+    const streakPart = only.streak >= STREAK_TARGET ? 0.5 : 0;
     return round(accuracyPart + streakPart - neglect);
   }
 
@@ -141,11 +158,12 @@ export function explainScore(
   const days = daysSinceTested(progress.lastTested, now);
   const neglect = days / 100;
 
-  if (mode === "audio") {
-    const listen = direction(progress, "listen");
-    const accuracyPart = (accuracy(listen.correct, listen.tested) * 2) / 100;
-    const volumePart = listen.correct / 10;
-    const streakPart = listen.streak >= STREAK_TARGET ? 0.5 : 0;
+  const solo = soloDirection(mode);
+  if (solo) {
+    const only = direction(progress, solo);
+    const accuracyPart = (accuracy(only.correct, only.tested) * 2) / 100;
+    const volumePart = only.correct / 10;
+    const streakPart = only.streak >= STREAK_TARGET ? 0.5 : 0;
 
     return {
       accuracy: round(accuracyPart),

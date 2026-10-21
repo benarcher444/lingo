@@ -26,6 +26,10 @@ export const icons = {
   ear: icon(
     '<path d="M6 8.5a6 6 0 1 1 12 0c0 2.5-1.5 3.5-2.5 4.5S14 15 14 17a3 3 0 0 1-6 0"/><path d="M9.5 8.5a2.5 2.5 0 0 1 5 0"/>',
   ),
+  /** Lips with sound coming out of them: saying a word out loud. */
+  speak: icon(
+    '<path d="M3.5 12c2.6-3.2 5.9-3.2 8.5 0-2.6 3.2-5.9 3.2-8.5 0Z"/><path d="M15.5 9.2a4.4 4.4 0 0 1 0 5.6"/><path d="M18.4 7a7.6 7.6 0 0 1 0 10"/>',
+  ),
   chat: icon('<path d="M21 11.5a8.4 8.4 0 0 1-9 8.4 9 9 0 0 1-3.9-.9L3 21l1.9-5A8.4 8.4 0 0 1 12 3.1a8.4 8.4 0 0 1 9 8.4Z"/>'),
   /** Letters crossing into letters: translation. */
   translate: icon(
@@ -74,6 +78,7 @@ function navLinks(languageId: number | null): NavLink[] {
   return [
     { href: `/practice/written${q}`, label: "Written practice", short: "Written", key: "written", svg: icons.pen },
     { href: `/practice/audio${q}`, label: "Listening practice", short: "Listen", key: "audio", svg: icons.ear },
+    { href: `/practice/speak${q}`, label: "Speaking practice", short: "Speak", key: "speak", svg: icons.speak },
     { href: `/practice/chat${q}`, label: "Conversation", short: "Chat", key: "chat", svg: icons.chat },
     { href: `/practice/translate${q}`, label: "Translation practice", short: "Translate", key: "translate", svg: icons.translate },
     { href: `/vocab${q}`, label: "Vocabulary", short: "Vocab", key: "vocab", svg: icons.book },

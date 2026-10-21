@@ -104,6 +104,15 @@ export const words = sqliteTable(
     audioEnabled: integer("audio_enabled", { mode: "boolean" })
       .notNull()
       .default(true),
+    /**
+     * Speaking practice. Its own flag rather than listening's, because the
+     * owner wanted to be able to leave a new word out of speaking while still
+     * hearing it. Defaults true, so every word already in the vocabulary is in
+     * speaking from the day the column arrives.
+     */
+    speakEnabled: integer("speak_enabled", { mode: "boolean" })
+      .notNull()
+      .default(true),
     notes: text("notes"),
     createdAt: text("created_at").notNull().default(now),
   },
@@ -117,7 +126,9 @@ export const words = sqliteTable(
  * One row per (word, mode, direction). Score is NOT stored — it depends on
  * today's date and is recomputed on read in src/algorithm.ts.
  *
- * direction is "to_english" / "from_english" for written mode, "listen" for audio.
+ * direction is "to_english" / "from_english" for written mode, "listen" for
+ * audio and "say" for speaking. Speaking keeps its own rows: it is self-marked,
+ * so mixing it into the listening counts would spoil the one judged record.
  */
 export const progress = sqliteTable(
   "progress",

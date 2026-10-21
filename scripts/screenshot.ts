@@ -71,6 +71,7 @@ const SHOTS: Shot[] = [
     },
   },
   { key: "audio", path: "/practice/audio", authenticated: true },
+  { key: "speak", path: "/practice/speak", authenticated: true },
   { key: "chat", path: "/practice/chat", authenticated: true },
   { key: "progress", path: "/progress", authenticated: true },
   { key: "settings", path: "/settings", authenticated: true },
@@ -79,6 +80,7 @@ const SHOTS: Shot[] = [
   { key: "empty-vocab", path: "/vocab", authenticated: true, asEmptyUser: true },
   { key: "empty-written", path: "/practice/written", authenticated: true, asEmptyUser: true },
   { key: "empty-audio", path: "/practice/audio", authenticated: true, asEmptyUser: true },
+  { key: "empty-speak", path: "/practice/speak", authenticated: true, asEmptyUser: true },
   { key: "empty-chat", path: "/practice/chat", authenticated: true, asEmptyUser: true },
   { key: "empty-progress", path: "/progress", authenticated: true, asEmptyUser: true },
 ];

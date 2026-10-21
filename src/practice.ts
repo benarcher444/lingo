@@ -81,6 +81,13 @@ export function recordAnswer(opts: {
   given: string;
   /** "I was right": marks the miss just recorded as correct. Adds no answer. */
   override?: boolean;
+  /**
+   * Speaking only: the learner's own verdict. Nothing was typed, so there is
+   * nothing to compare — they heard the word and said whether they had it.
+   * Ignored for every other direction, so a client cannot assert a written
+   * answer was right.
+   */
+  selfMarked?: boolean;
   /** Groups answers into one practice session. See attempts.sessionId. */
   sessionId?: string | null;
 }): AnswerResult | null {
@@ -99,11 +106,19 @@ export function recordAnswer(opts: {
 
   if (!word) return null;
 
-  // Only "from_english" asks for the target language. Listening plays the
-  // target-language word and asks what it means, so it wants the English —
-  // that tests comprehension rather than spelling back what you just heard.
-  const expected = opts.direction === "from_english" ? word.term : word.english;
-  const graded = opts.override === true || answersMatch(opts.given, expected);
+  // Which language the answer is in. "from_english" and "say" both ask for the
+  // target language; listening plays the target word and asks what it means, so
+  // it wants the English — comprehension rather than spelling back what you
+  // just heard.
+  const wantsTarget = opts.direction === "from_english" || opts.direction === "say";
+  const expected = wantsTarget ? word.term : word.english;
+
+  // Speaking is marked by the learner: they say the word, hear it, and tell us.
+  // Everywhere else the comparison happens here and only here.
+  const graded =
+    opts.direction === "say"
+      ? opts.selfMarked === true
+      : opts.override === true || answersMatch(opts.given, expected);
   const before = currentStanding(opts.wordId, opts.mode);
 
   const sameCard = and(

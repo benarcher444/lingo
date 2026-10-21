@@ -109,19 +109,27 @@ export function lineChart(
 }
 
 /**
- * Percentage learnt per category. Give rows a `value2`/`total2` and each gets
- * a second, thinner bar beneath the first, so written and listening can sit
- * side by side; `colours` then says which is which.
+ * Percentage learnt per category, with one bar per mode stacked inside each
+ * category's row — written, listening and speaking read top to bottom, in the
+ * colours `colours` gives. A single bar keeps the taller, original look.
  */
-export function barChart(
-  rows: { label: string; value: number; total: number; value2?: number; total2?: number }[],
-  opts: { colours?: [string, string] } = {},
-): string {
+export interface BarRow {
+  label: string;
+  /** One entry per series, in the order `colours` lists them. */
+  bars: { value: number; total: number }[];
+}
+
+export function barChart(rows: BarRow[], opts: { colours?: string[] } = {}): string {
   if (rows.length === 0) return emptyChart("No categories yet");
 
-  const paired = rows.some((row) => row.value2 !== undefined);
-  const [first, second] = opts.colours ?? ["var(--learnt)", LISTENING_COLOUR];
-  const rowH = paired ? 40 : 32;
+  const colours = opts.colours ?? ["var(--learnt)", LISTENING_COLOUR, SPEAKING_COLOUR];
+  const seriesCount = Math.max(1, ...rows.map((row) => row.bars.length));
+  const single = seriesCount === 1;
+  // Thin bars once there is more than one, so three fit a category without the
+  // chart growing tall enough to push the next card off a phone screen.
+  const barH = single ? 13 : 10;
+  const barGap = 4;
+  const rowH = single ? 32 : 19 + seriesCount * (barH + barGap);
   const height = rows.length * rowH + 8;
   // labelX inset: the text used to start at x=0, flush against the card border.
   const labelX = 10;
@@ -141,35 +149,47 @@ export function barChart(
   const bars = rows
     .map((row, i) => {
       const y = i * rowH + 6;
-      const label = `<text x="${labelX}" y="${y + (paired ? 19 : 13)}" font-size="14" fill="var(--text-muted)">${esc(truncate(row.label, 15))}</text>`;
-      return paired
-        ? label + bar(row.value, row.total, y + 2, 11, first) + bar(row.value2 ?? 0, row.total2 ?? 0, y + 17, 11, second)
-        : label + bar(row.value, row.total, y + 3, 13, first);
+      const label = `<text x="${labelX}" y="${y + (single ? 13 : 17)}" font-size="14" fill="var(--text-muted)">${esc(truncate(row.label, 15))}</text>`;
+      const drawn = row.bars
+        .map((b, index) =>
+          bar(
+            b.value,
+            b.total,
+            y + (single ? 3 : 2) + index * (barH + barGap),
+            barH,
+            colours[index] ?? colours[0] ?? "var(--learnt)",
+          ),
+        )
+        .join("");
+      return label + drawn;
     })
     .join("");
 
   return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Completion by category">${bars}</svg>`;
 }
 
-/** Listening's colour wherever the two modes appear side by side. */
+/** Each mode's colour wherever they appear side by side. */
 export const LISTENING_COLOUR = "var(--listening)";
+export const SPEAKING_COLOUR = "var(--speaking)";
 
 /** One day's answers, split by mode. */
 export interface ActivityDay {
   date: string;
   written: number;
   audio: number;
+  speak: number;
 }
 
 /**
- * Answers per day, written stacked under listening, in the Today card's colours.
- * Always both modes: counting only the mode toggled at the top made a day of
+ * Answers per day, the three modes stacked in the Today card's colours.
+ * Always every mode: counting only the mode toggled at the top made a day of
  * listening look like a day off, and the chart disagreed with the Today card.
  */
 export function activityChart(days: ActivityDay[]): string {
   if (days.length === 0) return emptyChart("No practice recorded yet");
 
-  const max = Math.max(...days.map((d) => d.written + d.audio), 1);
+  const total = (d: ActivityDay) => d.written + d.audio + d.speak;
+  const max = Math.max(...days.map(total), 1);
   const height = 130;
   const gap = 3;
   const plot = height - 28;
@@ -179,33 +199,42 @@ export function activityChart(days: ActivityDay[]): string {
   const bars = days
     .map((day, i) => {
       const x = i * (barW + gap);
-      const total = day.written + day.audio;
-      const title = `<title>${esc(day.date)}: ${total} answer${total === 1 ? "" : "s"} — ${
+      const answers = total(day);
+      const title = `<title>${esc(day.date)}: ${answers} answer${answers === 1 ? "" : "s"} — ${
         day.written
-      } written, ${day.audio} listening</title>`;
+      } written, ${day.audio} listening, ${day.speak} speaking</title>`;
 
-      if (total === 0) {
+      if (answers === 0) {
         return `<rect x="${x.toFixed(1)}" y="${(base - 2).toFixed(1)}" width="${barW.toFixed(1)}"
                   height="2" rx="1" fill="var(--accent)" opacity="0.25">${title}</rect>`;
       }
 
       // Any non-zero part gets at least 2px, so a few answers in one mode still show.
-      const writtenH = day.written > 0 ? Math.max(2, (day.written / max) * plot) : 0;
-      const audioH = day.audio > 0 ? Math.max(2, (day.audio / max) * plot) : 0;
+      const px = (n: number) => (n > 0 ? Math.max(2, (n / max) * plot) : 0);
+      const parts = [
+        { h: px(day.written), fill: "var(--accent)" },
+        { h: px(day.audio), fill: LISTENING_COLOUR },
+        { h: px(day.speak), fill: SPEAKING_COLOUR },
+      ];
 
-      return `<g>${title}
-        <rect x="${x.toFixed(1)}" y="${(base - writtenH).toFixed(1)}" width="${barW.toFixed(1)}"
-              height="${writtenH.toFixed(1)}" rx="1.5" fill="var(--accent)" />
-        <rect x="${x.toFixed(1)}" y="${(base - writtenH - audioH).toFixed(1)}" width="${barW.toFixed(1)}"
-              height="${audioH.toFixed(1)}" rx="1.5" fill="${LISTENING_COLOUR}" />
-      </g>`;
+      let top = base;
+      const stacked = parts
+        .filter((part) => part.h > 0)
+        .map((part) => {
+          top -= part.h;
+          return `<rect x="${x.toFixed(1)}" y="${top.toFixed(1)}" width="${barW.toFixed(1)}"
+              height="${part.h.toFixed(1)}" rx="1.5" fill="${part.fill}" />`;
+        })
+        .join("");
+
+      return `<g>${title}${stacked}</g>`;
     })
     .join("");
 
   const first = days[0]?.date ?? "";
   const last = days[days.length - 1]?.date ?? "";
 
-  return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Answers per day, written and listening">
+  return `<svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Answers per day, by practice mode">
     ${bars}
     <text x="0" y="${height - 4}" font-size="13" fill="var(--text-faint)">${esc(shortDate(first))}</text>
     <text x="${W}" y="${height - 4}" font-size="13" text-anchor="end" fill="var(--text-faint)">${esc(shortDate(last))}</text>

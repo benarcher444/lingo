@@ -26,6 +26,8 @@ let awaitingContinue = false;
 let sessionId = null;
 /** Active while a miss is on screen, so `y` can override it. Removed after. */
 let overrideKeyHandler = null;
+/** Active while a spoken word is waiting to be marked, for `y` and `n`. */
+let markKeyHandler = null;
 
 /* ------------------------------------------------------------------
    Coming back to a session
@@ -117,6 +119,7 @@ const DIRECTION_LABEL = {
   to_english: `${config.languageName ?? "Target"} → English`,
   from_english: `English → ${config.languageName ?? "Target"}`,
   listen: `${config.languageName ?? "Target"} heard → English`,
+  say: `English → ${config.languageName ?? "Target"} spoken`,
 };
 
 /* ------------------------------------------------------------------
@@ -237,13 +240,37 @@ function nextQuestion() {
 
 function promptFor(card, direction) {
   if (direction === "to_english") return card.term;
-  if (direction === "from_english") return card.english;
-  return null; // audio: nothing to show until it is spoken
+  if (direction === "from_english" || direction === "say") return card.english;
+  return null; // listening: nothing to show until it is spoken
+}
+
+const SPEAKER_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11 5 6 9H3v6h3l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+</svg>`;
+
+/**
+ * Speaking practice. Nothing is recorded and nothing is typed: the English is
+ * shown, you say it out loud, and "Hear it" both plays the word and spells it
+ * out so you can mark yourself. The two buttons are the answer — there is no
+ * "I was right" afterwards, because the mark was already yours.
+ */
+function sayControls(card) {
+  return `
+    <div class="say-reveal" id="say-reveal" hidden>
+      <span class="say-label">It is</span>
+      <span class="say-term" lang="${escapeHtml(config.languageCode || "")}">${escapeHtml(card.term)}</span>
+    </div>
+    <button class="btn btn-lg say-hear" id="say-hear" type="button">${SPEAKER_SVG}<span id="say-hear-label">Hear it</span></button>
+    <div class="say-mark" id="say-mark" hidden>
+      <button class="btn btn-lg say-right" id="say-right" type="button">I said it right <kbd>Y</kbd></button>
+      <button class="btn btn-lg say-wrong" id="say-wrong" type="button">I didn't <kbd>N</kbd></button>
+    </div>`;
 }
 
 function render() {
   const { card, direction } = current;
   const prompt = promptFor(card, direction);
+  const saying = direction === "say";
   const done = totalQuestions - remainingQuestions();
   const pct = totalQuestions > 0 ? (100 * done) / totalQuestions : 0;
 
@@ -267,18 +294,24 @@ function render() {
                </button>
                <div class="quiz-meta"><span class="pill pill-plain quiz-category">${escapeHtml(card.wordType)}</span><span><kbd>r</kbd> ↵ replays</span></div>`
             : `<div class="quiz-prompt">${escapeHtml(prompt)}</div>
-               <div class="quiz-meta"><span class="pill pill-plain quiz-category">${escapeHtml(card.wordType)}</span></div>`
+               <div class="quiz-meta"><span class="pill pill-plain quiz-category">${escapeHtml(card.wordType)}</span>${
+                 saying ? `<span>say it out loud</span>` : ""
+               }</div>`
         }
 
         <form class="quiz-form" id="answer-form" autocomplete="off">
-          <!-- Not a login, address or card: see NO_AUTOFILL in src/views/components.ts. -->
+          ${
+            saying
+              ? sayControls(card)
+              : `<!-- Not a login, address or card: see NO_AUTOFILL in src/views/components.ts. -->
           <input class="quiz-input" id="answer" autocomplete="off" autocapitalize="off"
                  autocorrect="off" spellcheck="false" placeholder="Your answer"
-                 data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" />
+                 data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" />`
+          }
           <!-- Verdict sits between the answer and the button so the result is
                read before the action that dismisses it. -->
           <div id="verdict"></div>
-          <button class="btn btn-primary btn-lg" type="submit">Check</button>
+          <button class="btn btn-primary btn-lg" type="submit"${saying ? " hidden" : ""}>${saying ? "Continue" : "Check"}</button>
         </form>
       </div>
 
@@ -296,8 +329,87 @@ function render() {
     speakTerm(card.term);
   }
 
-  document.getElementById("answer").focus();
+  if (saying) {
+    const hear = document.getElementById("say-hear");
+    hear.addEventListener("click", revealSpoken);
+    document.getElementById("say-right").addEventListener("click", () => markSpoken(true));
+    document.getElementById("say-wrong").addEventListener("click", () => markSpoken(false));
+    // The word is not spoken yet: saying it from the English is the test.
+    hear.focus();
+  } else {
+    document.getElementById("answer").focus();
+  }
+
   saveSession();
+}
+
+/**
+ * "Hear it": says the word and shows how it is written, then offers the two
+ * marks. Pressing it again just replays — the spelling and the buttons stay.
+ */
+function revealSpoken() {
+  speakTerm(current.card.term);
+  if (current.revealed) return;
+
+  current.revealed = true;
+  document.getElementById("say-reveal").hidden = false;
+  document.getElementById("say-hear-label").textContent = "Hear it again";
+
+  // Nothing to mark once the answer is in; the verdict's Continue takes over.
+  if (awaitingContinue) return;
+  document.getElementById("say-mark").hidden = false;
+
+  // y and n, as `y` overrides a miss in the other modes. Focus stays on "Hear
+  // it", so Enter and Space replay rather than marking anything by accident.
+  markKeyHandler = (event) => {
+    const key = event.key.toLowerCase();
+    if (key !== "y" && key !== "n") return;
+    if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (awaitingContinue || !current.revealed) return;
+
+    event.preventDefault();
+    markSpoken(key === "y");
+  };
+  document.addEventListener("keydown", markKeyHandler);
+}
+
+/** The learner's own verdict. The server records it; nothing else judges it. */
+async function markSpoken(right) {
+  releaseMarkKey();
+  document.getElementById("say-mark").hidden = true;
+
+  const response = await fetch("/api/practice/answer", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      wordId: current.card.wordId,
+      mode: config.mode,
+      direction: current.direction,
+      answer: "",
+      selfMarked: right,
+      sessionId,
+    }),
+  });
+
+  if (!response.ok) {
+    document.getElementById("say-mark").hidden = false;
+    return;
+  }
+
+  const result = await response.json();
+  answered += 1;
+  if (result.correct) rightFirstTime += 1;
+  else wrong += 1;
+  if (result.justLearnt) learntNow += 1;
+
+  showVerdict(result, "");
+  saveSession();
+}
+
+function releaseMarkKey() {
+  if (!markKeyHandler) return;
+  document.removeEventListener("keydown", markKeyHandler);
+  markKeyHandler = null;
 }
 
 async function onAnswer(event) {
@@ -305,6 +417,13 @@ async function onAnswer(event) {
 
   if (awaitingContinue) {
     proceed();
+    return;
+  }
+
+  // Speaking has no answer to read: the form only ever carries Continue, and
+  // anything else submitted from it means "hear the word".
+  if (current.direction === "say") {
+    revealSpoken();
     return;
   }
 
@@ -384,7 +503,9 @@ function heardLine() {
 function showVerdict(result, given) {
   const verdict = document.getElementById("verdict");
   const input = document.getElementById("answer");
-  input.disabled = true;
+  const saying = current.direction === "say";
+  // Speaking has no answer box to lock.
+  if (input) input.disabled = true;
 
   if (result.correct) {
     // Correct clears this direction for the session.
@@ -398,7 +519,8 @@ function showVerdict(result, given) {
         ${statusLine(result)}
       </div>`;
   } else {
-    const skipped = given.trim() === "";
+    // A self-marked miss is a real answer, never a skip.
+    const skipped = !saying && given.trim() === "";
 
     verdict.innerHTML = `
       <div class="verdict verdict-wrong">
@@ -409,8 +531,9 @@ function showVerdict(result, given) {
         ${statusLine(result)}
       </div>
       ${
-        // "I was right" makes no sense when nothing was entered.
-        skipped
+        // "I was right" makes no sense when nothing was entered, nor for a
+        // mark the learner has just made themselves.
+        skipped || saying
           ? ""
           : `<div class="row" style="justify-content:center;margin-top:12px">
                <button class="btn btn-sm" id="override" type="button">
@@ -423,7 +546,7 @@ function showVerdict(result, given) {
 
     // `y` overrides a miss, as it did in the original terminal app. Only bound
     // while a miss is on screen, and never for a deliberate skip.
-    if (!skipped) {
+    if (!skipped && !saying) {
       overrideKeyHandler = (event) => {
         if (event.key !== "y" && event.key !== "Y") return;
         if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -439,6 +562,7 @@ function showVerdict(result, given) {
   awaitingContinue = true;
 
   const button = document.querySelector('#answer-form button[type="submit"]');
+  button.hidden = false;
   button.textContent = "Continue";
   button.focus();
 }
@@ -469,12 +593,14 @@ async function override(given) {
 }
 
 // Once answered, a bare `r` replays the word: the answer box is locked then, so
-// the key cannot swallow typing.
-if (config.mode === "audio") {
+// the key cannot swallow typing. In speaking there is no box at all, but the
+// word is only replayable once it has been revealed.
+if (config.mode !== "written") {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "r" && event.key !== "R") return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
-    if (!awaitingContinue || current?.direction !== "listen") return;
+    if (current?.direction === "say" ? !current.revealed : !awaitingContinue) return;
+    if (current?.direction !== "listen" && current?.direction !== "say") return;
 
     event.preventDefault();
     speakTerm(current.card.term);
@@ -489,6 +615,7 @@ function releaseOverrideKey() {
 
 function proceed() {
   releaseOverrideKey();
+  releaseMarkKey();
   awaitingContinue = false;
   nextQuestion();
 }
@@ -496,6 +623,7 @@ function proceed() {
 async function finish() {
   clearSession();
   releaseOverrideKey();
+  releaseMarkKey();
   awaitingContinue = false;
 
   const response = await fetch("/api/practice/finish", {
@@ -591,7 +719,7 @@ function speakTerm(text) {
 let warmedUp = false;
 
 function warmUpSpeech() {
-  if (warmedUp || !synth || config.mode !== "audio") return;
+  if (warmedUp || !synth || config.mode === "written") return;
   warmedUp = true;
 
   const utterance = utteranceFor("a");

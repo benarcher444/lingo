@@ -28,6 +28,10 @@
      than the earlier blue, which sat too close to indigo to tell apart. */
   --listening: #d63f8c;
 
+  /* Speaking, the third mode: teal, far enough from both indigo and raspberry
+     to read in a legend and in a stacked bar. */
+  --speaking: #0d847e;
+
   --learnt: #16855f;
   --learnt-soft: #e2f4ed;
   --learnt-border: #b3e0ce;
@@ -90,6 +94,7 @@
     --on-accent: #16131f;
 
     --listening: #f472b6;
+    --speaking: #2fd4c4;
 
     --learnt: #3fc79a;
     --learnt-soft: #12302a;
@@ -138,6 +143,7 @@
   --on-accent: #16131f;
 
   --listening: #f472b6;
+  --speaking: #2fd4c4;
 
   --learnt: #3fc79a;
   --learnt-soft: #12302a;
@@ -1557,6 +1563,13 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
   --dir-border: #b3d6ef;
 }
 
+/* English shown, target language said out loud. */
+.quiz-card[data-direction="say"] {
+  --dir: #0d847e;
+  --dir-soft: #e0f3f1;
+  --dir-border: #a8ddd8;
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .quiz-card[data-direction="to_english"] {
     --dir: #3ecfbc;
@@ -1572,6 +1585,11 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
     --dir: #6ab4ea;
     --dir-soft: #14283a;
     --dir-border: #27506f;
+  }
+  :root:not([data-theme="light"]) .quiz-card[data-direction="say"] {
+    --dir: #2fd4c4;
+    --dir-soft: #0f2e2c;
+    --dir-border: #1c544f;
   }
 }
 
@@ -1589,6 +1607,11 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
   --dir: #6ab4ea;
   --dir-soft: #14283a;
   --dir-border: #27506f;
+}
+:root[data-theme="dark"] .quiz-card[data-direction="say"] {
+  --dir: #2fd4c4;
+  --dir-soft: #0f2e2c;
+  --dir-border: #1c544f;
 }
 
 /* A band across the top of the card — visible from across the room. */
@@ -1674,6 +1697,83 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
 
 /* The verdict lives inside the answer form, which already has grid gap. */
 .quiz-form .verdict { margin-top: 0; }
+
+/* ------------------------------------------------------------------
+   Speaking practice — say it, hear it, mark yourself
+   ------------------------------------------------------------------ */
+
+/* "Hear it" is the only control until the word has been played, so it carries
+   the direction's colour rather than the page accent. */
+.say-hear {
+  justify-self: center;
+  gap: 9px;
+  border-color: var(--dir-border);
+  background: var(--dir-soft);
+  color: var(--dir);
+  font-weight: 620;
+}
+
+.say-hear:hover { background: var(--dir); border-color: var(--dir); color: var(--surface); }
+.say-hear svg { width: 20px; height: 20px; stroke-width: 1.8; }
+
+/* How the word is written, shown at the same moment it is spoken, so the sound
+   and the spelling arrive together. */
+.say-reveal {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--dir-border);
+  border-radius: var(--radius);
+  background: var(--dir-soft);
+}
+
+.say-label {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  font-weight: 620;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.say-term {
+  font-family: var(--serif);
+  font-size: 1.6rem;
+  line-height: 1.2;
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* The two marks are the answer. Right first, where Check would have been. */
+.say-mark {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+}
+
+.say-mark .btn { flex: 1 1 160px; justify-content: center; }
+
+.say-right {
+  background: var(--learnt);
+  border-color: var(--learnt);
+  color: var(--surface);
+  font-weight: 620;
+}
+
+.say-right:hover { filter: brightness(1.08); }
+
+.say-wrong {
+  color: var(--danger);
+  border-color: var(--danger-border);
+  font-weight: 620;
+}
+
+.say-wrong:hover { background: var(--danger-soft); }
+
+.say-mark kbd { margin-left: 7px; }
 
 .verdict {
   margin-top: 20px;
@@ -2234,6 +2334,16 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
   table.data td {
     padding-inline: 8px;
   }
+
+  /* Three modes across plus the measure down the side: tighter still, or the
+     headline figures scroll sideways on a phone. */
+  table.glance th,
+  table.glance td {
+    padding-inline: 6px;
+    font-size: 0.8rem;
+  }
+
+  table.glance th:not([scope="row"]) { font-size: 0.66rem; letter-spacing: 0.03em; }
 
   table.data .btn-sm { padding-inline: 10px; }
 

@@ -4,14 +4,15 @@ import {
   type Direction,
 } from "../algorithm.js";
 import type { ModeStats, WordDetail } from "../word-detail.js";
-import { LISTENING_COLOUR, legend, lineChart, type Series } from "./charts.js";
-import { scorePill } from "./components.js";
+import { legend, lineChart, type Series } from "./charts.js";
+import { MODE_COLOUR, MODE_LABEL, scorePill } from "./components.js";
 import { esc, icons } from "./layout.js";
 
 const DIRECTION_LABEL: Record<Direction, string> = {
   to_english: "To English",
   from_english: "From English",
   listen: "Listening",
+  say: "Said out loud",
 };
 
 function statRow(label: string, value: string, muted = false): string {
@@ -22,7 +23,7 @@ function statRow(label: string, value: string, muted = false): string {
 }
 
 function modeCard(stats: ModeStats, languageName: string): string {
-  const title = stats.mode === "written" ? "Written practice" : "Listening practice";
+  const title = `${MODE_LABEL[stats.mode]} practice`;
 
   if (!stats.enabled) {
     return `<div class="detail-mode">
@@ -52,7 +53,9 @@ function modeCard(stats: ModeStats, languageName: string): string {
               ? `${languageName} → English`
               : d.direction === "from_english"
                 ? `English → ${languageName}`
-                : DIRECTION_LABEL[d.direction],
+                : d.direction === "say"
+                  ? `English → ${languageName}, said out loud`
+                  : DIRECTION_LABEL[d.direction],
           )}
         </div>
         <div class="detail-direction-grid">
@@ -96,8 +99,9 @@ export function wordDetailPanel(detail: WordDetail, closeHref: string, languageC
   // One line per mode that has any history, in the same colours the Today
   // card uses, so written and listening read the same way everywhere.
   const series: Series[] = [
-    { name: "Written", colour: "var(--accent)", points: detail.scoreHistory.written },
-    { name: "Listening", colour: LISTENING_COLOUR, points: detail.scoreHistory.audio },
+    { name: MODE_LABEL.written, colour: MODE_COLOUR.written, points: detail.scoreHistory.written },
+    { name: MODE_LABEL.audio, colour: MODE_COLOUR.audio, points: detail.scoreHistory.audio },
+    { name: MODE_LABEL.speak, colour: MODE_COLOUR.speak, points: detail.scoreHistory.speak },
   ].filter((s) => s.points.length > 0);
 
   const pointCount = series.reduce((n, s) => n + s.points.length, 0);

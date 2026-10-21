@@ -6,6 +6,7 @@
  */
 
 import {
+  MODE_DIRECTIONS,
   answersMatch,
   stripParenthetical,
   daysBetween,
@@ -180,6 +181,39 @@ check(
   ),
   2.8,
 );
+
+console.log("\nSpeaking scores exactly as listening does");
+{
+  // The owner asked for the same arithmetic, and it is the same code path —
+  // one direction, accuracy doubled. These assertions are what stop a future
+  // change to one mode's formula quietly moving the other.
+  const say = (tested: number, correct: number, streak: number, lastTested: string): WordProgress => ({
+    directions: [{ direction: "say", tested, correct, streak }],
+    lastTested,
+  });
+  const listen = (tested: number, correct: number, streak: number, lastTested: string): WordProgress => ({
+    directions: [{ direction: "listen", tested, correct, streak }],
+    lastTested,
+  });
+
+  check("speak: same as audio on a full streak", scoreWord(say(3, 3, 3, today), "speak"), 2.8);
+  check(
+    "speak: matches audio part way through",
+    scoreWord(say(4, 3, 1, today), "speak"),
+    scoreWord(listen(4, 3, 1, today), "audio"),
+  );
+  check(
+    "speak: decays at the same rate",
+    scoreWord(say(6, 6, 3, daysAgo(40)), "speak"),
+    scoreWord(listen(6, 6, 3, daysAgo(40)), "audio"),
+  );
+  check("speaking tests one direction", MODE_DIRECTIONS.speak, ["say"]);
+  check("and it is not listening's", MODE_DIRECTIONS.audio, ["listen"]);
+  // Rows are kept apart by direction, so a speaking answer cannot score as
+  // listening: asked for the listening score, a word with only "say" rows is
+  // untested.
+  check("a spoken answer scores nothing in listening", scoreWord(say(6, 6, 3, today), "audio"), 0);
+}
 
 console.log("\nDecay crosses the learnt threshold");
 {

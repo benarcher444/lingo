@@ -475,6 +475,40 @@ so `npm run test:chat` can drive the page. "!nocredit" in a message fails the
 way an empty account does. Start the server with it for that test (in cmd,
 `set AI_PROVIDER=mock&& npm start`). It must never be set on the server.
 
+### Speaking practice
+
+`/practice/speak`, the third mode. The owner asked for it on 2026-10-21: the
+English is shown, you say the word out loud, and "Hear it" plays the word and
+spells it out at the same moment, so you can see and hear what you were aiming
+for. The two buttons under it — "I said it right" / "I didn't", `y` and `n` —
+are the answer.
+
+- **Nothing is recorded and nothing is typed.** No microphone, no permission
+  prompt, no transcription to argue with. The owner called it a minor test
+  section and self-marking is the whole design, not a shortcut.
+- **It is scored exactly as listening is**, which is the owner's wording and
+  literally true in code: both modes have one direction, so `soloDirection`
+  sends them down the same branch of `scoreWord` (accuracy doubled, each right
+  answer worth 0.1, the same streak bonus and the same decay).
+- **Its rows are its own** — mode `speak`, direction `say`. A self-marked word
+  must never move the listening score: listening is judged, speaking is not,
+  and mixing them would spoil the one honest record. The same four bands,
+  thresholds and snapshots apply, so it has its own ring, its own Progress
+  block and its own line on a word's record.
+- **`words.speak_enabled`** is its own opt-in column (migration 0004),
+  defaulting true, so every word already in the vocabulary joined speaking the
+  moment it shipped, and a new word can be left out of speaking while still
+  being heard. The owner asked for both on 2026-10-21.
+- **The mark is the only thing a client may assert.** `recordAnswer` honours
+  `selfMarked` for direction `say` and nothing else, and the route rejects any
+  direction that does not belong to its mode (`MODE_DIRECTIONS`), so a crafted
+  request cannot file a said answer under listening or claim a written answer
+  was right. `npm run test:speak` covers both.
+- **The word is not spoken until you ask.** Hearing it before trying would give
+  the answer away, so unlike listening there is no utterance on render — only
+  the silent warm-up, which speaking shares. `r` replays once revealed.
+- There is no "I was right" afterwards: the mark was already the learner's.
+
 ### Translation practice
 
 `src/sentences.ts`, `src/routes/sentences.ts`, `public/sentences.js`. The owner
@@ -617,7 +651,11 @@ If the lag persists, establish the device and browser before changing more.
   `--learning` is the text shade, `--learning-fill` the vivid amber for bars and
   dots. One colour for both was a muddy mustard. Listening has its own
   `--listening` (raspberry), because the earlier blue sat too close to Written's
-  indigo to tell apart on a chart. The banner bars draw solid and learnt as
+  indigo to tell apart on a chart, and speaking `--speaking` (teal), far enough
+  from both to read in a three-colour legend. A mode's name, colour and icon
+  come from `MODE_LABEL` / `MODE_COLOUR` / `MODE_ICON` in
+  `src/views/components.ts` — one place, rather than a `mode === "audio"`
+  ternary per page, which is how a fourth would arrive. The banner bars draw solid and learnt as
   separate bands (`.bar i.solid`, `.bar i.learnt-only`). Plain `.bar i.learnt`
   is the quiz's own progress bar and stays one green. The banner's **ring is
   four arcs** in those same colours — solid, learnt, learning, untouched —
@@ -738,6 +776,7 @@ the demo account seeded.
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out |
+| `npm run test:speak` | Speaking: the word hidden until "Hear it", self-marking, its own rows, and that only `say` may be self-marked |
 | `npm run test:hear` | The word record's Hear it button says the word in the language's voice |
 | `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
 | `npm run test:entry` | Keyboard word entry |
@@ -808,6 +847,17 @@ Not imported, deliberately: a fresh start was asked for. An importer would be
 small — map each CSV to a category, insert, leave progress empty. Note that
 `conjugations` (523) are inflected forms rather than dictionary entries, and
 `nadj` has no equivalent in the default category set.
+
+### Where the modes are listed
+
+Adding one touched more than the new page, and the next change will too:
+`MODE_DIRECTIONS` in `algorithm.ts` (the list everything else derives from),
+the `MODES` tuple in `routes/practice.ts` (pages, zod enums) and in
+`routes/progress.ts` (Today, standing, bars, the glance table, the chart
+switch), the opt-in column in `loadScoredWords`, `word-detail.ts`, the nav in
+`layout.ts`, `switch-language` in `server.ts`, the vocabulary page's status
+view, and the screenshot and mobile-audit page lists. `barChart` takes any
+number of series per row, and `activityChart` stacks all three modes.
 
 ### Not built yet
 

@@ -1,0 +1,1 @@
+ALTER TABLE `words` ADD `speak_enabled` integer DEFAULT true NOT NULL;

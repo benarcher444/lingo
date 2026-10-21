@@ -19,7 +19,15 @@ const PASSWORD = "demopassword";
 /** iPhone 12/13/14 logical size — the narrow end of what matters. */
 const VIEWPORT = { width: 390, height: 844 };
 
-const PAGES = ["/vocab", "/practice/written", "/practice/audio", "/practice/chat", "/progress", "/settings"];
+const PAGES = [
+  "/vocab",
+  "/practice/written",
+  "/practice/audio",
+  "/practice/speak",
+  "/practice/chat",
+  "/progress",
+  "/settings",
+];
 
 let problems = 0;
 

@@ -6,11 +6,18 @@ import { z } from "zod";
 import { provider } from "../ai.js";
 import { mayUseAI } from "../allowlist.js";
 import { LEVELS, SCENES, SCENE_KEYS } from "../chat-scenarios.js";
-import type { Mode } from "../algorithm.js";
+import { MODE_DIRECTIONS, type Mode } from "../algorithm.js";
 import { requireContext, typesFor } from "../context.js";
 import { buildSession, recordAnswer } from "../practice.js";
 import { loadScoredWords, recordSnapshot, summarise, summariseByType } from "../stats.js";
-import { NO_AUTOFILL, emptyState, pageHead, progressBanner } from "../views/components.js";
+import {
+  MODE_ICON,
+  MODE_LABEL,
+  NO_AUTOFILL,
+  emptyState,
+  pageHead,
+  progressBanner,
+} from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
 
 // No explanation under the heading: the owner knows how the modes work and
@@ -18,14 +25,19 @@ import { esc, icons, layout } from "../views/layout.js";
 const MODE_COPY: Record<Mode, { title: string }> = {
   written: { title: "Written practice" },
   audio: { title: "Listening practice" },
+  speak: { title: "Speaking practice" },
 };
+
+/** Both practice modes plus speaking; every answer names one of these. */
+const MODES = ["written", "audio", "speak"] as const;
 
 export async function practiceRoutes(app: FastifyInstance): Promise<void> {
   /* ---------------------------------------------------------------
      Practice pages
      --------------------------------------------------------------- */
 
-  for (const mode of ["written", "audio"] as Mode[]) {
+  for (const mode of MODES) {
+    // "speak" is both the path and the nav key; "audio" stays the listening path.
     app.get(`/practice/${mode}`, async (request, reply) => {
       const ctx = requireContext(request, reply, mode);
       if (!ctx) return;
@@ -61,12 +73,12 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
               emptyState({
                 title: "Please add some words to your vocabulary to start",
                 body:
-                  mode === "audio"
-                    ? `There are no ${language.name} words marked for listening practice yet. Add some words — or tick "Listening practice" on words you already have.`
-                    : `There are no ${language.name} words marked for written practice yet. Add your first few and this page comes alive.`,
+                  mode === "written"
+                    ? `There are no ${language.name} words marked for written practice yet. Add your first few and this page comes alive.`
+                    : `There are no ${language.name} words marked for ${MODE_LABEL[mode].toLowerCase()} practice yet. Add some words — or tick "${MODE_LABEL[mode]} practice" on words you already have.`,
                 actionHref: `/vocab?language=${language.id}`,
                 actionLabel: "Add words",
-                icon: mode === "audio" ? icons.ear : icons.pen,
+                icon: MODE_ICON[mode],
               }),
           }),
         );
@@ -308,7 +320,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
     const parsed = z
       .object({
         languageId: z.coerce.number().int().positive(),
-        mode: z.enum(["written", "audio"]),
+        mode: z.enum(MODES),
         wordTypeId: z.coerce.number().int().positive().nullable().optional(),
         // 0 means "everything", and anything above the pool size is clamped by
         // weightedSample, so a generous ceiling is safe.
@@ -343,15 +355,24 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
     const parsed = z
       .object({
         wordId: z.coerce.number().int().positive(),
-        mode: z.enum(["written", "audio"]),
-        direction: z.enum(["to_english", "from_english", "listen"]),
+        mode: z.enum(MODES),
+        direction: z.enum(["to_english", "from_english", "listen", "say"]),
         answer: z.string().max(300),
         override: z.boolean().optional(),
+        /** Speaking's own verdict. Rejected below for any other direction. */
+        selfMarked: z.boolean().optional(),
         sessionId: z.string().max(64).optional(),
       })
       .safeParse(request.body);
 
     if (!parsed.success) return reply.code(400).send({ error: "bad_request" });
+
+    // The direction has to belong to the mode, or a client could file a
+    // self-marked "say" answer under listening, or claim a written answer was
+    // right without it being compared.
+    if (!MODE_DIRECTIONS[parsed.data.mode].includes(parsed.data.direction)) {
+      return reply.code(400).send({ error: "bad_request" });
+    }
 
     const result = recordAnswer({
       userId: ctx.user.id,
@@ -360,6 +381,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       direction: parsed.data.direction,
       given: parsed.data.answer,
       override: parsed.data.override,
+      selfMarked: parsed.data.selfMarked,
       sessionId: parsed.data.sessionId ?? null,
     });
 
@@ -374,7 +396,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
     const parsed = z
       .object({
         languageId: z.coerce.number().int().positive(),
-        mode: z.enum(["written", "audio"]),
+        mode: z.enum(MODES),
       })
       .safeParse(request.body);
 

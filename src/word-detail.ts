@@ -57,6 +57,7 @@ export interface WordDetail {
   createdAt: string;
   writtenEnabled: boolean;
   audioEnabled: boolean;
+  speakEnabled: boolean;
   modes: ModeStats[];
   /**
    * Most recent misses, newest first. Only wrong answers: a list of rights says
@@ -79,6 +80,7 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
       createdAt: words.createdAt,
       writtenEnabled: words.writtenEnabled,
       audioEnabled: words.audioEnabled,
+      speakEnabled: words.speakEnabled,
       wordTypeName: wordTypes.name,
       languageName: languages.name,
     })
@@ -103,7 +105,7 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
     .orderBy(asc(attempts.answeredAt))
     .all();
 
-  const modes: ModeStats[] = (["written", "audio"] as Mode[]).map((mode) => {
+  const modes: ModeStats[] = (["written", "audio", "speak"] as Mode[]).map((mode) => {
     const forMode = progressRows.filter((p) => p.mode === mode);
 
     let lastTested: string | null = null;
@@ -139,7 +141,12 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
 
     return {
       mode,
-      enabled: mode === "audio" ? row.audioEnabled : row.writtenEnabled,
+      enabled:
+        mode === "audio"
+          ? row.audioEnabled
+          : mode === "speak"
+            ? row.speakEnabled
+            : row.writtenEnabled,
       score: scoreWord(wordProgress, mode),
       breakdown: explainScore(wordProgress, mode),
       directions,
@@ -168,6 +175,7 @@ export function loadWordDetail(userId: number, wordId: number): WordDetail | nul
     scoreHistory: {
       written: replayScore(attemptRows, "written"),
       audio: replayScore(attemptRows, "audio"),
+      speak: replayScore(attemptRows, "speak"),
     },
   };
 }

@@ -33,7 +33,14 @@ export interface ScoredWord {
  * thousand words per language this costs under a millisecond.
  */
 export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
-  const enabledColumn = mode === "audio" ? words.audioEnabled : words.writtenEnabled;
+  // One opt-in column per mode. Every word is in speaking unless its box is
+  // unticked, which is what the default of true on `speak_enabled` buys.
+  const enabledColumn =
+    mode === "audio"
+      ? words.audioEnabled
+      : mode === "speak"
+        ? words.speakEnabled
+        : words.writtenEnabled;
 
   const rows = db
     .select({

@@ -97,7 +97,9 @@ app.get("/switch-language", async (request, reply) => {
   const routes: Record<string, string> = {
     written: "/practice/written",
     audio: "/practice/audio",
+    speak: "/practice/speak",
     chat: "/practice/chat",
+    translate: "/practice/translate",
     vocab: "/vocab",
     progress: "/progress",
     settings: "/settings",

@@ -105,6 +105,7 @@ if (form && term && english) {
           wordTypeId: Number(data.get("wordTypeId")),
           writtenEnabled: data.get("writtenEnabled") !== null,
           audioEnabled: data.get("audioEnabled") !== null,
+          speakEnabled: data.get("speakEnabled") !== null,
         }),
       });
 
@@ -181,6 +182,7 @@ function prependRow(word) {
   const modes = [
     word.writtenEnabled ? '<span class="pill pill-plain">Written</span>' : "",
     word.audioEnabled ? '<span class="pill pill-plain">Listen</span>' : "",
+    word.speakEnabled ? '<span class="pill pill-plain">Speak</span>' : "",
   ]
     .filter(Boolean)
     .join(" ");

@@ -7,14 +7,13 @@ import { db } from "../db/index.js";
 import { attempts, statSnapshots, wordTypes, words } from "../db/schema.js";
 import { loadScoredWords, summarise, summariseByType, type Summary } from "../stats.js";
 import {
-  LISTENING_COLOUR,
   activityChart,
   barChart,
   legend,
   lineChart,
   type Series,
 } from "../views/charts.js";
-import { emptyState, pageHead } from "../views/components.js";
+import { MODE_COLOUR, MODE_ICON, MODE_LABEL, emptyState, pageHead } from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
 
 const SERIES_COLOURS = [
@@ -42,6 +41,9 @@ const MEASURES = {
 } as const;
 
 type MeasureKey = keyof typeof MEASURES;
+
+/** Every mode, in the order they are shown across the page. */
+const MODES = ["written", "audio", "speak"] as const;
 
 export async function progressRoutes(app: FastifyInstance): Promise<void> {
   app.get("/progress", async (request, reply) => {
@@ -75,14 +77,16 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     // Only the chart has a mode, switched inside its own card. The rest of the
     // page shows written and listening together: a page-wide switch meant
     // scrolling back to the top for the few parts that followed it.
-    const mode: Mode = query["mode"] === "audio" ? "audio" : "written";
+    const mode: Mode =
+      query["mode"] === "audio" ? "audio" : query["mode"] === "speak" ? "speak" : "written";
 
     const scoredBy = {
       written: loadScoredWords(language.id, "written"),
       audio: loadScoredWords(language.id, "audio"),
+      speak: loadScoredWords(language.id, "speak"),
     };
 
-    if (scoredBy.written.length === 0 && scoredBy.audio.length === 0) {
+    if (MODES.every((m) => scoredBy[m].length === 0)) {
       return reply.type("text/html").send(
         layout(ctx, {
           title: "Progress",
@@ -102,10 +106,12 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const summaryBy = {
       written: summarise(scoredBy.written, "written"),
       audio: summarise(scoredBy.audio, "audio"),
+      speak: summarise(scoredBy.speak, "speak"),
     };
     const typesBy = {
       written: summariseByType(scoredBy.written, "written"),
       audio: summariseByType(scoredBy.audio, "audio"),
+      speak: summariseByType(scoredBy.speak, "speak"),
     };
     // The chart's categories, for its checkboxes and series.
     const types = typesBy[mode];
@@ -215,11 +221,18 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
     const days = Array.from({ length: 30 }, (_, i) => {
       const date = new Date(Date.now() - (29 - i) * 86_400_000).toISOString().slice(0, 10);
-      return { date, written: answersOn(date, "written"), audio: answersOn(date, "audio") };
+      return {
+        date,
+        written: answersOn(date, "written"),
+        audio: answersOn(date, "audio"),
+        speak: answersOn(date, "speak"),
+      };
     });
 
-    const totalAnswers = days.reduce((sum, d) => sum + d.written + d.audio, 0);
-    const activeDays = days.filter((d) => d.written + d.audio > 0).length;
+    const dayTotal = (d: { written: number; audio: number; speak: number }) =>
+      d.written + d.audio + d.speak;
+    const totalAnswers = days.reduce((sum, d) => sum + dayTotal(d), 0);
+    const activeDays = days.filter((d) => dayTotal(d) > 0).length;
 
     /* ---- Today's practice, split by mode ----
        Deliberately ignores the mode toggle and the category filter: this is
@@ -267,9 +280,8 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       };
     };
 
-    const todayWritten = todayFor("written");
-    const todayAudio = todayFor("audio");
-    const todayTotalWords = todayWritten.words + todayAudio.words;
+    const todayBy = { written: todayFor("written"), audio: todayFor("audio"), speak: todayFor("speak") };
+    const todayTotalWords = MODES.reduce((sum, m) => sum + todayBy[m].words, 0);
 
     const todayCard = (
       title: string,
@@ -302,7 +314,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       </div>`;
     };
 
-    const todayTotalTested = todayWritten.wordsWithRepeats + todayAudio.wordsWithRepeats;
+    const todayTotalTested = MODES.reduce((sum, m) => sum + todayBy[m].wordsWithRepeats, 0);
 
     /* ---- Where the words stand: one block per mode ---- */
 
@@ -348,23 +360,21 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
     /* ---- Completion by category: both modes per category ---- */
 
-    const categoryIds = [...new Set([...typesBy.written, ...typesBy.audio].map((t) => t.wordTypeId))];
+    const categoryIds = [
+      ...new Set(MODES.flatMap((m) => typesBy[m]).map((t) => t.wordTypeId)),
+    ];
     const completionRows = categoryIds
       .map((id) => {
-        const w = typesBy.written.find((t) => t.wordTypeId === id);
-        const a = typesBy.audio.find((t) => t.wordTypeId === id);
+        const found = MODES.map((m) => typesBy[m].find((t) => t.wordTypeId === id));
         return {
-          label: (w ?? a)!.wordTypeName,
-          value: w?.learnt ?? 0,
-          total: w?.total ?? 0,
-          value2: a?.learnt ?? 0,
-          total2: a?.total ?? 0,
+          label: found.find(Boolean)!.wordTypeName,
+          bars: found.map((t) => ({ value: t?.learnt ?? 0, total: t?.total ?? 0 })),
         };
       })
       .sort((x, y) => x.label.localeCompare(y.label));
 
-    // Measures down the side, modes across: three columns fit any phone, where
-    // one column per measure ran off the side of it.
+    // Measures down the side, modes across: a label and three short numbers fit
+    // a phone, where one column per measure ran off the side of it.
     const glance: [string, (s: Summary) => string][] = [
       ["Words", (s) => String(s.total)],
       ["Learnt", (s) => `${s.pctLearnt.toFixed(1)}%`],
@@ -375,7 +385,9 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const glanceRows = glance
       .map(
         ([label, value]) =>
-          `<tr><th scope="row">${label}</th><td>${value(summaryBy.written)}</td><td>${value(summaryBy.audio)}</td></tr>`,
+          `<tr><th scope="row">${label}</th>${MODES.map(
+            (m) => `<td>${value(summaryBy[m])}</td>`,
+          ).join("")}</tr>`,
       )
       .join("");
 
@@ -399,18 +411,20 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
       <div class="stack">
 
         <!-- The chart leads: it is the reason to open this page. Its
-             Written/Listening switch is the page's only one, kept in the card
+             mode switch is the page's only one, kept in the card
              so switching never means scrolling back up. -->
         <div class="card" id="chart">
           <div class="card-head">
             <div>
               <h2>${esc(MEASURES[measure].label)} over time</h2>
-              <div class="sub">${mode === "audio" ? "Listening" : "Written"} practice · recorded at the start and end of every session</div>
+              <div class="sub">${MODE_LABEL[mode]} practice · recorded at the start and end of every session</div>
             </div>
             <form method="get" action="/progress#chart" class="row" id="measure-form">
               <div class="chart-mode" role="group" aria-label="Practice mode">
-                <a class="btn btn-sm${mode === "written" ? " btn-primary" : ""}" href="${esc(chartHref("written"))}">Written</a>
-                <a class="btn btn-sm${mode === "audio" ? " btn-primary" : ""}" href="${esc(chartHref("audio"))}">Listening</a>
+                ${MODES.map(
+                  (m) =>
+                    `<a class="btn btn-sm${m === mode ? " btn-primary" : ""}" href="${esc(chartHref(m))}">${MODE_LABEL[m]}</a>`,
+                ).join("")}
               </div>
               <input type="hidden" name="language" value="${language.id}">
               <input type="hidden" name="mode" value="${mode}">
@@ -472,12 +486,12 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
           </form>
         </div>
 
-        <!-- Today at a glance, both modes side by side. Separate from the
+        <!-- Today at a glance, one card per mode. Separate from the
              30-day activity chart, which is about consistency over time. -->
         <div class="card">
           <div class="card-head">
             <div><h2>Today</h2>
-              <div class="sub">${esc(todayStamp)} · <strong>${todayTotalTested}</strong> word${todayTotalTested === 1 ? "" : "s"} tested across both modes${
+              <div class="sub">${esc(todayStamp)} · <strong>${todayTotalTested}</strong> word${todayTotalTested === 1 ? "" : "s"} tested across every mode${
                 todayTotalWords !== todayTotalTested
                   ? ` · ${todayTotalWords} different`
                   : ""
@@ -485,21 +499,21 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
           </div>
           <div class="card-body">
             <div class="today-grid">
-              ${todayCard("Written practice", icons.pen, todayWritten, "var(--accent)")}
-              ${todayCard("Listening practice", icons.ear, todayAudio, LISTENING_COLOUR)}
+              ${MODES.map((m) =>
+                todayCard(`${MODE_LABEL[m]} practice`, MODE_ICON[m], todayBy[m], MODE_COLOUR[m]),
+              ).join("")}
             </div>
           </div>
         </div>
 
-        <!-- Where every word currently sits, both modes. Each mode's four
+        <!-- Where every word currently sits, every mode. Each mode's four
              bands sum to its total. -->
         <div class="card">
           <div class="card-head">
             <div><h2>Where your ${esc(language.name)} stands</h2></div>
           </div>
           <div class="card-body">
-            ${standing("Written", icons.pen, summaryBy.written)}
-            ${standing("Listening", icons.ear, summaryBy.audio)}
+            ${MODES.map((m) => standing(MODE_LABEL[m], MODE_ICON[m], summaryBy[m])).join("")}
             <div class="hint" style="margin-top:12px">
               Solid is above ${(2.556).toFixed(3)}, learnt above ${(2.3).toFixed(1)}.
               Scores decay about 0.01 a day, so words move back down if left alone.
@@ -512,17 +526,14 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
             <div class="card-head"><div><h2>Completion by category</h2>
               <div class="sub">Where your vocabulary is strong and where it is thin.</div></div></div>
             <div class="card-body chart-box">
-              ${barChart(completionRows, { colours: ["var(--accent)", LISTENING_COLOUR] })}
+              ${barChart(completionRows, { colours: MODES.map((m) => MODE_COLOUR[m]) })}
             </div>
-            ${legend([
-              { name: "Written", colour: "var(--accent)" },
-              { name: "Listening", colour: LISTENING_COLOUR },
-            ])}
+            ${legend(MODES.map((m) => ({ name: MODE_LABEL[m], colour: MODE_COLOUR[m] })))}
           </div>
 
           <div class="card">
             <div class="card-head">
-              <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days, both modes${
+              <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days, every mode${
                 showAllCategories ? "" : " · selected categories"
               }.</div></div>
               <div class="row">
@@ -531,10 +542,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
               </div>
             </div>
             <div class="card-body chart-box">${activityChart(days)}</div>
-            ${legend([
-              { name: "Written", colour: "var(--accent)" },
-              { name: "Listening", colour: LISTENING_COLOUR },
-            ])}
+            ${legend(MODES.map((m) => ({ name: MODE_LABEL[m], colour: MODE_COLOUR[m] })))}
           </div>
         </div>
 
@@ -542,7 +550,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         <div class="card">
           <div class="table-wrap">
             <table class="data glance">
-              <thead><tr><th></th><th>Written</th><th>Listening</th></tr></thead>
+              <thead><tr><th></th>${MODES.map((m) => `<th>${MODE_LABEL[m]}</th>`).join("")}</tr></thead>
               <tbody>${glanceRows}</tbody>
             </table>
           </div>

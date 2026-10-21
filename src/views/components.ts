@@ -1,5 +1,25 @@
+import type { Mode } from "../algorithm.js";
 import type { Summary, TypeSummary } from "../stats.js";
 import { esc, icons } from "./layout.js";
+
+/** What each mode is called on screen, and the colour it is drawn in. */
+export const MODE_LABEL: Record<Mode, string> = {
+  written: "Written",
+  audio: "Listening",
+  speak: "Speaking",
+};
+
+export const MODE_COLOUR: Record<Mode, string> = {
+  written: "var(--accent)",
+  audio: "var(--listening)",
+  speak: "var(--speaking)",
+};
+
+export const MODE_ICON: Record<Mode, string> = {
+  written: icons.pen,
+  audio: icons.ear,
+  speak: icons.speak,
+};
 
 /**
  * The banner that sits at the top of the vocabulary page: overall completion,
@@ -10,7 +30,7 @@ export function progressBanner(opts: {
   summary: Summary;
   types: TypeSummary[];
   languageName: string;
-  mode?: "written" | "audio";
+  mode?: Mode;
   linkBase?: string;
 }): string {
   const { summary, types } = opts;
@@ -74,7 +94,7 @@ export function progressBanner(opts: {
       <div class="ring" style="${ringStyle}" title="${esc(ringTitle)}"><span>${pct.toFixed(0)}%</span></div>
       <div class="banner-figure-text">
         <div class="big">${summary.learnt} of ${summary.total} learnt</div>
-        <div class="small">${esc(opts.languageName)} · ${opts.mode === "audio" ? "listening" : "written"}</div>
+        <div class="small">${esc(opts.languageName)} · ${MODE_LABEL[opts.mode ?? "written"].toLowerCase()}</div>
         ${
           hasExcluded
             ? `<div class="true-words" title="Learnt, leaving out conjugations and phrases: those are forms of words you already have, and sentences, rather than new words">${trueLearnt} of ${trueTotal} true words</div>`
