@@ -1141,7 +1141,9 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 .chart-filters-foot {
   flex-basis: 100%;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
+  gap: 8px;
 }
 .chart-filters .check .hint { font-size: 0.72rem; }
 

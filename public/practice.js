@@ -636,6 +636,20 @@ async function finish() {
   const summary = payload.summary;
   const accuracy = answered > 0 ? Math.round((100 * rightFirstTime) / answered) : 0;
 
+  // The banner and the session-size hint were built when the page loaded, so
+  // "Practise again" used to show the standing from before the session and
+  // only a reload put it right. The server sends both back rebuilt.
+  if (overviewEl && typeof payload.overview === "string") {
+    overviewEl.innerHTML = payload.overview;
+  }
+  if (payload.countsByType) {
+    config.total = payload.total ?? config.total;
+    config.due = payload.due ?? config.due;
+    config.countsByType = payload.countsByType;
+    config.dueByType = payload.dueByType ?? config.dueByType;
+    refreshCountHint();
+  }
+
   quizEl.hidden = true;
   summaryEl.hidden = false;
   if (overviewEl) overviewEl.hidden = true;

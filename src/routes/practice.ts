@@ -401,15 +401,34 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       .safeParse(request.body);
 
     if (!parsed.success) return reply.code(400).send({ error: "bad_request" });
-    if (!ctx.languages.some((l) => l.id === parsed.data.languageId)) {
-      return reply.code(403).send({ error: "forbidden" });
-    }
+    const finished = ctx.languages.find((l) => l.id === parsed.data.languageId);
+    if (!finished) return reply.code(403).send({ error: "forbidden" });
 
     // Snapshot again, so the history reflects the work just done. The original
     // only recorded the "before" state.
     recordSnapshot(parsed.data.languageId, parsed.data.mode);
 
     const scored = loadScoredWords(parsed.data.languageId, parsed.data.mode);
-    return reply.send({ summary: summarise(scored, parsed.data.mode) });
+    const summary = summarise(scored, parsed.data.mode);
+    const typeSummaries = summariseByType(scored, parsed.data.mode);
+
+    return reply.send({
+      summary,
+      // The banner and the session-size hint were rendered when the page
+      // loaded, so "Practise again" showed the standing from before the
+      // session and only a reload fixed it. Both are sent back fresh here.
+      overview: progressBanner({
+        summary,
+        types: typeSummaries,
+        languageName: finished.name,
+        mode: parsed.data.mode,
+      }),
+      total: summary.total,
+      due: summary.total - summary.completelyLearnt,
+      countsByType: Object.fromEntries(typeSummaries.map((t) => [t.wordTypeId, t.total])),
+      dueByType: Object.fromEntries(
+        typeSummaries.map((t) => [t.wordTypeId, t.total - t.completelyLearnt]),
+      ),
+    });
   });
 }

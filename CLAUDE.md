@@ -566,6 +566,15 @@ re-asking, so nothing is recorded twice. Saves are kept for 12 hours, and
 "End session" clears them. Tests that start a second session on the same page
 must clear `localStorage` first.
 
+**A session never reloads the page, so the page around it goes stale.** The
+progress banner and the "how many" hint on a practice page are server-rendered
+once, at load; the session then happens entirely in `fetch`, so "Practise
+again" used to show the standing from before the session until the owner
+reloaded (they asked for it on 2026-10-26). `/api/practice/finish` now returns
+a rebuilt banner alongside the summary, plus fresh totals and due counts, and
+`finish()` swaps both in. Anything else added above the quiz needs the same
+treatment — rendering it server-side is not enough.
+
 ### Counting a day's practice
 
 Two different questions, both answered on the Progress page's Today card:
@@ -586,7 +595,10 @@ The **Practice activity** chart counts *answers*, not words, stacked written
 under listening — always both modes, whatever the chart's Written/Listening
 switch says. It once followed the toggle, so with Written selected a day of
 listening vanished from it while the Today card counted it, and the two looked
-contradictory. It still honours the category checkboxes.
+contradictory. It still honours the category checkboxes — but answers have no
+"overall" series of their own, so when the total is ticked and no single
+category is, there is nothing to filter by and it counts the whole language
+rather than drawing a blank chart beside a busy Today card.
 
 The progress graph defaults to **Words learnt**: a percentage also drops every
 time a word is added, which reads as going backwards.
@@ -600,6 +612,12 @@ a Written/Listening switch, inside its own card. Its links and forms end in
 `#chart`, so switching lands back on the chart. Until 2026-09-14 one switch at
 the top of the page changed just a few sections, and the owner had to scroll
 back up to use it.
+
+**The chart's filters offer the two ends as one click each.** Under the
+checkboxes, "All categories only" leaves the overall line on its own and
+"Every category" (which was "Reset") puts them all back. Each checkbox submits
+the form, so clearing nine ticks by hand meant nine page loads — the owner
+asked for the shortcut on 2026-10-26.
 
 ### Listening speech
 
@@ -795,7 +813,7 @@ the demo account seeded.
 | `npm run test:sentences` | Translation practice: a round from your words, the words revealed, marking, and that it records nothing. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:chat` | Conversation end to end: scene and level, AI opens, corrected turn, speech, teacher thread, own scene, out-of-credit message. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:search` | Vocabulary search and category filter, via the form |
-| `npm run test:session` | Session size, skip-on-empty, `y` override |
+| `npm run test:session` | Session size, skip-on-empty, `y` override, the banner rebuilt after a session |
 | `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out |
 | `npm run test:speak` | Speaking: the word hidden until "Hear it", self-marking, its own rows, and that only `say` may be self-marked |

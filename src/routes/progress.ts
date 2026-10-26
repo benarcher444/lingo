@@ -203,7 +203,12 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
     const dayOf = sql<string>`substr(${attempts.answeredAt}, 1, 10)`;
 
     const activityConditions = [eq(wordTypes.languageId, language.id), gte(dayOf, since)];
-    if (!showAllCategories) {
+    // Answers have no "overall" series of their own, so with the total ticked
+    // and no single category chosen there is nothing to filter by: count the
+    // whole language rather than nothing. Picking the total alone is one click
+    // now, and a blank chart beside a busy Today card looks like a bug.
+    const activityAllCategories = showAllCategories || selectedCats.size === 0;
+    if (!activityAllCategories) {
       activityConditions.push(inArray(words.wordTypeId, [...selectedCats]));
     }
 
@@ -480,8 +485,12 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
               .join("")}
 
             <div class="chart-filters-foot">
+              <!-- The overall line on its own, in one click. Clearing the ticks
+                   by hand meant one page load per category, nine in French. -->
               <a class="btn btn-sm btn-ghost"
-                 href="/progress?language=${language.id}&mode=${mode}&measure=${measure}#chart">Reset</a>
+                 href="/progress?language=${language.id}&mode=${mode}&measure=${measure}&filtered=1&overall=1#chart">All categories only</a>
+              <a class="btn btn-sm btn-ghost"
+                 href="/progress?language=${language.id}&mode=${mode}&measure=${measure}#chart">Every category</a>
             </div>
           </form>
         </div>
@@ -534,7 +543,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
           <div class="card">
             <div class="card-head">
               <div><h2>Practice activity</h2><div class="sub">Answers per day over the last 30 days, every mode${
-                showAllCategories ? "" : " · selected categories"
+                activityAllCategories ? "" : " · selected categories"
               }.</div></div>
               <div class="row">
                 <span class="pill pill-plain">${totalAnswers} answers</span>

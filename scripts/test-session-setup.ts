@@ -145,6 +145,53 @@ await page.waitForSelector("#summary:not([hidden])", { timeout: 10_000 });
 await page.reload({ waitUntil: "networkidle" });
 check("ending it for real clears it", await page.locator("#setup").isVisible());
 
+console.log("\nThe banner updates without a reload\n");
+
+// Mark the banner the page loaded with, so "it changed" can be told from "it
+// was replaced by a fresh one".
+await page.evaluate(() => {
+  const banner = document.querySelector<HTMLElement>("#overview .progress-banner");
+  if (banner) banner.dataset["stale"] = "1";
+});
+
+await page.selectOption("#wordType", { index: 0 });
+await page.fill("#count", "1");
+await page.click('#setup-form button[type="submit"]');
+await page.waitForSelector(".quiz-input", { timeout: 10_000 });
+
+// One word, both directions. Answer wrongly and override, so each direction is
+// recorded as correct and the standing actually moves.
+for (let i = 0; i < 2; i += 1) {
+  await page.fill(".quiz-input", "almost certainly not the answer");
+  await page.press(".quiz-input", "Enter");
+  await page.waitForSelector("#override", { timeout: 10_000 });
+  await page.keyboard.press("y");
+  // "hidden", not "detached": on the last question the whole quiz is hidden
+  // rather than emptied, so the verdict stays in the DOM out of sight.
+  await page.waitForSelector(".verdict", { state: "hidden", timeout: 10_000 });
+}
+
+await page.waitForSelector("#summary:not([hidden])", { timeout: 10_000 });
+await page.click("#again");
+await page.waitForSelector("#overview:not([hidden])", { timeout: 10_000 });
+
+const rebuilt = await page.evaluate(() => {
+  const banner = document.querySelector<HTMLElement>("#overview .progress-banner");
+  return {
+    stale: banner?.dataset["stale"] ?? null,
+    text: (banner?.textContent ?? "").replace(/\s+/g, " ").trim(),
+  };
+});
+check("Practise again shows a rebuilt banner, not the one the page loaded", rebuilt.stale === null);
+
+await page.reload({ waitUntil: "networkidle" });
+const afterReload = await page.evaluate(() =>
+  (document.querySelector("#overview .progress-banner")?.textContent ?? "")
+    .replace(/\s+/g, " ")
+    .trim(),
+);
+check("and it already said what a reload says", rebuilt.text === afterReload);
+
 if (errors.length > 0) {
   console.log(`\nConsole errors: ${errors.length}`);
   for (const e of errors.slice(0, 3)) console.log(`  ${e}`);
