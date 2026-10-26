@@ -63,7 +63,7 @@ console.log("\nSetup\n");
 
 check("the page offers a word count", (await page.locator("#tr-count option").count()) >= 2);
 check("and a level, starting at A1", (await page.inputValue("#tr-level")) === "A1");
-check("drawn from the words you're learning by default", (await page.inputValue("#tr-weighting")) === "due");
+check("drawn from any words by default", (await page.inputValue("#tr-weighting")) === "any");
 check("it says scores are not affected", ((await page.textContent("#tr-sub")) ?? "").includes("not affected"));
 check("no round until you start", await page.locator("#tr-round").isHidden());
 
@@ -102,10 +102,14 @@ await page.waitForFunction(`document.querySelector("#tr-english").textContent.tr
 check("a new sentence, and the marking cleared", (await page.locator(".tr-verdict").count()) === 0);
 check("with an empty box to write in", (await page.inputValue("#tr-answer")) === "");
 
-await page.selectOption("#tr-weighting", "any");
+// The other draw, now that any words is the default one.
+await page.selectOption("#tr-weighting", "due");
 await page.click("#tr-skip");
 await page.waitForFunction(`document.querySelector("#tr-english").textContent.trim().length > 1`);
-check("any-word rounds work too", ((await page.textContent("#tr-english")) ?? "").includes("the sentence with"));
+check(
+  "rounds from the words you're learning work too",
+  ((await page.textContent("#tr-english")) ?? "").includes("the sentence with"),
+);
 
 console.log("\nIt records nothing\n");
 

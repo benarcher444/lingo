@@ -140,8 +140,10 @@ export async function sentenceRoutes(app: FastifyInstance): Promise<void> {
               <div class="field setup-category">
                 <label for="tr-weighting">Drawn from</label>
                 <select class="select" id="tr-weighting">
-                  <option value="due" selected>Words you're learning</option>
-                  <option value="any">Any words</option>
+                  <!-- Any words by default: a sentence is for variety, and the
+                       weighted draw kept returning the same shaky handful. -->
+                  <option value="any" selected>Any words</option>
+                  <option value="due">Words you're learning</option>
                 </select>
               </div>
               <div class="field setup-count">
@@ -202,7 +204,7 @@ export async function sentenceRoutes(app: FastifyInstance): Promise<void> {
         languageId: z.coerce.number().int().positive(),
         count: z.coerce.number().int().min(1).max(5).default(3),
         level: z.enum(LEVELS).default("A1"),
-        weighting: z.enum(["due", "any"]).default("due"),
+        weighting: z.enum(["due", "any"]).default("any"),
       })
       .safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "bad_request" });

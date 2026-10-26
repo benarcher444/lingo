@@ -543,7 +543,9 @@ in the target language.
   insists every given word appears and that nothing else goes beyond the level.
 - **Weighted or flat, the owner's choice.** "Words you're learning" uses
   `selectionOdds`, so solid words are skipped and the shaky ones come up; "Any
-  words" is a flat draw.
+  words" is a flat draw. **"Any words" is the default**, as the owner asked on
+  2026-10-26 — a sentence is for variety, and the weighted draw keeps serving
+  the same shaky handful. The API falls back to the same choice.
 - **It never writes to `progress` or `attempts`.** Getting a sentence wrong is
   not the same as failing to recall a word, and mixing them would corrupt the
   scores. `scripts/test-sentences.ts` asserts the row counts are unchanged.
