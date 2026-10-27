@@ -16,6 +16,50 @@ breaking Lingo.
 
 ---
 
+## 0. Decisions, and what is waiting to be done
+
+### Decided by the owner (2026-10-27, from a phone session)
+
+- **Lingo stays exactly as it is:** `127.0.0.1:3000`, served at
+  `https://91-99-202-188.sslip.io`. Further sites take 3001, 3002, … and are
+  told apart by hostname, not by port (section 1 explains why).
+- **New sites get a real domain name**, not sslip.io. The owner said a name
+  "sounds good". **No domain has been bought or chosen yet** as of this entry, so
+  the first job is to ask which one. Don't invent a domain, and don't buy one.
+- **The new sites are Node websites**, the same shape as Lingo. Section 8.1 and
+  the two scripts below are the path; 8.2 and 8.3 are reference only.
+
+### Not done yet — needs a session that can SSH to the server
+
+Nothing below has been run. A phone/cloud session cannot do it (section 4). Do
+these in order, from the laptop:
+
+1. **Look before touching.** `cat /etc/caddy/Caddyfile`, `ss -tlnp`, `free -h`.
+   Compare with sections 2, 6 and 7, and correct this file where reality differs.
+2. **Get the scripts onto the server.** They are in `deploy/` on the branch
+   `claude/beautiful-mendel-k1ebks`, so they reach `/opt/lingo` only once that is
+   merged to `main` (which deploys Lingo, a routine restart with a pre-deploy
+   backup) and `lingo-deploy` has run. Quicker and with no Lingo restart:
+   `scp deploy/migrate-caddy.sh deploy/new-site.sh root@91.99.202.188:/root/`.
+3. **Run `bash migrate-caddy.sh`** (section 7). It backs up the live Caddyfile,
+   validates the new layout, and puts the original back if validation fails.
+   Then `curl -sI https://91-99-202-188.sslip.io/login` must still say 200.
+4. **Choose and buy the domain**, then in its DNS add an `A` record pointing at
+   `91.99.202.188` — ideally a **wildcard** (`*`), so each future site needs no
+   DNS step at all. Add `AAAA` too if you want IPv6. Check with
+   `nslookup anything.<domain>`. Caddy still fetches one certificate per
+   hostname; the wildcard only covers DNS.
+5. **Add the first site:** `bash new-site.sh <name> <name>.<domain> 3001 <git-url>`
+   (add `--dry-run` first). Then put its secrets in `/opt/<name>/.env`, restart
+   it, and fill in the table in section 10.
+6. **Optional:** move Lingo itself onto the domain by editing the hostname in
+   `/etc/caddy/sites/lingo.caddy` and reloading. Everyone has to sign in again
+   (the session cookie belongs to a hostname), and the old sslip.io address stops
+   working unless you keep both names in that block.
+7. **Update this section** as steps finish, in the same change.
+
+---
+
 ## 1. The short version
 
 - One server, one public address, **three public ports: 22 (SSH), 80, 443.**
@@ -189,6 +233,12 @@ step 8 installs it with `sed … > /etc/caddy/Caddyfile`, which **overwrites the
 whole file**. Re-running that on a server with other sites would delete them.
 
 The safe layout is one small file per site, pulled in by the main Caddyfile.
+**The easy way:** `bash deploy/migrate-caddy.sh` does all of this. It moves the
+live Caddyfile, unchanged, to `sites/lingo.caddy` (so nothing about Lingo's block
+is guessed), writes the small new Caddyfile, validates, restores the original if
+validation fails, then reloads. It does nothing if already migrated. What follows
+is the same thing by hand, which is also how to understand what it did.
+
 Do this once, as root on the server, and **check the live file first** — it
 should hold one site block for `91-99-202-188.sslip.io`, but read it:
 
@@ -250,6 +300,16 @@ free port from section 6 (`3001`). Everything runs as root on the server unless
 stated.
 
 ### 8.1 A Node app (the same shape as Lingo)
+
+**The easy way:** `bash deploy/new-site.sh [--dry-run] <name> <hostname> <port> <git-url>`
+runs steps 1, 2, 3, 5 and 6 below: it checks the name, port and hostname are
+free, then creates the user, clone, `.env`, service and Caddy file. It waits for
+the app to answer on `127.0.0.1:<port>` *before* touching Caddy, so a broken app
+cannot affect Lingo, and it prints undo commands if it fails part-way. It needs
+`migrate-caddy.sh` to have been run. `START_CMD` sets how the app starts
+(default `npm start`). It does not add secrets or set up auto-deploy: step 2 and
+section 8.4 are still yours. The steps below are what it does, for when it
+doesn't fit.
 
 **1. A user and a folder.**
 
@@ -474,6 +534,10 @@ server**.
 **Taken from CLAUDE.md, not checked live:** the server specs, the sslip.io
 hostname, the SSH hardening, and the Caddy and Node versions.
 
+**The two scripts** (`deploy/migrate-caddy.sh`, `deploy/new-site.sh`) were
+written in the same session. See the end of this section for how far they were
+tested.
+
 **Not known — verify before relying on it:**
 
 - The contents of the live `/etc/caddy/Caddyfile`. It was installed by hand and
@@ -485,5 +549,21 @@ hostname, the SSH hardening, and the Caddy and Node versions.
 - Lingo's actual memory use, which decides how many more sites fit.
 - That Let's Encrypt will issue for a given `*.91-99-202-188.sslip.io` name. It
   is rate-limited per registered domain, and that domain is shared.
+
+**How far the scripts were tested.** In the cloud session, with every path
+redirected into a temp folder and `caddy` replaced by a stand-in:
+
+- `new-site.sh --dry-run`: 13 cases pass — usage, not-yet-migrated Caddy, a
+  valid request, port 3000, a non-numeric port, a bad or reserved name, a bad
+  hostname or repo URL, a port or hostname already in a site file, an existing
+  folder, and a port with something listening.
+- `migrate-caddy.sh`: 12 cases pass — migrating, Lingo's block moved
+  byte-for-byte, the backup, a second run changing nothing, the original put back
+  when validation fails, and a missing Caddyfile refused.
+
+**Never run for real:** the live path of `new-site.sh` (creating the user,
+cloning, `npm`, `systemctl`, the real `caddy validate` and `reload`) and the real
+Caddy reload in `migrate-caddy.sh`. Both need root on the actual server. Use
+`--dry-run` first, and expect to read an error or two the first time.
 
 Nothing in this file has been applied to the server.
