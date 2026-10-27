@@ -118,6 +118,13 @@ journalctl -u lingo -n 20     # expect "Sign-up is open to 1 invited address"
 
 ## 8. HTTPS — server
 
+> **Do not run this on the existing live server.** On 2026-10-27 it was moved
+> to one Caddy file per site, so `/etc/caddy/Caddyfile` is now shared by every
+> site on the machine and this command would overwrite it, taking the others
+> down. There, edit `/etc/caddy/sites/lingo.caddy` instead, then
+> `caddy validate --config /etc/caddy/Caddyfile && systemctl reload caddy`.
+> This step stands as written only for a fresh machine. See `SERVER.md`.
+
 ```bash
 sed "s/lingo.example.com/lingo.yourdomain.com/" deploy/Caddyfile > /etc/caddy/Caddyfile
 systemctl reload caddy

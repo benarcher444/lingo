@@ -296,6 +296,18 @@ systemd with hardening, a nightly backup timer, and `deploy.sh` (back up, pull,
 `npm ci --omit=dev`, restart, then wait for `/login` to answer or fail). `tsx`
 is in `dependencies`, not dev, because production runs through it.
 
+**The server now holds one Caddy file per site.** Done on 2026-10-27, so a
+second app could be added without touching Lingo's configuration.
+`/etc/caddy/Caddyfile` is a `(common)` snippet plus
+`import /etc/caddy/sites/*.caddy`, and Lingo's original block was moved
+verbatim into `/etc/caddy/sites/lingo.caddy`. Lingo was never restarted — Caddy
+was reloaded — and its hostname, port, data and service are unchanged. Two
+consequences: **DEPLOY.md step 8 must never be run on this server again**
+(it overwrites the now-shared file), and a change to Lingo's HTTPS config goes
+in `sites/lingo.caddy`, with `caddy validate` before `systemctl reload caddy`.
+The pre-migration copy is at `/root/Caddyfile.before-migration` and
+`/etc/caddy/Caddyfile.bak-20261027T232737`.
+
 **`PLAYBOOK.md` is this project's practice, written for somebody else.** The
 owner asked on 2026-10-27 for a file that could be dropped into a brand-new,
 empty repository so an agent there could build a second app to the same
