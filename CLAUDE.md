@@ -296,6 +296,16 @@ systemd with hardening, a nightly backup timer, and `deploy.sh` (back up, pull,
 `npm ci --omit=dev`, restart, then wait for `/login` to answer or fail). `tsx`
 is in `dependencies`, not dev, because production runs through it.
 
+**`PLAYBOOK.md` is this project's practice, written for somebody else.** The
+owner asked on 2026-10-27 for a file that could be dropped into a brand-new,
+empty repository so an agent there could build a second app to the same
+standard without ever seeing this one. It is deliberately repo-agnostic — no
+vocabulary, no modes, no scoring — and self-contained: stack and layout, design
+tokens and mobile, accounts, the verification ladder, and the whole path from
+`git init` to a live HTTPS site beside this one. It carries no secrets and
+names no account. When a practice here changes, change it there too, or the
+copy in the next repository teaches the old way.
+
 **Pushes to `main` deploy themselves.** `.github/workflows/deploy.yml` runs the
 typecheck and the server-free suites (`npm test`, `test:accents`, `test:ai`),
 then SSHes in. The deploy key's `authorized_keys` entry forces
