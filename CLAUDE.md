@@ -296,6 +296,14 @@ systemd with hardening, a nightly backup timer, and `deploy.sh` (back up, pull,
 `npm ci --omit=dev`, restart, then wait for `/login` to answer or fail). `tsx`
 is in `dependencies`, not dev, because production runs through it.
 
+**The server is meant to host more than one site.** `SERVER.md` is the guide:
+Lingo stays on `127.0.0.1:3000`, each further site takes the next port, and
+Caddy routes by hostname on 80/443. Its section 7 moves Caddy to one file per
+site, after which DEPLOY.md step 8 (which overwrites `/etc/caddy/Caddyfile`)
+must not be re-run on the live server. Written from the repo without server
+access, so nothing in it had been applied or verified live when it was added
+(2026-10-27).
+
 **Pushes to `main` deploy themselves.** `.github/workflows/deploy.yml` runs the
 typecheck and the server-free suites (`npm test`, `test:accents`, `test:ai`),
 then SSHes in. The deploy key's `authorized_keys` entry forces
