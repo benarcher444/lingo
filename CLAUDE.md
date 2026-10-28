@@ -703,6 +703,29 @@ with one already there needs the same treatment** — the script is the register
 of which groups exist, so add the group to it rather than ticking one box by
 hand.
 
+Spanish's accents largely exist to separate homophones *in writing*, so every
+such pair is a listening collision waiting to happen. The owner already holds
+one half of a dozen of them, and adding the other half would collide:
+`él`/`el`, `mi`/`mí`, `te`/`té`, `se`/`sé`, `de`/`dé`, `más`/`mas`,
+`este`/`éste`, `ese`/`ése`, `dónde`/`donde`, `cuál`/`cual`, `quién`/`quien`,
+`cuánto`/`cuanto`, plus the silent-h and seseo pairs `a`/`ha`, `hola`/`ola`,
+`hasta`/`asta` and `cien`/`sien`. `b` and `v` are one phoneme and `ll` and `y`
+another, so `vaya`/`valla` and `haya`/`halla` would collide too.
+
+**French collides far more readily**, and mostly on words not yet entered: only
+`or`/`hors` collide among the 100 there now. The classes to expect, each of
+them likely vocabulary: an `-er` infinitive against its own past participle
+(`aller`/`allé`, `passer`/`passé`, `donner`/`donné` — identical, and five such
+infinitives are already in), `sans`/`cent` the moment numbers are added,
+`en`/`an`, `dans`/`la dent`, `vers`/`vert`/`verre`, `quel`/`quelle`,
+`sur`/`sûr`, `quand`/`quant`, `temps`/`tant`, `sept`/`cette`, `vingt`/`vin`.
+
+**Bulk entry drops accents, so sweep for them afterwards.** `près` had been
+entered as `pres`, which is not a French word; corrected in the live database
+on 2026-10-28. The archived CSV had it right both times, so this was a typing
+slip rather than inherited — `check-accents-in-data.ts` compares the two and is
+the cheap way to find the next one.
+
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
 after it, because Google's network jitter is larger than the cold cost there. A
