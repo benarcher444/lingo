@@ -318,6 +318,18 @@ tokens and mobile, accounts, the verification ladder, and the whole path from
 names no account. When a practice here changes, change it there too, or the
 copy in the next repository teaches the old way.
 
+**`AI-PLAYBOOK.md` is its companion, for the AI parts.** The owner asked for it
+on 2026-10-28, because the agent on the new app had no idea how to set that
+side up — `PLAYBOOK.md` does not mention AI at all. It carries what this repo
+learned and could not be guessed: the one-interface provider abstraction and
+why the vendor choice stays configuration, the mock provider that makes AI
+features testable without a key or a bill, the current Anthropic call shape
+(adaptive thinking, `output_config.effort`, no `budget_tokens`, no prefill,
+refusal as a 200), the four errors worth telling apart, JSON fencing, and the
+key-handling rules. Both files go into a new repo together, and `PLAYBOOK.md`
+points at it. Model IDs and prices date, so check them before quoting that
+table back.
+
 **Pushes to `main` deploy themselves.** `.github/workflows/deploy.yml` runs the
 typecheck and the server-free suites (`npm test`, `test:accents`, `test:ai`),
 then SSHes in. The deploy key's `authorized_keys` entry forces

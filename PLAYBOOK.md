@@ -22,6 +22,13 @@ asked for, in the order set out in "The first hour".
 - As you build, this file becomes the app's own handbook: add its decisions,
   its traps and its verification commands as you go. See "Keep the handbook
   current".
+- **If the app has an AI feature, read `AI-PLAYBOOK.md` as well**, before
+  writing any of it. It is the companion to this file and covers only that:
+  the provider abstraction, the free test stand-in that makes those features
+  testable at all, the current API shape, the errors worth distinguishing, and
+  how not to leak a key or run up a bill. Nothing in this file repeats it. If
+  that file did not come with this one, ask the owner for it rather than
+  improvising — most of it is things that are not guessable.
 
 What is in it:
 
