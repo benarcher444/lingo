@@ -672,6 +672,37 @@ asked for the shortcut on 2026-10-26.
   was spoken, under its meaning, so the sound is tied to the spelling. The
   owner asked for it on 2026-09-14.
 
+**Some words cannot be asked by ear at all.** Listening plays a word and asks
+for its English, so two true homophones make it a coin flip — and a wrong guess
+records a real miss, which means the record of what the learner knows gets
+*worse* the more they practise. The answer is not leniency in the marking but
+to stop asking: `scripts/mute-homophone-audio.ts` turns `audio_enabled` off for
+every member of a colliding group but one, so what is heard has a single
+answer. It ran for the owner's Spanish and French on 2026-10-28. Two causes,
+both of them spelling distinctions that are not sounds:
+
+- **A written accent that only marks stress.** `que`/`qué`, `si`/`sí`,
+  `como`/`cómo`, `cuando`/`cuándo`, `tu`/`tú` — said alone, each pair is one
+  sound, because isolation supplies the stress the accent marks. `porque`/`por
+  qué` belongs here too: the space is inaudible. `esta`/`está` does **not** —
+  there the stress itself moves, and that is audible.
+- **Spanish never doubles a consonant across a word join, and a word-final `s`
+  resyllabifies onto a following vowel.** So `ha sido`, `has sido` and `has
+  ido` are all a-SI-do, and likewise `hemos sido`/`hemos ido` and `habéis
+  sido`/`habéis ido`. `ha ido`, `han ido`/`han sido` and `has tenido`/`ha
+  tenido` are safe, because the `s` survives before a consonant, or there is no
+  second `s` to merge with.
+
+The entry left audible is the one that can stand alone as an utterance (`sí` is
+a whole reply, `si` never is; `por qué` asks, `porque` answers), and where both
+can, the more frequent wins. Muted words keep their history and stay in written
+and speaking practice, so the audio checkbox on the vocabulary page reverses it
+per word. It does shift the listening figures: those words leave the listening
+denominator, so percentage learnt moves a little. **A new word that collides
+with one already there needs the same treatment** — the script is the register
+of which groups exist, so add the group to it rather than ticking one box by
+hand.
+
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
 after it, because Google's network jitter is larger than the cold cost there. A
@@ -876,6 +907,10 @@ Read-only checks and one-off fixes live in `scripts/`:
 - `clean-test-words.ts` — removes words left by the entry test.
 - `measure-speech.ts` — times Start-to-first-sound in listening practice and
   lists the voices on offer. Muted; `--direct`, `--headed`, `--runs=N`.
+- `mute-homophone-audio.ts` — turns listening off for words that cannot be told
+  apart by ear, keeping one audible answer per colliding sound. Dry-run by
+  default, takes its own backup, and holds the list of known collisions. See
+  "Some words cannot be asked by ear at all".
 - `unlock-account.ts` (`npm run unlock`) — lists locked accounts, or unlocks
   one.
 - `backup-db.ts` (`npm run backup`) — a consistent online copy into
