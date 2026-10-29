@@ -588,7 +588,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     const body = `
       ${pageHead({
         title: "Vocabulary",
-        sub: `Add and edit the words you are learning. The breakdown below shows where your ${esc(language.name)} is thin.`,
+        sub: `Add and edit the words you are learning. The breakdown below shows how each ${esc(language.name)} category is coming along.`,
         actions: `
           <a class="btn${mode === "written" ? " btn-primary" : ""}"
              href="${esc(vocabUrl(language.id, { ...listFilters, mode: "written" }))}">Written</a>

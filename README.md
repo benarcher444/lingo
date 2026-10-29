@@ -38,9 +38,8 @@ words, for looking at the empty states.
 ## What it does
 
 **Vocabulary** — add and edit words in the browser, grouped into categories you
-define. The banner at the top of the page shows what percentage of each category
-is learnt, and tints the thin ones, so it is obvious where new words are worth
-adding.
+define. The banner at the top of the page shows how many words each category
+holds and what percentage of it is learnt.
 
 Adding is keyboard-driven: pick the category once, then
 `word` → <kbd>Tab</kbd> → `translation` → <kbd>Enter</kbd>, repeatedly, with no

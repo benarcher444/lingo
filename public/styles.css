@@ -693,10 +693,6 @@ img { max-width: 100%; }
 .bar i.solid { background: var(--status-solid); }
 .bar i.learnt-only { background: var(--status-learnt); }
 
-/* Nudge toward thin categories */
-.type-cell.is-thin { background: var(--learning-soft); }
-.type-cell.is-thin:hover { background: var(--learning-soft); filter: brightness(0.98); }
-
 /* ============================================================
    Buttons
    ============================================================ */

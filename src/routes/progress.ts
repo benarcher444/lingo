@@ -533,7 +533,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         <div class="chart-grid">
           <div class="card">
             <div class="card-head"><div><h2>Completion by category</h2>
-              <div class="sub">Where your vocabulary is strong and where it is thin.</div></div></div>
+              <div class="sub">How far each category has come.</div></div></div>
             <div class="card-body chart-box">
               ${barChart(completionRows, { colours: MODES.map((m) => MODE_COLOUR[m]) })}
             </div>

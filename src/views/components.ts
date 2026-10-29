@@ -23,8 +23,10 @@ export const MODE_ICON: Record<Mode, string> = {
 
 /**
  * The banner that sits at the top of the vocabulary page: overall completion,
- * plus a per-word-type breakdown so it is obvious where new words are worth
- * adding. Thin categories are tinted to draw the eye.
+ * plus a per-word-type breakdown, so every category's count and standing is
+ * visible at a glance. It deliberately does not flag a category for being
+ * small: a language has only a handful of beginner conjunctions and
+ * prepositions, so that marked a gap that did not exist.
  */
 export function progressBanner(opts: {
   summary: Summary;
@@ -69,21 +71,16 @@ export function progressBanner(opts: {
   const trueLearnt = trueTypes.reduce((n, t) => n + t.learnt, 0);
   const trueTotal = trueTypes.reduce((n, t) => n + t.total, 0);
 
-  const median = medianOf(types.map((t) => t.total));
-
   const cells = types
     .map((t) => {
-      // "Thin" = noticeably smaller than the typical category, so it is the
-      // natural place to add words next.
-      const thin = types.length > 2 && t.total < median * 0.6;
       const href = opts.linkBase ? `${opts.linkBase}&type=${t.wordTypeId}` : null;
       const tag = href ? "a" : "div";
       const attrs = href ? ` href="${esc(href)}"` : "";
 
-      return `<${tag} class="type-cell${thin ? " is-thin" : ""}"${attrs}>
+      return `<${tag} class="type-cell"${attrs}>
         <div class="name"><span>${esc(t.wordTypeName)}</span><span class="count">${t.total}</span></div>
         <div class="bar">${bands(t)}</div>
-        <div class="pct">${t.pctLearnt.toFixed(0)}% learnt${thin ? " · thin" : ""}</div>
+        <div class="pct">${t.pctLearnt.toFixed(0)}% learnt</div>
       </${tag}>`;
     })
     .join("\n");
@@ -194,13 +191,4 @@ export function scorePill(score: number): string {
   if (score > 2.3) return `<span class="pill pill-learnt">Learnt</span>`;
   if (score > 0) return `<span class="pill pill-learning">Learning</span>`;
   return `<span class="pill pill-new">New</span>`;
-}
-
-function medianOf(values: number[]): number {
-  if (values.length === 0) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0
-    ? ((sorted[mid - 1] ?? 0) + (sorted[mid] ?? 0)) / 2
-    : (sorted[mid] ?? 0);
 }

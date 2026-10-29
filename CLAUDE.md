@@ -799,6 +799,15 @@ If the lag persists, establish the device and browser before changing more.
   phrase are not six words and one word learnt, and they flattered the total.
   It is hidden where the language has neither category, or it would just repeat
   the headline. The owner asked for it on 2026-10-21.
+- **The category breakdown does not call a category thin.** Until 2026-10-29
+  the banner tinted any category holding less than 60% of the median total and
+  labelled it "· thin", to point at where words were worth adding next. The
+  owner asked for it to go: a language really has only a handful of A1
+  conjunctions and prepositions, so those two were permanently flagged for a
+  gap that does not exist. The count and the percentage are still on every
+  tile, which is the same information without the judgement. The two page
+  subtitles that promised to show "where your vocabulary is thin" were reworded
+  with it.
 - **Playwright hides Chrome's Google voices.** They live in a component
   extension that automation disables, so a test browser shows only the OS's
   local voices — none French on this laptop. `measure-speech.ts` re-enables it
