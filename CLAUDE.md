@@ -466,6 +466,14 @@ with a slash (`end/thin`), which answer matching already accepts. The
 database's own unique index only caught an exact match within one category.
 The owner's data had no duplicates when this went in (2026-09-10).
 
+**Two words with the same English is the same bug facing the other way.**
+Nothing stops it — the app checks spellings, not meanings — but a shared gloss
+makes the English-to-Spanish direction a coin flip, exactly as a homophone does
+for listening, and the miss it records is real. So a batch added by script
+checks it (`add-spanish-routine.ts` refuses a word whose gloss is taken and
+names the holder), and a near-synonym entered by hand wants a gloss that picks
+it out: `luego` went in as "later" because `entonces` already held "then".
+
 ### Theme, and the phone's menu
 
 - **The theme is saved on the account** (`users.theme`: auto, light or dark),
@@ -715,6 +723,15 @@ with one already there needs the same treatment** — the script is the register
 of which groups exist, so add the group to it rather than ticking one box by
 hand.
 
+**The mutes do not stay put on their own.** All ten Spanish ones were on again
+by 2026-10-29, a day after they went in; the French `hors` was untouched. No
+code path sets that flag except one word's own Edit form, no deploy ran in the
+window, and the gloss fixes from the same run survived — so this was the owner
+turning them back on, which the audio checkbox is there for. Two things follow:
+re-running the script after an addition reports them as collisions again, and
+**re-muting is the owner's call, not a tidy-up.** Ask before applying it a
+second time.
+
 Spanish's accents largely exist to separate homophones *in writing*, so every
 such pair is a listening collision waiting to happen. The owner already holds
 one half of a dozen of them, and adding the other half would collide:
@@ -736,7 +753,11 @@ infinitives are already in), `sans`/`cent` the moment numbers are added,
 entered as `pres`, which is not a French word; corrected in the live database
 on 2026-10-28. The archived CSV had it right both times, so this was a typing
 slip rather than inherited — `check-accents-in-data.ts` compares the two and is
-the cheap way to find the next one.
+the cheap way to find the next one. It happened again at once: `venis` was
+entered for `venís` on 2026-10-29 and corrected on 2026-10-30. Both slips were
+a missing accent on a word typed in a run of others, so the sweep belongs at
+the end of every batch, by hand where the archive has nothing to compare
+against.
 
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
@@ -930,6 +951,13 @@ the demo account seeded.
 
 Read-only checks and one-off fixes live in `scripts/`:
 
+- `add-spanish-routine.ts` — the A1 Spanish batch added on 2026-10-30, most of
+  it daily routine, taking Spanish from 648 words to 721. It holds the list, so
+  what went in is reviewable rather than lost in a database. Dry run by
+  default, idempotent (a word already in its category is left alone), backs up
+  before writing, and refuses both a duplicate spelling and a duplicate gloss.
+  It names the account with `--email=`, because adding words to the wrong
+  person's vocabulary is not something to do by default.
 - `check-accents-in-data.ts` — cross-references stored words against the
   archived vocabulary in `old_code_repo/` to find missing accents. Evidence
   rather than eyeballing.
