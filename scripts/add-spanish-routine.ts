@@ -153,6 +153,17 @@ const WORDS: Entry[] = [
   { category: "conjugations", term: "habéis tenido que", english: "you have had to (pl)" },
   { category: "conjugations", term: "han tenido que", english: "they have had to" },
   { category: "phrases", term: "hay que", english: "one has to" },
+
+  // --- The present perfect of venir, asked for on 2026-10-30. The present
+  // was entered by hand the day before, so this completes it. The -s and -n
+  // of "has"/"han" survive in front of the v, so unlike the "sido"/"ido"
+  // family none of these six sound alike.
+  { category: "conjugations", term: "he venido", english: "I have come" },
+  { category: "conjugations", term: "has venido", english: "you have come" },
+  { category: "conjugations", term: "ha venido", english: "he has come" },
+  { category: "conjugations", term: "hemos venido", english: "we have come" },
+  { category: "conjugations", term: "habéis venido", english: "you have come (pl)" },
+  { category: "conjugations", term: "han venido", english: "they have come" },
 ];
 
 /**
