@@ -30,7 +30,7 @@
 import { eq } from "drizzle-orm";
 
 import { databasePath, db, sqlite } from "../src/db/index.js";
-import { languages, users, wordTypes, words } from "../src/db/schema.js";
+import { attempts, languages, users, wordTypes, words } from "../src/db/schema.js";
 import { spellingKey } from "../src/routes/vocab.js";
 
 interface Entry {
@@ -135,8 +135,38 @@ const WORDS: Entry[] = [
   { category: "phrases", term: "en punto", english: "o'clock" },
 
   // --- Saying you have to do it -------------------------------------------
-  { category: "phrases", term: "tengo que", english: "I have to" },
+  // tener que is an ordinary verb with "que" plus an infinitive bolted on, so
+  // it conjugates like any other and belongs with the paradigms. The owner
+  // asked for the full set on 2026-10-30, and for "tengo que" to stop being
+  // filed as a phrase. "hay que" stays here: it is impersonal and has no
+  // paradigm to belong to.
+  { category: "conjugations", term: "tengo que", english: "I have to" },
+  { category: "conjugations", term: "tienes que", english: "you have to" },
+  { category: "conjugations", term: "tiene que", english: "he has to" },
+  { category: "conjugations", term: "tenemos que", english: "we have to" },
+  { category: "conjugations", term: "tenéis que", english: "you have to (pl)" },
+  { category: "conjugations", term: "tienen que", english: "they have to" },
+  { category: "conjugations", term: "he tenido que", english: "I have had to" },
+  { category: "conjugations", term: "has tenido que", english: "you have had to" },
+  { category: "conjugations", term: "ha tenido que", english: "he has had to" },
+  { category: "conjugations", term: "hemos tenido que", english: "we have had to" },
+  { category: "conjugations", term: "habéis tenido que", english: "you have had to (pl)" },
+  { category: "conjugations", term: "han tenido que", english: "they have had to" },
   { category: "phrases", term: "hay que", english: "one has to" },
+];
+
+/**
+ * Entries this script put in that no longer belong where they were. Withdrawing
+ * one is only ever a correction to this list, never a way to drop a word the
+ * owner has been practising: a word with answers behind it is refused and
+ * reported, because deleting it would take its history with it.
+ */
+const WITHDRAWN: { category: string; term: string; why: string }[] = [
+  {
+    category: "phrases",
+    term: "tengo que",
+    why: "moved to conjugations, with the rest of the tener que paradigm",
+  },
 ];
 
 const apply = process.argv.includes("--apply");
@@ -181,9 +211,31 @@ const existing = types.flatMap((type) =>
     .map((w) => ({ ...w, category: type.name })),
 );
 
+const toWithdraw: { id: number; category: string; term: string; english: string; why: string }[] = [];
+const kept: { category: string; term: string; why: string }[] = [];
+
+for (const entry of WITHDRAWN) {
+  const found = existing.find(
+    (w) =>
+      w.category.toLowerCase() === entry.category.toLowerCase() &&
+      spellingKey(w.term) === spellingKey(entry.term),
+  );
+  if (!found) continue;
+
+  const answers = db.select().from(attempts).where(eq(attempts.wordId, found.id)).all().length;
+  if (answers) {
+    kept.push({ ...entry, why: `${answers} answer(s) behind it — left alone` });
+    continue;
+  }
+  toWithdraw.push({ ...entry, id: found.id, term: found.term, english: found.english });
+}
+
+const withdrawnIds = new Set(toWithdraw.map((w) => w.id));
+const remaining = existing.filter((w) => !withdrawnIds.has(w.id));
+
 /** Spelling already used, per category: the app's own idea of a duplicate. */
 const spellingsByType = new Map<number, Set<string>>();
-for (const w of existing) {
+for (const w of remaining) {
   const set = spellingsByType.get(w.wordTypeId) ?? new Set<string>();
   set.add(spellingKey(w.term));
   spellingsByType.set(w.wordTypeId, set);
@@ -192,7 +244,7 @@ for (const w of existing) {
 /** Gloss already used anywhere in the language, and by which word. */
 const glossKey = (english: string) => english.trim().replace(/\s+/g, " ").toLowerCase();
 const byGloss = new Map<string, { term: string; category: string }>();
-for (const w of existing) byGloss.set(glossKey(w.english), { term: w.term, category: w.category });
+for (const w of remaining) byGloss.set(glossKey(w.english), { term: w.term, category: w.category });
 
 const toAdd: { entry: Entry; wordTypeId: number }[] = [];
 const already: Entry[] = [];
@@ -236,16 +288,20 @@ for (const { entry } of toAdd) {
 for (const entry of already) {
   console.log(`  = ${entry.category.padEnd(13)} ${entry.term.padEnd(24)} already there`);
 }
-for (const { entry, why } of refused) {
+for (const w of toWithdraw) {
+  console.log(`  - ${w.category.padEnd(13)} ${w.term.padEnd(24)} ${w.why}`);
+}
+for (const { entry, why } of [...refused, ...kept.map((k) => ({ entry: k, why: k.why }))]) {
   console.log(`  ! ${entry.category.padEnd(13)} ${entry.term.padEnd(24)} ${why}`);
 }
 
 console.log(
-  `\n${toAdd.length} to add, ${already.length} already there, ${refused.length} refused` +
-    ` — ${existing.length} → ${existing.length + toAdd.length} words.`,
+  `\n${toAdd.length} to add, ${toWithdraw.length} to withdraw, ${already.length} already there, ` +
+    `${refused.length + kept.length} refused` +
+    ` — ${existing.length} → ${existing.length + toAdd.length - toWithdraw.length} words.`,
 );
 
-if (!toAdd.length) {
+if (!toAdd.length && !toWithdraw.length) {
   console.log("Nothing to do.");
   process.exit(refused.length ? 1 : 0);
 }
@@ -259,6 +315,10 @@ const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
 const target = `${databasePath.replace(/\.db$/, "")}-pre-add-${stamp}.db`;
 await sqlite.backup(target);
 console.log(`\nBacked up ${databasePath} → ${target}`);
+
+for (const w of toWithdraw) {
+  db.delete(words).where(eq(words.id, w.id)).run();
+}
 
 db.insert(words)
   .values(
@@ -279,8 +339,11 @@ const missing = toAdd.filter(
   ({ entry, wordTypeId }) => !present.has(`${wordTypeId}:${spellingKey(entry.term)}`),
 );
 
+const goneNow = toWithdraw.filter((w) => !db.select().from(words).where(eq(words.id, w.id)).get());
+
 console.log(
-  `Applied. ${toAdd.length - missing.length}/${toAdd.length} added, ${after.length} words now.`,
+  `Applied. ${toAdd.length - missing.length}/${toAdd.length} added, ` +
+    `${goneNow.length}/${toWithdraw.length} withdrawn, ${after.length} words now.`,
 );
 
 if (missing.length) {
