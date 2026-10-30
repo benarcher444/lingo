@@ -749,6 +749,14 @@ infinitives are already in), `sans`/`cent` the moment numbers are added,
 `en`/`an`, `dans`/`la dent`, `vers`/`vert`/`verre`, `quel`/`quelle`,
 `sur`/`sûr`, `quand`/`quant`, `temps`/`tant`, `sept`/`cette`, `vingt`/`vin`.
 
+**A verb phrase that conjugates is a conjugation, not a phrase.** `tener que`
+is the ordinary verb *tener* with an invariable `que` and an infinitive after
+it, so it inflects for person and tense like anything else; the owner asked on
+2026-10-30 for the whole present and present perfect, and for `tengo que` to
+leave the phrases category where it had been put. `hay que` stays a phrase:
+`hay` is impersonal and has no paradigm to join. The test to apply to the next
+one is whether the other five forms exist.
+
 **Bulk entry drops accents, so sweep for them afterwards.** `près` had been
 entered as `pres`, which is not a French word; corrected in the live database
 on 2026-10-28. The archived CSV had it right both times, so this was a typing
@@ -757,7 +765,10 @@ the cheap way to find the next one. It happened again at once: `venis` was
 entered for `venís` on 2026-10-29 and corrected on 2026-10-30. Both slips were
 a missing accent on a word typed in a run of others, so the sweep belongs at
 the end of every batch, by hand where the archive has nothing to compare
-against.
+against. **Sweep the English side too**: `he vivido` and `vengo` both read
+"i ..." with a lower-case i, corrected on 2026-10-30, as `he ido` had been on
+2026-10-28. Three of the same slip says the shift key is what a run of typing
+loses first.
 
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
@@ -952,12 +963,15 @@ the demo account seeded.
 Read-only checks and one-off fixes live in `scripts/`:
 
 - `add-spanish-routine.ts` — the A1 Spanish batch added on 2026-10-30, most of
-  it daily routine, taking Spanish from 648 words to 721. It holds the list, so
+  it daily routine, taking Spanish from 648 words to 738. It holds the list, so
   what went in is reviewable rather than lost in a database. Dry run by
   default, idempotent (a word already in its category is left alone), backs up
   before writing, and refuses both a duplicate spelling and a duplicate gloss.
   It names the account with `--email=`, because adding words to the wrong
-  person's vocabulary is not something to do by default.
+  person's vocabulary is not something to do by default. Its `WITHDRAWN` list
+  is how an entry leaves again — it was used to move `tengo que` out of
+  phrases — and it **refuses any word with answers behind it**, since deleting
+  a word takes its history with it through the schema's cascade.
 - `check-accents-in-data.ts` — cross-references stored words against the
   archived vocabulary in `old_code_repo/` to find missing accents. Evidence
   rather than eyeballing.
