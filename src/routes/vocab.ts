@@ -140,7 +140,7 @@ const listColumns = {
  * style are ignored. Accents are kept, because té (tea) and te (you) are
  * different words.
  */
-function spellingKey(term: string): string {
+export function spellingKey(term: string): string {
   return term
     .normalize("NFC")
     .replace(/[’‘`]/g, "'")
