@@ -118,6 +118,60 @@ await page.keyboard.press("R");
 await page.waitForTimeout(150);
 check("capital R too", (await audible()).length === beforeBare + 2);
 
+console.log("\nHearing another word\n");
+
+check("a miss offers another word to hear", (await page.locator("#compare-open").count()) === 1);
+
+await page.click("#compare-open");
+await page.waitForSelector("#compare-q", { state: "visible", timeout: 5_000 });
+check("the search box takes focus", (await page.evaluate("document.activeElement?.id")) === "compare-q");
+
+const counterBefore = await counter();
+const beforeCompare = (await audible()).length;
+
+// The word just heard matches itself, so this finds something whatever the
+// demo vocabulary holds.
+const query = heard.trim().slice(0, 3);
+await page.fill("#compare-q", query);
+await page.waitForSelector(".compare-hit", { timeout: 5_000 });
+const hits = await page.locator(".compare-hit").count();
+check("matching words are listed", hits > 0, `${hits} for "${query}"`);
+check("nothing is spoken until one is picked", (await audible()).length === beforeCompare);
+
+const hitTerm = (await page.locator(".compare-hit .compare-term").first().textContent())?.trim() ?? "";
+await page.locator(".compare-hit").first().click();
+await page.waitForTimeout(200);
+const compared = (await audible()).slice(beforeCompare);
+check("picking one speaks it", compared.length === 1, `"${compared[0]?.text ?? ""}" for "${hitTerm}"`);
+
+console.log("\nThe search box does not fire the single-key shortcuts\n");
+
+await page.fill("#compare-q", "");
+await page.click("#compare-q");
+await page.keyboard.type("y");
+await page.waitForTimeout(100);
+check("typing y does not count the miss as right", (await page.locator(".verdict-wrong").count()) === 1);
+check("y lands in the box", (await page.inputValue("#compare-q")) === "y");
+
+const beforeTypedR = (await audible()).length;
+await page.keyboard.type("r");
+await page.waitForTimeout(100);
+check("typing r does not replay", (await audible()).length === beforeTypedR);
+check("r lands in the box", (await page.inputValue("#compare-q")) === "yr");
+
+await page.fill("#compare-q", query);
+await page.waitForSelector(".compare-hit", { timeout: 5_000 });
+const beforeEnter = (await audible()).length;
+await page.press("#compare-q", "Enter");
+await page.waitForTimeout(200);
+check("Enter plays the closest match", (await audible()).length === beforeEnter + 1);
+check("and does not move on", (await page.locator(".verdict-wrong").count()) === 1);
+check(
+  "nothing was counted",
+  (await counter()) === counterBefore,
+  `${counterBefore?.trim()} -> ${(await counter())?.trim()}`,
+);
+
 console.log("\nNext card\n");
 
 // A session in progress now resumes on return, so clear this one first.

@@ -1820,6 +1820,64 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
 .word-status.up .arrow { color: var(--learnt); }
 .word-status.down .arrow { color: var(--danger); }
 
+/* ------------------------------------------------------------------
+   Hearing one word against another, offered after a listening miss
+   ------------------------------------------------------------------ */
+
+.compare {
+  display: grid;
+  gap: 9px;
+  justify-items: center;
+  margin-top: 12px;
+}
+
+.compare-open svg { color: var(--dir); }
+
+/* The card centres its text, but a list of words reads from the left. */
+.compare-panel {
+  width: 100%;
+  display: grid;
+  gap: 7px;
+  text-align: left;
+}
+
+.compare-results {
+  display: grid;
+  gap: 6px;
+  /* Eight matches would push Continue off a phone screen, so the list scrolls
+     inside the card rather than growing it. */
+  max-height: 212px;
+  overflow-y: auto;
+}
+
+.compare-hit {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  /* Tapped repeatedly while comparing two sounds: the 44px floor applies. */
+  min-height: 46px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.compare-hit:hover { border-color: var(--dir-border); background: var(--dir-soft); }
+.compare-hit svg { flex: none; width: 16px; height: 16px; stroke-width: 1.9; color: var(--dir); }
+
+.compare-hit-text { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.compare-term { font-family: var(--serif); font-size: 1.02rem; }
+.compare-english { color: var(--text-muted); font-size: 0.8rem; }
+.compare-cat { flex: none; font-size: 0.72rem; }
+
+.compare-empty,
+.compare-note { color: var(--text-muted); font-size: 0.78rem; }
+
 /* ============================================================
    Translation practice — a sentence built from your own words
    ============================================================ */

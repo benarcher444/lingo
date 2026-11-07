@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, like, or, sql } from "drizzle-orm";
 
 import { accentConfigFor } from "../accents.js";
-import type { Mode } from "../algorithm.js";
+import { normaliseAnswer, type Mode } from "../algorithm.js";
 import { loadWordDetail } from "../word-detail.js";
 import { wordDetailPanel } from "../views/word-detail-view.js";
 import type { FastifyInstance } from "fastify";
@@ -27,6 +27,13 @@ import {
   scorePill,
 } from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
+
+/**
+ * How many matches the "hear another word" search offers at once. Short on
+ * purpose: it is there to hold two sounds up against each other, not to
+ * browse the vocabulary — the word list already does that.
+ */
+const COMPARE_LIMIT = 8;
 
 const wordInput = z.object({
   term: z.string().trim().min(1, "Enter the word or phrase."),
@@ -385,6 +392,80 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         speakEnabled: created.speakEnabled,
       },
     });
+  });
+
+  /**
+   * Words matching a search, so one can be heard against another.
+   *
+   * Listening practice offers this after a miss. A miss on a heard word means
+   * one of two things, and they want opposite responses: either the word is
+   * not known yet, or it cannot be told apart from one that is. The owner
+   * asked for this on 2026-11-07, having taken "hace" and "hacer" for
+   * homophones until he heard them side by side — they are not, and that is a
+   * distinction worth learning, where "has sido" and "has ido" really are one
+   * sound and never will be. Only the learner's own ear can say which case
+   * they are in, and only if they can hear the two words together.
+   *
+   * It deliberately ignores every mode's opt-in column: the muted half of a
+   * homophone pair is exactly what you want to hear beside the half that is
+   * still asked. And it is read-only — hearing a word is not answering a
+   * question about it, so nothing here touches progress or attempts.
+   */
+  app.get("/api/words/search", async (request, reply) => {
+    const ctx = requireContext(request, reply, "vocab");
+    if (!ctx) return;
+
+    const parsed = z
+      .object({
+        languageId: z.coerce.number().int().positive(),
+        q: z.string().trim().min(1).max(100),
+      })
+      .safeParse(request.query);
+
+    // An empty box is not an error: it simply has nothing to match.
+    if (!parsed.success) return reply.send({ words: [] });
+    if (!ctx.languages.some((l) => l.id === parsed.data.languageId)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+
+    const rows = db
+      .select({
+        id: words.id,
+        term: words.term,
+        english: words.english,
+        wordType: wordTypes.name,
+      })
+      .from(words)
+      .innerJoin(wordTypes, eq(wordTypes.id, words.wordTypeId))
+      .where(eq(wordTypes.languageId, parsed.data.languageId))
+      .all();
+
+    // Matched in memory rather than with SQL LIKE, so accents are optional
+    // here as they are everywhere else: typing "nino" has to find "el niño",
+    // which is the whole point when you are hunting for a word you have only
+    // heard. A language is a few thousand rows, so scanning them all costs
+    // less than a millisecond — far less than matching the wrong way costs
+    // the person typing.
+    const needle = normaliseAnswer(parsed.data.q);
+    const ranked: { rank: number; row: (typeof rows)[number] }[] = [];
+
+    for (const row of rows) {
+      const term = normaliseAnswer(row.term);
+      // The word itself first, then anything containing it, then meanings —
+      // you are usually looking for something you can half spell.
+      const rank = term.startsWith(needle)
+        ? 0
+        : term.includes(needle)
+          ? 1
+          : normaliseAnswer(row.english).includes(needle)
+            ? 2
+            : -1;
+      if (rank >= 0) ranked.push({ rank, row });
+    }
+
+    ranked.sort((a, b) => a.rank - b.rank || a.row.term.localeCompare(b.row.term));
+
+    return reply.send({ words: ranked.slice(0, COMPARE_LIMIT).map((r) => r.row) });
   });
 
   app.post("/words/:id", async (request, reply) => {

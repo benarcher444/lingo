@@ -365,6 +365,7 @@ function revealSpoken() {
     const key = event.key.toLowerCase();
     if (key !== "y" && key !== "n") return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (isTyping(event)) return;
     if (awaitingContinue || !current.revealed) return;
 
     event.preventDefault();
@@ -500,6 +501,139 @@ function heardLine() {
     <span class="heard-term" lang="${escapeHtml(config.languageCode || "")}">${escapeHtml(current.card.term)}</span></div>`;
 }
 
+/**
+ * True while a keystroke is going into a text box.
+ *
+ * The compare search below is the first text field to sit alongside the
+ * single-key shortcuts, and without this, typing "y" in it counted the miss
+ * just made as correct, and "r" replayed the word instead of typing a letter.
+ */
+function isTyping(event) {
+  const el = event.target;
+  if (!el || !(el instanceof HTMLElement)) return false;
+  return el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable;
+}
+
+/**
+ * After a listening miss: search the vocabulary and hear another word.
+ *
+ * Two words you cannot tell apart and a word you simply do not know yet are
+ * the same miss on screen but opposite problems — one is a distinction to
+ * learn, the other a reason to stop being asked (see mute-homophone-audio.ts).
+ * Hearing the pair back to back is the only way to tell, so this puts the
+ * whole vocabulary a search away without leaving the question.
+ */
+function compareBlock() {
+  if (current.direction !== "listen") return "";
+
+  return `
+    <div class="compare">
+      <button class="btn btn-sm compare-open" id="compare-open" type="button" aria-expanded="false">
+        ${SPEAKER_SVG}Hear another word
+      </button>
+      <div class="compare-panel" id="compare-panel" hidden>
+        <!-- Not a login, address or card: see NO_AUTOFILL in src/views/components.ts. -->
+        <input class="input compare-input" id="compare-q" type="text" autocomplete="off"
+               autocapitalize="off" autocorrect="off" spellcheck="false"
+               placeholder="Search your vocabulary"
+               data-1p-ignore data-lpignore="true" data-bwignore data-form-type="other" />
+        <div class="compare-results" id="compare-results"></div>
+        <div class="compare-note">Nothing here is recorded. <kbd>r</kbd> plays the word you heard.</div>
+      </div>
+    </div>`;
+}
+
+/**
+ * Wires that search. Everything it does is local: it reads the vocabulary and
+ * speaks, and sends no answer — comparing two sounds is not practising either.
+ */
+function wireCompare() {
+  const open = document.getElementById("compare-open");
+  if (!open) return;
+
+  const panel = document.getElementById("compare-panel");
+  const input = document.getElementById("compare-q");
+  const results = document.getElementById("compare-results");
+  let timer = null;
+  let inFlight = null;
+
+  open.addEventListener("click", () => {
+    panel.hidden = !panel.hidden;
+    open.setAttribute("aria-expanded", panel.hidden ? "false" : "true");
+    if (!panel.hidden) input.focus();
+  });
+
+  const show = (found) => {
+    if (found.length === 0) {
+      results.innerHTML = `<div class="compare-empty">No word matches that.</div>`;
+      return;
+    }
+
+    results.innerHTML = found
+      .map(
+        (word) => `
+          <button class="compare-hit" type="button" data-term="${escapeHtml(word.term)}">
+            ${SPEAKER_SVG}
+            <span class="compare-hit-text">
+              <span class="compare-term" lang="${escapeHtml(config.languageCode || "")}">${escapeHtml(word.term)}</span>
+              <span class="compare-english">${escapeHtml(word.english)}</span>
+            </span>
+            <span class="pill pill-plain compare-cat">${escapeHtml(word.wordType)}</span>
+          </button>`,
+      )
+      .join("");
+
+    for (const hit of results.querySelectorAll(".compare-hit")) {
+      hit.addEventListener("click", () => speakTerm(hit.dataset.term ?? ""));
+    }
+
+    // On a phone the soft keyboard covers the bottom of the card, so matches
+    // can arrive out of sight. "nearest" moves as little as it can, and does
+    // nothing on a desktop where they are already in view.
+    results.scrollIntoView({ block: "nearest" });
+  };
+
+  const search = async () => {
+    const query = input.value.trim();
+    if (query === "") {
+      results.innerHTML = "";
+      return;
+    }
+
+    // Replies can come back out of order, which would leave the results for a
+    // prefix of what has been typed on screen, so the last one is dropped.
+    inFlight?.abort();
+    inFlight = new AbortController();
+
+    try {
+      const response = await fetch(
+        `/api/words/search?languageId=${config.languageId}&q=${encodeURIComponent(query)}`,
+        { signal: inFlight.signal },
+      );
+      if (!response.ok) return;
+      const payload = await response.json();
+      show(payload.words ?? []);
+    } catch {
+      // Superseded, or the network went away: leave what is showing.
+    }
+  };
+
+  input.addEventListener("input", () => {
+    clearTimeout(timer);
+    timer = setTimeout(search, 160);
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    // This box sits inside the answer form, so Enter would otherwise submit it
+    // and move on to the next word. Here it plays the closest match.
+    event.preventDefault();
+    const first = results.querySelector(".compare-hit");
+    if (first) speakTerm(first.dataset.term ?? "");
+    else search();
+  });
+}
+
 function showVerdict(result, given) {
   const verdict = document.getElementById("verdict");
   const input = document.getElementById("answer");
@@ -540,9 +674,11 @@ function showVerdict(result, given) {
                  I was right — count it <kbd>Y</kbd>
                </button>
              </div>`
-      }`;
+      }
+      ${compareBlock()}`;
 
     document.getElementById("override")?.addEventListener("click", () => override(given));
+    wireCompare();
 
     // `y` overrides a miss, as it did in the original terminal app. Only bound
     // while a miss is on screen, and never for a deliberate skip.
@@ -550,6 +686,7 @@ function showVerdict(result, given) {
       overrideKeyHandler = (event) => {
         if (event.key !== "y" && event.key !== "Y") return;
         if (event.ctrlKey || event.metaKey || event.altKey) return;
+        if (isTyping(event)) return;
         if (!awaitingContinue) return;
 
         event.preventDefault();
@@ -599,6 +736,7 @@ if (config.mode !== "written") {
   document.addEventListener("keydown", (event) => {
     if (event.key !== "r" && event.key !== "R") return;
     if (event.ctrlKey || event.metaKey || event.altKey) return;
+    if (isTyping(event)) return;
     if (current?.direction === "say" ? !current.revealed : !awaitingContinue) return;
     if (current?.direction !== "listen" && current?.direction !== "say") return;
 

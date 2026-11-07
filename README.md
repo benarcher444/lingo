@@ -80,7 +80,10 @@ mid-session and it picks up where you were.
 **Listening practice** — the word is spoken in the target language and you type
 what it *means* in English, so it tests comprehension rather than spelling back
 what you just heard. Type `r` then <kbd>Enter</kbd> to hear it again, or just `r`
-once you've answered, when the verdict also spells out the word you heard.
+once you've answered, when the verdict also spells out the word you heard. Miss
+one and you can also search your vocabulary and play any other word, to hear
+whether the two really are the same sound — some pairs are, and some only look
+it. Nothing you play there is recorded.
 Speech uses the browser's own voices, so there is no audio
 to download or cache. But voices vary by browser, and Chrome's French and
 Spanish ones are synthesised online, so they need a connection. Spanish is read
@@ -192,7 +195,7 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:search` | Vocabulary search and category filter |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:override` | "I was right" counts a miss as right, once |
-| `npm run test:listening` | Speech warm-up, `r` to replay, the heard word spelled out |
+| `npm run test:listening` | Speech warm-up, `r` to replay, the heard word spelled out, comparing another word |
 | `npm run test:hear` | The word record's Hear it button |
 | `npm run test:sentences` | Translation practice, end to end |
 | `npm run test:vocab-edit` | Editing words in place |

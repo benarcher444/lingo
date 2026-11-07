@@ -732,6 +732,21 @@ re-running the script after an addition reports them as collisions again, and
 **re-muting is the owner's call, not a tidy-up.** Ask before applying it a
 second time.
 
+**A listening miss does not say which of the two problems it was**, so the
+verdict offers "Hear another word": a search over the whole vocabulary, each
+match with a speaker button (`compareBlock` / `wireCompare` in
+`public/practice.js`, `GET /api/words/search`). The owner asked for it on
+2026-11-07 — he had taken *hace* and *hacer* for homophones until he heard
+them one after the other, and they are not, which makes them a distinction to
+learn rather than a reason to mute. Three things it does deliberately: it
+searches **every** word, muted ones included, because the muted half of a pair
+is exactly what you want to hear beside the audible half; it matches
+**de-accented**, so a word you have only heard can be half spelled; and it
+**records nothing**, since hearing a word is not answering a question about
+it. It also brought the first text box onto the verdict, where `y` overrides a
+miss and `r` replays — hence `isTyping()`, without which typing either letter
+into that box fired the shortcut instead.
+
 Spanish's accents largely exist to separate homophones *in writing*, so every
 such pair is a listening collision waiting to happen. The owner already holds
 one half of a dozen of them, and adding the other half would collide:
@@ -946,7 +961,7 @@ the demo account seeded.
 | `npm run test:search` | Vocabulary search and category filter, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override, the banner rebuilt after a session |
 | `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
-| `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out |
+| `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out, and comparing another word after a miss |
 | `npm run test:speak` | Speaking: the word hidden until "Hear it", self-marking, its own rows, and that only `say` may be self-marked |
 | `npm run test:hear` | The word record's Hear it button says the word in the language's voice |
 | `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
