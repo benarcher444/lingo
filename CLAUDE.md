@@ -1063,7 +1063,21 @@ Read-only checks and one-off fixes live in `scripts/`:
   already answers "from". **It also added 21 conjugations, which it should not
   have** — see the rule in "Working agreements". Its `WITHDRAWN` list holds
   all 21 and is the record of what came out again, unpractised, the same day.
-- `lib/word-batch.ts` — the machinery both batches share: find the account,
+- `add-spanish-800.ts` — the batch that took Spanish to 800 on 2026-11-08: the
+  twelve months, the present of `decir` with its participle, and two nouns
+  (`el cumpleaños`, `la fecha`) that give the months something to do. **Its
+  seven conjugations were asked for by name**, which is what the rule requires,
+  and they went in as a complete paradigm. `decir` was chosen because it
+  teaches the most at once — an `e → i` stem change (the family holding
+  `pedir`, `repetir` and `seguir`, all present as infinitives with no paradigm
+  behind them), the `-go` *yo* form already established by `tengo`/`vengo`/
+  `hago`, the unchanged `nosotros`/`vosotros` that is the boot shape itself,
+  and an irregular participle.
+- **The months are entered bare; the days of the week carry `el`.** Spanish
+  says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
+  day is said, so the two sets look inconsistent and are not. Neither is
+  capitalised, which matches the lower-case English side.
+- `lib/word-batch.ts` — the machinery the batches share: find the account,
   apply the two duplicate guards, print, back up, insert, read back. Each
   batch script keeps only its own list and its own reasoning, which is the
   point of having them. It was copied into the second batch before being
