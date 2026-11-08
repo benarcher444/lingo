@@ -202,6 +202,37 @@ export function isCompletelyLearnt(score: number): boolean {
   return score > COMPLETELY_LEARNT_THRESHOLD;
 }
 
+/**
+ * Whether a word has earned its place in speaking practice.
+ *
+ * Speaking is the hardest mode and the only self-marked one, so it draws only
+ * on words already proved in the other two: solid in written and solid in
+ * listening. The owner asked for this on 2026-11-08. Saying a word aloud when
+ * you cannot yet recognise it tests two things at once and teaches neither.
+ *
+ * A mode the word is not in cannot hold it back. A muted homophone has
+ * listening switched off and can never be solid there, and the alternative
+ * rule would bar it from speaking for good — yet "que" said aloud is perfectly
+ * unambiguous, which is the half of the problem muting does not solve. So a
+ * word is judged on the modes it is actually in. One in neither has nothing to
+ * qualify it, and stays out.
+ *
+ * This decides only what is *asked*. A word that falls back out keeps every
+ * speaking answer it has given and goes on decaying with them — see
+ * loadScoredWords.
+ */
+export function isSpeakingReady(standing: {
+  inWritten: boolean;
+  writtenScore: number;
+  inListening: boolean;
+  listeningScore: number;
+}): boolean {
+  if (!standing.inWritten && !standing.inListening) return false;
+  if (standing.inWritten && !isCompletelyLearnt(standing.writtenScore)) return false;
+  if (standing.inListening && !isCompletelyLearnt(standing.listeningScore)) return false;
+  return true;
+}
+
 /** The bands a word moves through, as shown after each answer. */
 export type WordStatus = "new" | "learning" | "learnt" | "solid";
 

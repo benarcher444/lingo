@@ -6,6 +6,7 @@ import {
   MODE_DIRECTIONS,
   isCompletelyLearnt,
   isLearnt,
+  isSpeakingReady,
   scoreWord,
   type Direction,
   type DirectionProgress,
@@ -31,6 +32,11 @@ export interface ScoredWord {
  * Scoring in memory rather than SQL is a deliberate call: the score depends on
  * today's date, so any stored value is stale the next morning. At a few
  * thousand words per language this costs under a millisecond.
+ *
+ * Speaking is the exception to "every word": it sees only the words that are
+ * ready for it. This is the one gate, so everything downstream — the session
+ * builder, the banner, the Progress page, the snapshots — agrees on what
+ * speaking consists of without each having to remember the rule.
  */
 export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
   // One opt-in column per mode. Every word is in speaking unless its box is
@@ -105,7 +111,35 @@ export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
     entry.score = scoreWord(wordProgress, mode);
   }
 
-  return [...byWord.values()];
+  const scored = [...byWord.values()];
+  return mode === "speak" ? scored.filter(readyToSpeak(languageId)) : scored;
+}
+
+/**
+ * The gate on speaking: a word joins only once it is solid in written and in
+ * listening (see isSpeakingReady).
+ *
+ * Two extra queries on a page that was already running one, which is why this
+ * builds the two indexes once and returns a predicate rather than scoring the
+ * other modes per word. It cannot recurse: only "speak" takes this path, and
+ * it asks for "written" and "audio".
+ *
+ * Nothing is filtered out of the database. A word that falls back below solid
+ * stops being *asked*, but keeps its speaking progress and attempt rows, and
+ * its score keeps decaying with neglect like any other — so it returns exactly
+ * where it left off rather than starting again.
+ */
+function readyToSpeak(languageId: number): (word: ScoredWord) => boolean {
+  const written = new Map(loadScoredWords(languageId, "written").map((w) => [w.wordId, w.score]));
+  const listening = new Map(loadScoredWords(languageId, "audio").map((w) => [w.wordId, w.score]));
+
+  return (word) =>
+    isSpeakingReady({
+      inWritten: written.has(word.wordId),
+      writtenScore: written.get(word.wordId) ?? 0,
+      inListening: listening.has(word.wordId),
+      listeningScore: listening.get(word.wordId) ?? 0,
+    });
 }
 
 /**

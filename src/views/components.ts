@@ -93,6 +93,14 @@ export function progressBanner(opts: {
         <div class="big">${summary.learnt} of ${summary.total} learnt</div>
         <div class="small">${esc(opts.languageName)} · ${MODE_LABEL[opts.mode ?? "written"].toLowerCase()}</div>
         ${
+          // Speaking's total is smaller than the vocabulary and the reason has
+          // to be on the page, or the number looks like a bug. The banner
+          // knows the mode, so no caller has to remember to say it.
+          opts.mode === "speak"
+            ? `<div class="banner-note">Only words solid in written and listening</div>`
+            : ""
+        }
+        ${
           hasExcluded
             ? `<div class="true-words" title="Learnt, leaving out conjugations and phrases: those are forms of words you already have, and sentences, rather than new words">${trueLearnt} of ${trueTotal} true words</div>`
             : ""
@@ -131,6 +139,8 @@ export function emptyState(opts: {
   body: string;
   actionHref?: string;
   actionLabel?: string;
+  /** Defaults to a plus, which is right for "add" and wrong for "go". */
+  actionIcon?: string;
   secondaryHref?: string;
   secondaryLabel?: string;
   icon?: string;
@@ -142,7 +152,7 @@ export function emptyState(opts: {
     <div class="row" style="justify-content:center">
       ${
         opts.actionHref
-          ? `<a class="btn btn-primary" href="${esc(opts.actionHref)}">${icons.plus}${esc(opts.actionLabel ?? "Add words")}</a>`
+          ? `<a class="btn btn-primary" href="${esc(opts.actionHref)}">${opts.actionIcon ?? icons.plus}${esc(opts.actionLabel ?? "Add words")}</a>`
           : ""
       }
       ${

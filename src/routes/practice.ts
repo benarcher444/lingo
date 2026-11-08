@@ -64,22 +64,44 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       const language = ctx.currentLanguage;
       const scored = loadScoredWords(language.id, mode);
 
+      // Speaking has a second way of being empty, and it is not the learner's
+      // fault: the vocabulary is there, but nothing has been made solid in
+      // both written and listening yet. Sending them to the add-words page
+      // for that would be wrong twice over.
+      const waiting =
+        mode === "speak" &&
+        scored.length === 0 &&
+        loadScoredWords(language.id, "written").length +
+          loadScoredWords(language.id, "audio").length >
+          0;
+
       if (scored.length === 0) {
         return reply.type("text/html").send(
           layout(ctx, {
             title: copy.title,
             body:
               pageHead({ title: copy.title }) +
-              emptyState({
-                title: "Please add some words to your vocabulary to start",
-                body:
-                  mode === "written"
-                    ? `There are no ${language.name} words marked for written practice yet. Add your first few and this page comes alive.`
-                    : `There are no ${language.name} words marked for ${MODE_LABEL[mode].toLowerCase()} practice yet. Add some words — or tick "${MODE_LABEL[mode]} practice" on words you already have.`,
-                actionHref: `/vocab?language=${language.id}`,
-                actionLabel: "Add words",
-                icon: MODE_ICON[mode],
-              }),
+              (waiting
+                ? emptyState({
+                    title: "Nothing is ready to speak yet",
+                    body: `Speaking only asks for words you have made solid in both written and listening. It is the hardest mode, so it waits until you know the word — keep going in the other two and they arrive here on their own.`,
+                    actionHref: `/practice/written?language=${language.id}`,
+                    actionLabel: "Written practice",
+                    actionIcon: icons.arrowRight,
+                    secondaryHref: `/practice/audio?language=${language.id}`,
+                    secondaryLabel: "Listening practice",
+                    icon: MODE_ICON.speak,
+                  })
+                : emptyState({
+                    title: "Please add some words to your vocabulary to start",
+                    body:
+                      mode === "written"
+                        ? `There are no ${language.name} words marked for written practice yet. Add your first few and this page comes alive.`
+                        : `There are no ${language.name} words marked for ${MODE_LABEL[mode].toLowerCase()} practice yet. Add some words — or tick "${MODE_LABEL[mode]} practice" on words you already have.`,
+                    actionHref: `/vocab?language=${language.id}`,
+                    actionLabel: "Add words",
+                    icon: MODE_ICON[mode],
+                  })),
           }),
         );
       }

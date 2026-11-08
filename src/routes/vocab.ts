@@ -951,7 +951,11 @@ function displayRow(
     <td class="col-type"><span class="pill pill-plain">${esc(row.wordTypeName)}</span></td>
     <td>${
       score === null
-        ? `<span class="pill pill-plain" title="Not included in ${MODE_LABEL[filters.mode ?? "written"].toLowerCase()} practice">Off</span>`
+        ? // No score in this mode means one of two things, and they are not the
+          // same: the word is switched off, or speaking has not let it in yet.
+          filters.mode === "speak" && row.speakEnabled
+          ? `<span class="pill pill-plain" title="Joins speaking once it is solid in written and in listening">Not yet</span>`
+          : `<span class="pill pill-plain" title="Not included in ${MODE_LABEL[filters.mode ?? "written"].toLowerCase()} practice">Off</span>`
         : `${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span>`
     }</td>
     <td class="col-modes">${modes || `<span class="hint">none</span>`}</td>

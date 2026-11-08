@@ -89,6 +89,14 @@ to download or cache. But voices vary by browser, and Chrome's French and
 Spanish ones are synthesised online, so they need a connection. Spanish is read
 with a Latin American accent wherever the device has one.
 
+**Speaking practice** — the English is shown, you say the word out loud, and
+"Hear it" plays it and spells it out at the same moment, so you can see and
+hear what you were aiming for. You mark yourself: nothing is recorded and
+nothing is typed. It asks only for words you have already made **solid in both
+written and listening** — it is the hardest mode, so it waits until you know
+the word, and a word that slips back below solid drops out and returns later
+with everything it had earned.
+
 **Conversation** — pick general conversation, a scene (restaurant, hotel, train
 station…), "Surprise me", or describe your own, and a level from A1 to C1. The
 level is held to: each one spells out the tenses the tutor may and may not use,
@@ -184,7 +192,7 @@ Carried over from the original Python app; `npm test` covers it.
 |---|---|
 | `npm run dev` | Dev server with reload on `http://localhost:3000` |
 | `npm start` | Run without watching (what the server runs, under systemd) |
-| `npm test` | Scoring, matching and sampling checks, and which voice speaks |
+| `npm test` | Scoring, matching and sampling checks, which voice speaks, and which words speaking offers |
 | `npm run typecheck` | TypeScript, no emit |
 | `npm run seed` | Demo account with vocabulary and history (`--reset` to wipe) |
 | `npm run shot` | Screenshot every page, both widths, both themes |
@@ -196,6 +204,7 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:override` | "I was right" counts a miss as right, once |
 | `npm run test:listening` | Speech warm-up, `r` to replay, the heard word spelled out, comparing another word |
+| `npm run test:speak` | Speaking: the word hidden until you ask, self-marking |
 | `npm run test:hear` | The word record's Hear it button |
 | `npm run test:sentences` | Translation practice, end to end |
 | `npm run test:vocab-edit` | Editing words in place |

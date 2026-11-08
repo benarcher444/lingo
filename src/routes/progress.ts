@@ -323,10 +323,19 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
     /* ---- Where the words stand: one block per mode ---- */
 
-    const standing = (title: string, icon: string, s: Summary) => {
+    // Speaking counts only the words ready for it — solid in written and in
+    // listening — so both its total and its empty case need saying differently.
+    const standing = (m: Mode, s: Summary) => {
+      const title = MODE_LABEL[m];
+      const icon = MODE_ICON[m];
+
       if (s.total === 0) {
+        const why =
+          m === "speak"
+            ? "No words are solid in written and listening yet"
+            : `No words marked for ${title.toLowerCase()} practice`;
         return `<div class="standing"><div class="standing-head">${icon}<strong>${esc(title)}</strong>
-          <span class="hint">No words marked for ${esc(title.toLowerCase())} practice</span></div></div>`;
+          <span class="hint">${esc(why)}</span></div></div>`;
       }
 
       const bands = [
@@ -341,7 +350,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
       return `<div class="standing">
         <div class="standing-head">${icon}<strong>${esc(title)}</strong>
-          <span class="hint">${s.total} words · ${s.pctLearnt.toFixed(1)}% learnt</span></div>
+          <span class="hint">${s.total} words${m === "speak" ? " ready" : ""} · ${s.pctLearnt.toFixed(1)}% learnt</span></div>
         <div class="split-bar">${bands
           .filter((b) => b.count > 0)
           .map(
@@ -522,7 +531,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
             <div><h2>Where your ${esc(language.name)} stands</h2></div>
           </div>
           <div class="card-body">
-            ${MODES.map((m) => standing(MODE_LABEL[m], MODE_ICON[m], summaryBy[m])).join("")}
+            ${MODES.map((m) => standing(m, summaryBy[m])).join("")}
             <div class="hint" style="margin-top:12px">
               Solid is above ${(2.556).toFixed(3)}, learnt above ${(2.3).toFixed(1)}.
               Scores decay about 0.01 a day, so words move back down if left alone.

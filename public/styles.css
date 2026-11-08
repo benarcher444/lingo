@@ -584,6 +584,14 @@ img { max-width: 100%; }
   font-size: 0.84rem;
 }
 
+/* Why this mode's total is what it is — speaking counts only the words ready
+   for it. As quiet as the "true words" line below, and for the same reason. */
+.banner-note {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
 /* Learnt without conjugations and phrases. Deliberately quiet: a second
    opinion on the headline, not a rival to it. */
 .true-words {

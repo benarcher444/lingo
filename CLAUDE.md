@@ -559,6 +559,39 @@ are the answer.
   and mixing them would spoil the one honest record. The same four bands,
   thresholds and snapshots apply, so it has its own ring, its own Progress
   block and its own line on a word's record.
+- **It only asks for words already proved elsewhere.** A word joins speaking
+  when it is **solid in written and solid in listening**, and leaves again if
+  either falls back under 2.556. The owner asked for this on 2026-11-08:
+  speaking is the hardest mode and the only self-marked one, so saying a word
+  aloud before you can recognise it tests two things at once and teaches
+  neither. `isSpeakingReady` in `algorithm.ts` is the rule;
+  **`loadScoredWords` is the only gate**, so the session builder, the banner,
+  the Progress page and the snapshots all agree without each remembering it.
+  On the day it went in, Spanish had 62 of 738 words ready and French none at
+  all. Four things follow:
+  - **A mode the word is not in cannot hold it back.** A muted homophone can
+    never be solid in listening, and the strict reading would bar it from
+    speaking for good — yet *que* said aloud is perfectly unambiguous, which
+    is the half of the problem muting does not solve. So each word is judged
+    on the modes it is actually in. One in neither has nothing to qualify it
+    and stays out. The owner chose this over the strict rule, asked.
+  - **Nothing is deleted when a word drops out.** It keeps its speaking
+    progress and attempt rows, goes on decaying with neglect, and comes back
+    carrying the score it left on rather than starting again. That falls out
+    of score being derived rather than stored, which is why the requirement
+    cost no code — but `test-speaking-pool.ts` pins it, because a future
+    "tidy-up" of unused rows would silently break it.
+  - **`recordAnswer` does not check the gate, deliberately.** A session saved
+    to `localStorage` and resumed after a word fell out still finishes, and an
+    answer given is an answer to record. The gate decides what is *asked*.
+  - **The totals shrink, and every page says why.** The banner prints "Only
+    words solid in written and listening" under the mode (in `progressBanner`
+    itself, so no caller can forget it), the Progress page's standing block
+    reads "N words ready", and the vocabulary page in Speaking mode shows
+    "Not yet" rather than "Off" for a word waiting its turn — "Off" means the
+    box is unticked and would be a lie. Snapshots taken before 2026-11-08
+    covered every speak-enabled word, so the speaking line of the Progress
+    chart steps down where the rule lands.
 - **`words.speak_enabled`** is its own opt-in column (migration 0004),
   defaulting true, so every word already in the vocabulary joined speaking the
   moment it shipped, and a new word can be left out of speaking while still
@@ -949,7 +982,7 @@ the demo account seeded.
 
 | Command | Covers |
 |---|---|
-| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice, the level briefs |
+| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice, the level briefs, the speaking pool |
 | `npm run test:accents` | Accent composition, per language |
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |
@@ -987,6 +1020,11 @@ Read-only checks and one-off fixes live in `scripts/`:
   is how an entry leaves again — it was used to move `tengo que` out of
   phrases — and it **refuses any word with answers behind it**, since deleting
   a word takes its history with it through the schema's cascade.
+- `test-speaking-pool.ts` (part of `npm test`) — the gate on speaking, run
+  against a throwaway database of its own under `DATABASE_PATH`, so it can set
+  up a muted word or a word that has decayed back below solid exactly rather
+  than hoping to find one. It needs no server and no seeded account, which is
+  why it can run in CI.
 - `check-accents-in-data.ts` — cross-references stored words against the
   archived vocabulary in `old_code_repo/` to find missing accents. Evidence
   rather than eyeballing.
