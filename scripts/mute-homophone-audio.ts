@@ -50,14 +50,6 @@ const STRESS_ONLY = "the accent marks stress, which saying it alone supplies any
  */
 const S_MERGE = "s+s merge into one s, and a word-final s resyllabifies onto a vowel";
 
-/**
- * Spanish does not hold two identical vowels apart across a word join either,
- * which is what makes "va a" and "va" one sound. It arrived with the
- * ir + a + infinitive paradigm on 2026-11-08. The other five forms are safe:
- * "vamos a" and "van a" put the a in a syllable of its own, and "voy a" and
- * "vas a" never had a vowel to merge with.
- */
-const VOWEL_MERGE = "the a merges into the identical vowel before it";
 
 const COLLISIONS: Collision[] = [
   { language: "Spanish", sound: "ke", keep: "qué", mute: ["que"], why: STRESS_ONLY },
@@ -71,13 +63,6 @@ const COLLISIONS: Collision[] = [
     keep: "por qué",
     mute: ["porque"],
     why: "the space is not audible",
-  },
-  {
-    language: "Spanish",
-    sound: "ba",
-    keep: "va",
-    mute: ["va a"],
-    why: VOWEL_MERGE,
   },
   { language: "Spanish", sound: "a-SI-do", keep: "ha sido", mute: ["has sido", "has ido"], why: S_MERGE },
   { language: "Spanish", sound: "e-mo-SI-do", keep: "hemos sido", mute: ["hemos ido"], why: S_MERGE },

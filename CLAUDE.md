@@ -745,11 +745,13 @@ both of them spelling distinctions that are not sounds:
   sido`/`habéis ido`. `ha ido`, `han ido`/`han sido` and `has tenido`/`ha
   tenido` are safe, because the `s` survives before a consonant, or there is no
   second `s` to merge with.
-- **Two identical vowels across a word join are one vowel.** `va a` and `va`
-  are both ba, so "va a comer" has no audible second a. Found when the
-  `ir + a + infinitive` paradigm went in on 2026-11-08; the other five forms
-  are safe, because `vamos a` and `van a` give the `a` a syllable of its own
-  and `voy a`/`vas a` have no matching vowel to merge with.
+- **Two identical vowels across a word join are one vowel.** Not live yet, but
+  waiting: `va a` and `va` are both ba, so "va a comer" has no audible second
+  a. It appeared when the `ir + a + infinitive` paradigm was added on
+  2026-11-08 and left again with it, so the group is **not** in the script —
+  add it the day that paradigm goes in for real. The other five forms are
+  safe, because `vamos a` and `van a` give the `a` a syllable of its own and
+  `voy a`/`vas a` have no matching vowel to merge with.
 
 The entry left audible is the one that can stand alone as an utterance (`sí` is
 a whole reply, `si` never is; `por qué` asks, `porque` answers), and where both
@@ -1050,20 +1052,17 @@ Read-only checks and one-off fixes live in `scripts/`:
   phrases — and it **refuses any word with answers behind it**, since deleting
   a word takes its history with it through the schema's cascade.
 - `add-spanish-gaps.ts` — the batch added on 2026-11-08, taking Spanish from
-  738 words to 800. The owner asked for the holes to be filled rather than for
+  738 words to 779. The owner asked for the holes to be filled rather than for
   more of the same, so every block in it is a pattern the existing words left
-  unfinished, found by reading the live vocabulary: `ir + a` + infinitive (all
-  six forms of *ir* were in, the construction they exist for was not),
-  `me gusta` (the infinitive was in, the only form anyone says was not), the
-  eight irregular past participles (all eight infinitives were in, no
-  participle was), weather through `hacer` (the nouns were in, but Spanish
-  does not use them that way), the compound prepositions of place, the
-  function words that were simply absent (`otro`, `mismo`, `le`/`les`,
-  `aquel`/`aquella`, `mejor`), and a seed for each cognate suffix family.
-  Two glosses are deliberately narrower than the dictionary and the file says
-  why: `desde` is "since" because `de` already answers "from", and `me gustan`
-  is "I like them" with no bracket, because a parenthesised note is optional
-  in matching and would have collided with `me gusta`.
+  unfinished, found by reading the live vocabulary: weather through `hacer`
+  (the nouns were in, but Spanish does not use them that way), the compound
+  prepositions of place, the function words that were simply absent (`otro`,
+  `mismo`, `le`/`les`, `aquel`/`aquella`, `mejor`, `algún`, `bastante`), and a
+  seed for each cognate suffix family. One gloss is deliberately narrower than
+  the dictionary and the file says why: `desde` is "since", because `de`
+  already answers "from". **It also added 21 conjugations, which it should not
+  have** — see the rule in "Working agreements". Its `WITHDRAWN` list holds
+  all 21 and is the record of what came out again, unpractised, the same day.
 - `lib/word-batch.ts` — the machinery both batches share: find the account,
   apply the two duplicate guards, print, back up, insert, read back. Each
   batch script keeps only its own list and its own reasoning, which is the
@@ -1181,6 +1180,19 @@ number of series per row, and `activityChart` stacks all three modes.
 - **Keep this file current.** Update it as part of the change that makes it
   true, unprompted — decisions, traps and anything surprising a future session
   would otherwise rediscover.
+- **Never add conjugations unless the owner asks for them by name.** The
+  conjugations category is their own curriculum, not a gap to be filled: they
+  hold the **core patterns and the common irregulars**, deliberately, and add
+  tenses when they are ready for them rather than when a verb exists. A batch
+  that tops up the vocabulary adds nouns, adjectives, adverbs, prepositions,
+  phrases and function words, and leaves conjugations alone. Asked for one,
+  two things follow: it goes in as a **whole paradigm** — all six persons of a
+  tense, never a single person — and the tense is the one named, not its
+  neighbours. The owner asked for this on 2026-11-08, after a 62-word batch
+  put in 21 conjugations unasked, among them a whole tense they had not got to
+  and eight participles in the first person only. All 21 were withdrawn the
+  same day. The lesson is wider than conjugations: "fill in the holes" is an
+  invitation to add vocabulary, not to redesign how somebody studies.
 - **Fix a data bug; do not write it up and leave it.** Anything that miscounts
   what the app records (progress, attempts, snapshots) gets fixed straight
   away, with a regression test, or raised plainly with the owner. The override
