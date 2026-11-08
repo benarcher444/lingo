@@ -234,10 +234,12 @@ function rowFrom(html) {
 function listQuery() {
   const current = new URLSearchParams(window.location.search);
   const keep = new URLSearchParams();
-  for (const key of ["language", "type", "q", "sort", "mode"]) {
+  for (const key of ["language", "type", "q", "sort", "mode", "page"]) {
     const value = current.get(key);
     if (value) keep.set(key, value);
   }
+  // Status is a set of checkboxes, so it repeats rather than holding one value.
+  for (const value of current.getAll("status")) keep.append("status", value);
   return keep.toString();
 }
 

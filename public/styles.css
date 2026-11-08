@@ -1109,9 +1109,35 @@ table.data tbody tr.edit-row.is-busy { opacity: 0.6; }
 
 .list-toolbar .btn { height: 38px; }
 
+/* The status boxes sit in the toolbar as one field, wrapping together rather
+   than each box finding its own line. */
+.status-checks {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  min-height: 38px;
+}
+
+/* Paging under the word list, so the older words stay reachable. */
+.pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.pager .hint { margin: 0 4px; }
+.pager .is-disabled { opacity: 0.45; pointer-events: none; }
+
 @media (max-width: 620px) {
   .toolbar-field { flex: 1 1 140px; }
   .toolbar-field .select { min-width: 0; width: 100%; }
+  /* The checkboxes need the whole row, or they share 140px with a dropdown. */
+  .toolbar-status { flex: 1 1 100%; }
 }
 
 /* ============================================================

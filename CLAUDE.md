@@ -936,6 +936,30 @@ If the lag persists, establish the device and browser before changing more.
   from `vocab.js`, on desktop widths only: on a phone it scrolled the page past
   the top bar. The add
   form's category is remembered per language in `localStorage`.
+  **The filters are now category, search, sort, mode, status and page**, and
+  every one of them has to appear in `vocabUrl`, in `filterFields` (the hidden
+  `_name` fields the edit and delete forms echo back), and in `listQuery()` in
+  `vocab.js` — four places, which is why the fields are generated rather than
+  written out per form. Found by the thing it predicts: `mode` was carried
+  into the toolbar form only when it was `audio`, so searching from the
+  Speaking view dropped you back into Written. Fixed 2026-11-08.
+- **The word list is paged, a hundred to a page.** It used to show the first
+  300 and say "(first 300)", which quietly made the oldest words unreachable
+  once Spanish went past that — the owner asked for paging on 2026-11-08. The
+  page number is clamped to the last page rather than 404ing or showing an
+  empty table, and the clamped value is what the links and forms carry, or a
+  save from page 9 of 4 would keep sending you back to 9. Switching mode
+  resets to page one, because the same number means something else there.
+- **The status filter and the status pill come from one function.**
+  `scoreBand` in `views/components.ts` decides which of New, Learning, Learnt
+  and Solid a score is, and `scorePill` renders it — so a filter can never
+  disagree with the pill it sits beside. It takes the thresholds from
+  `algorithm.ts` rather than the copies that used to be written out here. The
+  filter's fifth box, "Off", is the words with no score in this mode at all,
+  labelled "Not yet" in speaking to match what the rows say. **No box ticked
+  means every band**, the usual convention and the opposite of the Progress
+  page's chart filters, which need a hidden `filtered=1` marker because there
+  an empty selection is a real choice.
 - **Overlapping buckets look like a partition.** "Solid" is a subset of
   "learnt", so showing solid / learning / untouched left a word between the
   thresholds in no bucket and the tiles did not add up. `Summary.learntNotSolid`
@@ -991,7 +1015,7 @@ the demo account seeded.
 | `npm run test:theme` | Theme saved per account and stamped on pages, safe redirect, phone language picker and Settings tab |
 | `npm run test:sentences` | Translation practice: a round from your words, the words revealed, marking, and that it records nothing. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:chat` | Conversation end to end: scene and level, AI opens, corrected turn, speech, teacher thread, own scene, out-of-credit message. **Server must run with `AI_PROVIDER=mock`** |
-| `npm run test:search` | Vocabulary search and category filter, via the form |
+| `npm run test:search` | Vocabulary search, category and status filters and paging, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override, the banner rebuilt after a session |
 | `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out, and comparing another word after a miss |

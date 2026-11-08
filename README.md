@@ -41,6 +41,12 @@ words, for looking at the empty states.
 define. The banner at the top of the page shows how many words each category
 holds and what percentage of it is learnt.
 
+The list can be narrowed by category, by a search of either language, and by
+learning status — tick any combination of New, Learning, Learnt, Solid and Off,
+and the bands are read for whichever mode the page is set to, so you can ask
+for the words you are still learning to *say*. Long lists are paged a hundred
+at a time, and every filter survives editing a word.
+
 Adding is keyboard-driven: pick the category once, then
 `word` → <kbd>Tab</kbd> → `translation` → <kbd>Enter</kbd>, repeatedly, with no
 page reload.
@@ -200,7 +206,7 @@ Carried over from the original Python app; `npm test` covers it.
 | `npm run test:entry` | Drive the keyboard word-entry flow |
 | `npm run test:accents` | Accent composition rules |
 | `npm run test:accents:browser` | Accent typing in a real browser |
-| `npm run test:search` | Vocabulary search and category filter |
+| `npm run test:search` | Vocabulary search, category and status filters, paging |
 | `npm run test:session` | Session size, skip-on-empty, `y` override |
 | `npm run test:override` | "I was right" counts a miss as right, once |
 | `npm run test:listening` | Speech warm-up, `r` to replay, the heard word spelled out, comparing another word |

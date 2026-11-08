@@ -19,11 +19,14 @@ import { db } from "../db/index.js";
 import { languages, wordTypes, words } from "../db/schema.js";
 import { loadScoredWords, summarise, summariseByType } from "../stats.js";
 import {
+  BAND_LABEL,
   NO_AUTOFILL,
+  SCORE_BANDS,
   alert,
   pageHead,
   MODE_LABEL,
   progressBanner,
+  scoreBand,
   scorePill,
 } from "../views/components.js";
 import { esc, icons, layout } from "../views/layout.js";
@@ -57,7 +60,26 @@ interface ListFilters {
   sort?: SortKey;
   /** Which practice mode the banner and status column report on. */
   mode?: Mode;
+  /** Bands to show. Empty means all of them, as an untouched filter should. */
+  status?: StatusKey[];
+  /** 1-based. The list is paged, so the oldest words stay reachable. */
+  page?: number;
 }
+
+/**
+ * What the status filter offers: the four score bands, plus the words that
+ * have no score in this mode at all — switched off, or, in speaking, not yet
+ * let in. That last one is a real thing to want to look at, so it is a band
+ * of its own rather than a silent omission.
+ */
+const STATUS_KEYS = [...SCORE_BANDS, "off"] as const;
+type StatusKey = (typeof STATUS_KEYS)[number];
+
+/**
+ * Words per page. Long enough to scan a category in one go, short enough that
+ * a phone is not rendering a thousand rows.
+ */
+const PAGE_SIZE = 100;
 
 /** Sort orders offered on the word list. */
 const SORTS = {
@@ -79,16 +101,73 @@ function filtersFrom(source: Record<string, unknown>): {
   q: string;
   sort: SortKey;
   mode: Mode;
+  status: StatusKey[];
+  page: number;
 } {
   const text = (key: string) => (typeof source[key] === "string" ? (source[key] as string) : "");
   const sort = text("sort");
+
+  // Ticked boxes arrive as a repeated query parameter, which Fastify hands
+  // over as a string or an array depending on how many were ticked; the edit
+  // forms echo them back as one comma-joined hidden field. Both read here.
+  const raw = source["status"];
+  const parts = Array.isArray(raw) ? raw.map(String) : text("status").split(",");
+  const status = [...new Set(parts.map((part) => part.trim()))].filter(
+    (part): part is StatusKey => (STATUS_KEYS as readonly string[]).includes(part),
+  );
+
+  const page = Math.floor(Number(text("page")));
+
   return {
     // "All types" submits an empty value, which must read as absent, not 0.
     type: optionalId(text("type")),
     q: text("q").trim(),
     sort: Object.hasOwn(SORTS, sort) ? (sort as SortKey) : "added_desc",
     mode: text("mode") === "audio" ? "audio" : text("mode") === "speak" ? "speak" : "written",
+    status,
+    page: Number.isInteger(page) && page > 0 ? page : 1,
   };
+}
+
+/**
+ * The active filters as hidden fields, so a form sends you back to the view
+ * you were looking at. Three forms need them, and a fourth hand-written copy
+ * would be the one that drifts.
+ */
+function filterFields(filters: ListFilters): string {
+  return `<input type="hidden" name="_type" value="${filters.type ?? ""}">
+        <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
+        <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
+        <input type="hidden" name="_mode" value="${filters.mode ?? ""}">
+        <input type="hidden" name="_status" value="${esc((filters.status ?? []).join(","))}">
+        <input type="hidden" name="_page" value="${filters.page ?? 1}">`;
+}
+
+/**
+ * Previous and next, with where you are. Numbered links were not worth it: at
+ * a hundred words a page the useful moves are one step and the two ends, and
+ * a row of numbers wraps badly on a phone.
+ */
+function pager(
+  languageId: number,
+  filters: ListFilters,
+  page: number,
+  pageCount: number,
+): string {
+  if (pageCount <= 1) return "";
+
+  const step = (target: number, label: string) =>
+    target >= 1 && target <= pageCount && target !== page
+      ? `<a class="btn btn-sm" href="${esc(vocabUrl(languageId, { ...filters, page: target }))}">${label}</a>`
+      : `<span class="btn btn-sm is-disabled" aria-disabled="true">${label}</span>`;
+
+  return `<div class="pager">
+    ${step(1, "First")}
+    ${step(page - 1, "Previous")}
+    <span class="hint">Page ${page} of ${pageCount}</span>
+    ${step(page + 1, "Next")}
+    ${step(pageCount, "Last")}
+  </div>`;
 }
 
 function vocabUrl(
@@ -102,6 +181,8 @@ function vocabUrl(
   if (filters.q) params.set("q", filters.q);
   if (filters.sort && filters.sort !== "added_desc") params.set("sort", filters.sort);
   if (filters.mode && filters.mode !== "written") params.set("mode", filters.mode);
+  for (const key of filters.status ?? []) params.append("status", key);
+  if (filters.page && filters.page > 1) params.set("page", String(filters.page));
   for (const [key, value] of Object.entries(extra)) params.set(key, String(value));
   return `/vocab?${params.toString()}`;
 }
@@ -486,6 +567,8 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
       q: body["_q"],
       sort: body["_sort"],
       mode: body["_mode"],
+      status: body["_status"],
+      page: body["_page"],
     });
 
     // public/vocab.js edits in place and wants the updated row back, not a page.
@@ -603,7 +686,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     // as the progress page does.
     /** Carried through Edit, Cancel and the post-save redirect. */
     const listFilters = filtersFrom(query);
-    const { type: selectedType, q: search, sort, mode } = listFilters;
+    const { type: selectedType, q: search, sort, mode, status: statuses } = listFilters;
 
     const scored = loadScoredWords(language.id, mode);
     const summary = summarise(scored, mode);
@@ -659,7 +742,25 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         break; // added_desc — already newest first from the query
     }
 
-    const shown = rows.slice(0, 300);
+    // The status filter, by the same reckoning as the pill in each row. A word
+    // with no score in this mode — switched off, or waiting its turn in
+    // speaking — is its own band rather than quietly missing.
+    const statusOf = (id: number): StatusKey => {
+      const score = scoreByWord.get(id);
+      return score === undefined ? "off" : scoreBand(score);
+    };
+    const matching =
+      statuses.length === 0 ? rows : rows.filter((row) => statuses.includes(statusOf(row.id)));
+
+    // Paged, not capped. It used to show the first 300 and say so, which left
+    // the older words unreachable once a language went past that.
+    const pageCount = Math.max(1, Math.ceil(matching.length / PAGE_SIZE));
+    const page = Math.min(listFilters.page ?? 1, pageCount);
+    const shown = matching.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+    // Links and forms carry the page actually being shown, which is the
+    // clamped one: asking for page 9 of 4 and being sent back to 9 on every
+    // save would lose the learner's place.
+    listFilters.page = page;
 
     // Clicking a word opens its full record in place of the add form.
     const detail = detailId ? loadWordDetail(ctx.user.id, detailId) : null;
@@ -671,12 +772,14 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
         title: "Vocabulary",
         sub: `Add and edit the words you are learning. The breakdown below shows how each ${esc(language.name)} category is coming along.`,
         actions: `
+          <!-- Switching mode keeps the filters but starts at page one: the
+               same page number means something different in another mode. -->
           <a class="btn${mode === "written" ? " btn-primary" : ""}"
-             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "written" }))}">Written</a>
+             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "written", page: 1 }))}">Written</a>
           <a class="btn${mode === "audio" ? " btn-primary" : ""}"
-             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "audio" }))}">Listening</a>
+             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "audio", page: 1 }))}">Listening</a>
           <a class="btn${mode === "speak" ? " btn-primary" : ""}"
-             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "speak" }))}">Speaking</a>
+             href="${esc(vocabUrl(language.id, { ...listFilters, mode: "speak", page: 1 }))}">Speaking</a>
           <a class="btn" href="/progress?language=${language.id}${mode === "written" ? "" : `&mode=${mode}`}">${icons.chart}View progress</a>`,
       })}
 
@@ -702,7 +805,15 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
           <div class="card-head list-head">
             <div>
               <h2>Your words</h2>
-              <div class="sub">${shown.length} of ${rows.length}${rows.length > 300 ? " (first 300)" : ""}${
+              <!-- A range only where there are pages to range over; plain
+                   counts read better than "1-13 of 13". -->
+              <div class="sub">${
+                matching.length === 0
+                  ? "No words match"
+                  : pageCount > 1
+                    ? `${(page - 1) * PAGE_SIZE + 1}–${(page - 1) * PAGE_SIZE + shown.length} of ${matching.length}`
+                    : `${matching.length} word${matching.length === 1 ? "" : "s"}`
+              }${matching.length === rows.length ? "" : `, filtered from ${rows.length}`}${
                 selectedType !== null
                   ? ` · ${esc(types.find((t) => t.id === selectedType)?.name ?? "")}`
                   : ""
@@ -715,7 +826,9 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                stacked one per line. -->
           <form class="list-toolbar" method="get" action="/vocab" autocomplete="off">
             <input type="hidden" name="language" value="${language.id}">
-            ${mode === "audio" ? `<input type="hidden" name="mode" value="audio">` : ""}
+            <!-- Every mode, not only listening: searching from the Speaking
+                 view used to drop you back into Written. -->
+            ${mode === "written" ? "" : `<input type="hidden" name="mode" value="${mode}">`}
 
             <label class="toolbar-field">
               <span>Sort</span>
@@ -742,6 +855,22 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
               </select>
             </label>
 
+            <div class="toolbar-field toolbar-status">
+              <span>Status</span>
+              <div class="status-checks">
+                ${STATUS_KEYS.map((key) => {
+                  // "Off" means the mode's box is unticked. In speaking it can
+                  // also mean the word has not qualified yet, which is what
+                  // the row itself says, so the label follows the row.
+                  const label =
+                    key === "off" ? (mode === "speak" ? "Not yet" : "Off") : BAND_LABEL[key];
+                  return `<label class="check"><input type="checkbox" name="status" value="${key}"${
+                    statuses.includes(key) ? " checked" : ""
+                  } onchange="this.form.submit()"> ${esc(label)}</label>`;
+                }).join("")}
+              </div>
+            </div>
+
             <label class="toolbar-field toolbar-search">
               <span>Search</span>
               <input class="input" type="search" name="q" ${NO_AUTOFILL}
@@ -750,7 +879,7 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
 
             <button class="btn" type="submit">Search</button>
             ${
-              search || selectedType !== null || sort !== "added_desc"
+              search || selectedType !== null || sort !== "added_desc" || statuses.length > 0
                 ? `<a class="btn btn-ghost btn-sm" href="${esc(vocabUrl(language.id, { mode }))}">Clear</a>`
                 : ""
             }
@@ -759,10 +888,14 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
             shown.length === 0
               ? `<div class="empty">
                    <div class="empty-icon">${icons.book}</div>
-                   <h2>${search || selectedType !== null ? "Nothing matches" : "No words yet"}</h2>
+                   <h2>${
+                     search || selectedType !== null || statuses.length > 0
+                       ? "Nothing matches"
+                       : "No words yet"
+                   }</h2>
                    <p>${
-                     search || selectedType !== null
-                       ? "Try a different search or category."
+                     search || selectedType !== null || statuses.length > 0
+                       ? "Try a different search, category or status."
                        : "Add your first word using the form above and it will appear here."
                    }</p>
                  </div>`
@@ -780,7 +913,8 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
                       )
                       .join("\n")}
                   </tbody>
-                </table></div>`
+                </table></div>
+                ${pager(language.id, listFilters, page, pageCount)}`
           }
         </div>
 
@@ -981,10 +1115,7 @@ function editRow(
   return `<tr id="word-${row.id}" data-word-id="${row.id}" class="edit-row">
     <td colspan="6" style="padding:14px 16px">
       <form method="post" action="/words/${row.id}" class="stack-sm" data-word-form autocomplete="off">
-        <input type="hidden" name="_type" value="${filters.type ?? ""}">
-        <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
-        <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
-        <input type="hidden" name="_mode" value="${filters.mode ?? ""}">
+        ${filterFields(filters)}
         <div class="form-grid">
           <div class="field"><label>Word</label>
             <input class="input" name="term" required value="${esc(row.term)}" ${NO_AUTOFILL}></div>
@@ -1016,10 +1147,7 @@ function editRow(
             onsubmit="return confirm('Delete this word and its progress? This cannot be undone.')"
             style="margin-top:10px">
         <input type="hidden" name="_action" value="delete">
-        <input type="hidden" name="_type" value="${filters.type ?? ""}">
-        <input type="hidden" name="_q" value="${esc(filters.q ?? "")}">
-        <input type="hidden" name="_sort" value="${filters.sort ?? ""}">
-        <input type="hidden" name="_mode" value="${filters.mode ?? ""}">
+        ${filterFields(filters)}
         <button class="btn btn-sm btn-danger" type="submit">${icons.trash}Delete word</button>
       </form>
     </td>

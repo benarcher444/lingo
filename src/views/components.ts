@@ -1,4 +1,4 @@
-import type { Mode } from "../algorithm.js";
+import { COMPLETELY_LEARNT_THRESHOLD, LEARNT_THRESHOLD, type Mode } from "../algorithm.js";
 import type { Summary, TypeSummary } from "../stats.js";
 import { esc, icons } from "./layout.js";
 
@@ -196,9 +196,32 @@ export function alert(kind: "error" | "ok" | "info", message: string): string {
   return `<div class="alert alert-${kind}">${esc(message)}</div>`;
 }
 
+export const SCORE_BANDS = ["new", "learning", "learnt", "solid"] as const;
+export type ScoreBand = (typeof SCORE_BANDS)[number];
+
+export const BAND_LABEL: Record<ScoreBand, string> = {
+  new: "New",
+  learning: "Learning",
+  learnt: "Learnt",
+  solid: "Solid",
+};
+
+/**
+ * Which band a score falls in. The pill below and the vocabulary page's status
+ * filter both come through here, so a filter can never disagree with the pill
+ * sitting next to it. The thresholds are imported rather than written out:
+ * they were copied here once and would have had to be found again.
+ */
+export function scoreBand(score: number): ScoreBand {
+  if (score > COMPLETELY_LEARNT_THRESHOLD) return "solid";
+  if (score > LEARNT_THRESHOLD) return "learnt";
+  if (score > 0) return "learning";
+  return "new";
+}
+
 export function scorePill(score: number): string {
-  if (score > 2.556) return `<span class="pill pill-learnt">Solid</span>`;
-  if (score > 2.3) return `<span class="pill pill-learnt">Learnt</span>`;
-  if (score > 0) return `<span class="pill pill-learning">Learning</span>`;
-  return `<span class="pill pill-new">New</span>`;
+  const band = scoreBand(score);
+  // Solid and learnt share a colour; the word tells them apart.
+  const tone = band === "solid" ? "learnt" : band;
+  return `<span class="pill pill-${tone}">${BAND_LABEL[band]}</span>`;
 }
