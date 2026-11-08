@@ -745,6 +745,11 @@ both of them spelling distinctions that are not sounds:
   sido`/`habéis ido`. `ha ido`, `han ido`/`han sido` and `has tenido`/`ha
   tenido` are safe, because the `s` survives before a consonant, or there is no
   second `s` to merge with.
+- **Two identical vowels across a word join are one vowel.** `va a` and `va`
+  are both ba, so "va a comer" has no audible second a. Found when the
+  `ir + a + infinitive` paradigm went in on 2026-11-08; the other five forms
+  are safe, because `vamos a` and `van a` give the `a` a syllable of its own
+  and `voy a`/`vas a` have no matching vowel to merge with.
 
 The entry left audible is the one that can stand alone as an utterance (`sí` is
 a whole reply, `si` never is; `por qué` asks, `porque` answers), and where both
@@ -1044,6 +1049,26 @@ Read-only checks and one-off fixes live in `scripts/`:
   is how an entry leaves again — it was used to move `tengo que` out of
   phrases — and it **refuses any word with answers behind it**, since deleting
   a word takes its history with it through the schema's cascade.
+- `add-spanish-gaps.ts` — the batch added on 2026-11-08, taking Spanish from
+  738 words to 800. The owner asked for the holes to be filled rather than for
+  more of the same, so every block in it is a pattern the existing words left
+  unfinished, found by reading the live vocabulary: `ir + a` + infinitive (all
+  six forms of *ir* were in, the construction they exist for was not),
+  `me gusta` (the infinitive was in, the only form anyone says was not), the
+  eight irregular past participles (all eight infinitives were in, no
+  participle was), weather through `hacer` (the nouns were in, but Spanish
+  does not use them that way), the compound prepositions of place, the
+  function words that were simply absent (`otro`, `mismo`, `le`/`les`,
+  `aquel`/`aquella`, `mejor`), and a seed for each cognate suffix family.
+  Two glosses are deliberately narrower than the dictionary and the file says
+  why: `desde` is "since" because `de` already answers "from", and `me gustan`
+  is "I like them" with no bracket, because a parenthesised note is optional
+  in matching and would have collided with `me gusta`.
+- `lib/word-batch.ts` — the machinery both batches share: find the account,
+  apply the two duplicate guards, print, back up, insert, read back. Each
+  batch script keeps only its own list and its own reasoning, which is the
+  point of having them. It was copied into the second batch before being
+  extracted, which is exactly how two copies drift.
 - `test-speaking-pool.ts` (part of `npm test`) — the gate on speaking, run
   against a throwaway database of its own under `DATABASE_PATH`, so it can set
   up a muted word or a word that has decayed back below solid exactly rather

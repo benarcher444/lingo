@@ -9,35 +9,13 @@
  * more A1 words, and for routine to be covered properly. The list below is the
  * record of what went in.
  *
- * Running it twice is safe: a word already in its category is left alone, so a
- * second run adds nothing. Two guards decide what may go in, and both exist
- * because a question with two right answers records a real miss:
- *
- * - **The same spelling in the same category** is what the app itself calls a
- *   duplicate, so the check imports `spellingKey` rather than re-deciding what
- *   "the same word" means. Another category may hold the same spelling, as
- *   with *como* the conjunction and *como* the conjugation.
- * - **The same English on two words** makes the English-to-Spanish direction a
- *   coin flip — the written counterpart of the homophone problem that
- *   `mute-homophone-audio.ts` solves for listening. A word whose gloss is
- *   already taken is reported and skipped rather than entered.
- *
- * What no script can check is whether a new word is a *homophone* of one
- * already there. The watch list in CLAUDE.md was gone through by hand for this
- * batch and none of these collide. A later batch needs the same pass.
+ * The duplicate guards, the backup and the read-back are in
+ * `lib/word-batch.ts`, which every batch shares. The pass it cannot do is the
+ * homophone one: the watch list in CLAUDE.md was gone through by hand for this
+ * batch and none of these collide.
  */
 
-import { eq } from "drizzle-orm";
-
-import { databasePath, db, sqlite } from "../src/db/index.js";
-import { attempts, languages, users, wordTypes, words } from "../src/db/schema.js";
-import { spellingKey } from "../src/routes/vocab.js";
-
-interface Entry {
-  category: string;
-  term: string;
-  english: string;
-}
+import { runBatch, type Entry, type Withdrawal } from "./lib/word-batch.js";
 
 /**
  * Daily routine first, because that is what was asked for: the things a
@@ -172,7 +150,7 @@ const WORDS: Entry[] = [
  * owner has been practising: a word with answers behind it is refused and
  * reported, because deleting it would take its history with it.
  */
-const WITHDRAWN: { category: string; term: string; why: string }[] = [
+const WITHDRAWN: Withdrawal[] = [
   {
     category: "phrases",
     term: "tengo que",
@@ -180,184 +158,8 @@ const WITHDRAWN: { category: string; term: string; why: string }[] = [
   },
 ];
 
-const apply = process.argv.includes("--apply");
-const emailArg = process.argv.find((a) => a.startsWith("--email="))?.slice("--email=".length);
-const languageName =
-  process.argv.find((a) => a.startsWith("--language="))?.slice("--language=".length) ?? "Spanish";
-
-if (!emailArg) {
-  console.error(
-    "Which account? This adds words to one person's vocabulary, so it has to be named:\n" +
-      "  npx tsx scripts/add-spanish-routine.ts --email=you@example.com",
-  );
-  process.exit(1);
-}
-
-const account = db.select().from(users).where(eq(users.email, emailArg)).get();
-if (!account) {
-  console.error(`No account for ${emailArg}.`);
-  process.exit(1);
-}
-
-const language = db
-  .select()
-  .from(languages)
-  .where(eq(languages.userId, account.id))
-  .all()
-  .find((l) => l.name.toLowerCase() === languageName.toLowerCase());
-if (!language) {
-  console.error(`${emailArg} has no ${languageName}.`);
-  process.exit(1);
-}
-
-const types = db.select().from(wordTypes).where(eq(wordTypes.languageId, language.id)).all();
-const typeByName = new Map(types.map((t) => [t.name.toLowerCase(), t]));
-
-const existing = types.flatMap((type) =>
-  db
-    .select()
-    .from(words)
-    .where(eq(words.wordTypeId, type.id))
-    .all()
-    .map((w) => ({ ...w, category: type.name })),
-);
-
-const toWithdraw: { id: number; category: string; term: string; english: string; why: string }[] = [];
-const kept: { category: string; term: string; why: string }[] = [];
-
-for (const entry of WITHDRAWN) {
-  const found = existing.find(
-    (w) =>
-      w.category.toLowerCase() === entry.category.toLowerCase() &&
-      spellingKey(w.term) === spellingKey(entry.term),
-  );
-  if (!found) continue;
-
-  const answers = db.select().from(attempts).where(eq(attempts.wordId, found.id)).all().length;
-  if (answers) {
-    kept.push({ ...entry, why: `${answers} answer(s) behind it — left alone` });
-    continue;
-  }
-  toWithdraw.push({ ...entry, id: found.id, term: found.term, english: found.english });
-}
-
-const withdrawnIds = new Set(toWithdraw.map((w) => w.id));
-const remaining = existing.filter((w) => !withdrawnIds.has(w.id));
-
-/** Spelling already used, per category: the app's own idea of a duplicate. */
-const spellingsByType = new Map<number, Set<string>>();
-for (const w of remaining) {
-  const set = spellingsByType.get(w.wordTypeId) ?? new Set<string>();
-  set.add(spellingKey(w.term));
-  spellingsByType.set(w.wordTypeId, set);
-}
-
-/** Gloss already used anywhere in the language, and by which word. */
-const glossKey = (english: string) => english.trim().replace(/\s+/g, " ").toLowerCase();
-const byGloss = new Map<string, { term: string; category: string }>();
-for (const w of remaining) byGloss.set(glossKey(w.english), { term: w.term, category: w.category });
-
-const toAdd: { entry: Entry; wordTypeId: number }[] = [];
-const already: Entry[] = [];
-const refused: { entry: Entry; why: string }[] = [];
-
-for (const entry of WORDS) {
-  const type = typeByName.get(entry.category.toLowerCase());
-  if (!type) {
-    refused.push({ entry, why: `no "${entry.category}" category in ${language.name}` });
-    continue;
-  }
-
-  if (spellingsByType.get(type.id)?.has(spellingKey(entry.term))) {
-    already.push(entry);
-    continue;
-  }
-
-  const clash = byGloss.get(glossKey(entry.english));
-  if (clash) {
-    refused.push({
-      entry,
-      why: `"${entry.english}" is already ${clash.term} (${clash.category}) — two right answers`,
-    });
-    continue;
-  }
-
-  toAdd.push({ entry, wordTypeId: type.id });
-
-  // Claim both keys now, so the batch cannot collide with itself.
-  const set = spellingsByType.get(type.id) ?? new Set<string>();
-  set.add(spellingKey(entry.term));
-  spellingsByType.set(type.id, set);
-  byGloss.set(glossKey(entry.english), { term: entry.term, category: entry.category });
-}
-
-console.log(`${account.email} · ${language.name} · ${existing.length} words now\n`);
-
-for (const { entry } of toAdd) {
-  console.log(`  + ${entry.category.padEnd(13)} ${entry.term.padEnd(24)} ${entry.english}`);
-}
-for (const entry of already) {
-  console.log(`  = ${entry.category.padEnd(13)} ${entry.term.padEnd(24)} already there`);
-}
-for (const w of toWithdraw) {
-  console.log(`  - ${w.category.padEnd(13)} ${w.term.padEnd(24)} ${w.why}`);
-}
-for (const { entry, why } of [...refused, ...kept.map((k) => ({ entry: k, why: k.why }))]) {
-  console.log(`  ! ${entry.category.padEnd(13)} ${entry.term.padEnd(24)} ${why}`);
-}
-
-console.log(
-  `\n${toAdd.length} to add, ${toWithdraw.length} to withdraw, ${already.length} already there, ` +
-    `${refused.length + kept.length} refused` +
-    ` — ${existing.length} → ${existing.length + toAdd.length - toWithdraw.length} words.`,
-);
-
-if (!toAdd.length && !toWithdraw.length) {
-  console.log("Nothing to do.");
-  process.exit(refused.length ? 1 : 0);
-}
-
-if (!apply) {
-  console.log("\nDry run. Re-run with --apply to make these changes.");
-  process.exit(0);
-}
-
-const stamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-");
-const target = `${databasePath.replace(/\.db$/, "")}-pre-add-${stamp}.db`;
-await sqlite.backup(target);
-console.log(`\nBacked up ${databasePath} → ${target}`);
-
-for (const w of toWithdraw) {
-  db.delete(words).where(eq(words.id, w.id)).run();
-}
-
-db.insert(words)
-  .values(
-    toAdd.map(({ entry, wordTypeId }) => ({
-      wordTypeId,
-      term: entry.term,
-      english: entry.english,
-    })),
-  )
-  .run();
-
-// Read it back rather than trust the insert count.
-const after = types.flatMap((type) =>
-  db.select().from(words).where(eq(words.wordTypeId, type.id)).all(),
-);
-const present = new Set(after.map((w) => `${w.wordTypeId}:${spellingKey(w.term)}`));
-const missing = toAdd.filter(
-  ({ entry, wordTypeId }) => !present.has(`${wordTypeId}:${spellingKey(entry.term)}`),
-);
-
-const goneNow = toWithdraw.filter((w) => !db.select().from(words).where(eq(words.id, w.id)).get());
-
-console.log(
-  `Applied. ${toAdd.length - missing.length}/${toAdd.length} added, ` +
-    `${goneNow.length}/${toWithdraw.length} withdrawn, ${after.length} words now.`,
-);
-
-if (missing.length) {
-  console.error(`Not added: ${missing.map((m) => m.entry.term).join(", ")}`);
-  process.exit(1);
-}
+await runBatch({
+  script: "scripts/add-spanish-routine.ts",
+  words: WORDS,
+  withdrawn: WITHDRAWN,
+});
