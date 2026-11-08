@@ -37,14 +37,8 @@
  * which matches the lower-case English side the rest of the data uses.
  *
  * **The homophone pass, by hand**, against the watch list in CLAUDE.md.
- * Nothing collides. One pair is close enough to be worth naming: *junio* and
- * *julio* differ only in the consonant between the vowels, and that is a
- * distinction to learn rather than a coin flip — the two sounds are different
- * and a Spanish ear separates them easily, so the verdict's "Hear another
- * word" button is the right tool for it, not muting. *marzo* against *el
- * martes* and *la fecha* against *el techo* were checked and are clearly
- * distinct. *dice* and *dices* differ by an audible final s, and *decís*
- * moves the stress as well as the vowel.
+ * Nothing in this batch collides with anything, and nothing here is close
+ * enough to be worth naming.
  */
 
 import { runBatch, type Entry } from "./lib/word-batch.js";

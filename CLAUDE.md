@@ -772,6 +772,16 @@ re-running the script after an addition reports them as collisions again, and
 **re-muting is the owner's call, not a tidy-up.** Ask before applying it a
 second time.
 
+**As it stands, nothing in Spanish is muted** — checked on 2026-11-08: 800
+words, all 800 audible, and the only muted word in either language is French
+`hors`. So the script is a tool the owner has available, not a convention this
+vocabulary follows. Do not describe a word as needing muting unless they ask
+what to do about a collision, and do not raise a pair as a near-miss when the
+two sounds are plainly different: `junio` and `julio` were flagged that way on
+2026-11-08 and the owner rightly asked why, because `ni` and `li` are nothing
+alike. A homophone note earns its place only when the two really are one
+sound.
+
 **A listening miss does not say which of the two problems it was**, so the
 verdict offers "Hear another word": a search over the whole vocabulary, each
 match with a speaker button (`compareBlock` / `wireCompare` in
