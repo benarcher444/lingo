@@ -5,7 +5,7 @@
  * file handles the setup, the transcript, speech, and the teacher threads.
  */
 
-import { chooseVoice } from "./voices.js";
+import { checkSpeech, chooseVoice } from "./voices.js";
 
 const config = window.__chat;
 
@@ -98,6 +98,12 @@ function say(text, { now = false, slow = false } = {}) {
   if (!synth) return;
   if (!now && muted) return;
   if (now && (synth.speaking || synth.pending)) synth.cancel();
+
+  checkSpeech(config.languageCode);
+
+  // Chrome can leave its queue paused after a cancel and then accept speak()
+  // without ever saying anything. resume() is a no-op unless that happened.
+  synth.resume();
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = config.languageCode || "en-GB";

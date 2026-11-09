@@ -1014,6 +1014,11 @@ table.data tr.just-added {
   color: var(--learnt);
 }
 
+/* Speech fails silently, so when it does the page says why, above everything
+   else on it. */
+.speech-trouble { margin-bottom: 14px; }
+.speech-trouble .hint { margin-top: 6px; }
+
 .alert-info {
   background: var(--accent-soft);
   border-color: var(--accent-border);

@@ -895,6 +895,39 @@ against. **Sweep the English side too**: `he vivido` and `vengo` both read
 2026-10-28. Three of the same slip says the shift key is what a run of typing
 loses first.
 
+**Speech fails silently, so the page now says why.** Reported on 2026-11-09:
+no sound on Android Chrome, and in **all four** places that speak — listening,
+speaking, Conversation and the word record's Hear it. That spread is itself
+the diagnosis: those four share only `window.speechSynthesis` and
+`chooseVoice`, they sit in three different files, and neither `voices.js` nor
+`chat.js` had changed since well before the report. So the cause is the device
+or its voice data, not this code.
+
+The trouble is that a browser with no engine, a device with no voice data and
+a device with no voice *for that language* all produce the same nothing, and a
+silent page cannot be told from a broken one. `speechTrouble`, `checkSpeech`
+and `watchForSpeechError` in `public/voices.js` name which it is on the page
+itself, once per page, above everything else. Three rules worth keeping:
+
+- **It is advisory and never blocks the attempt.** It reports; it does not
+  decide whether to speak.
+- **An empty voice list is not evidence.** Voices arrive asynchronously, so an
+  empty list is given 1.5s and re-checked before the device is blamed.
+- **`canceled` and `interrupted` are not errors.** Both are raised every time
+  we cancel to speak something else, and reporting them would cry wolf on
+  every card.
+
+`synth.resume()` goes in before each `speak()` as well: Chrome can leave its
+queue paused after a `cancel()` and then accept an utterance without ever
+saying anything. It is a no-op unless that has happened. That one is a
+**guess that costs nothing**, not a diagnosis — if the sound comes back, it
+was most likely the voice data, and the notice will have said so.
+
+There is a standalone check page for a phone that cannot be reached from here:
+it lists the voices the browser offers, runs this same `chooseVoice` against
+them and tries to speak, which separates "no engine" from "no Spanish voice"
+from "an engine that errors" in about ten seconds.
+
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
 after it, because Google's network jitter is larger than the cold cost there. A

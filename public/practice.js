@@ -3,7 +3,13 @@
  * owns all progress writes; this file only sequences the questions and renders.
  */
 
-import { chooseVoice, spokenForm } from "./voices.js";
+import {
+  checkSpeech,
+  chooseVoice,
+  showSpeechTrouble,
+  spokenForm,
+  watchForSpeechError,
+} from "./voices.js";
 
 const config = window.__practice;
 
@@ -847,15 +853,22 @@ function utteranceFor(text) {
 }
 
 function speakTerm(text) {
-  if (!synth) return;
+  if (!synth) return showSpeechTrouble("This browser has no speech engine.");
+
+  // Silence explains nothing, so say why before trying.
+  checkSpeech(config.languageCode);
 
   // Only cut off something actually playing (or the silent warm-up) —
   // cancelling an idle engine can delay what is spoken straight after it.
   if (synth.speaking || synth.pending) synth.cancel();
 
+  // Chrome can leave its queue paused after a cancel and then accept speak()
+  // without ever saying anything. resume() is a no-op unless that happened.
+  synth.resume();
+
   const utterance = utteranceFor(spokenForm(text));
   utterance.rate = 0.9;
-  synth.speak(utterance);
+  synth.speak(watchForSpeechError(utterance));
 }
 
 /**
