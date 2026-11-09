@@ -48,12 +48,13 @@
  *   *jugar* already holds "to play".
  *
  * **The homophone pass, by hand**, against the watch list in CLAUDE.md.
- * Nothing in this batch collides with anything already there, and nothing here
- * is close enough to be worth naming. Two were checked with care and kept
- * apart: *ves* would collide with *vez*, so *vez* is **not** in the list and
- * must not be added on its own later — *otra vez* is safe, being three
- * syllables longer; and *veis* against *seis* differs on the opening
- * consonant, which carries perfectly well.
+ * Nothing here is close enough to be worth naming.
+ *
+ * *vez* was left out of the first run of this batch because it sounds like the
+ * *ves* that went in with it, and that was wrong: a collision by ear is a
+ * question about muting, which is the owner's call and which this vocabulary
+ * does not use. It is not a reason to withhold a word. Added on the owner's
+ * correction, the same day.
  */
 
 import { runBatch, type Entry } from "./lib/word-batch.js";
@@ -172,6 +173,9 @@ const WORDS: Entry[] = [
   { category: "adverbs", term: "enseguida", english: "right away" },
   { category: "phrases", term: "más o menos", english: "more or less" },
   { category: "phrases", term: "otra vez", english: "again" },
+  // "the time" belongs to el tiempo, and la hora holds "the hour/time", so
+  // this one is glossed by what it actually counts.
+  { category: "nouns", term: "la vez", english: "the occasion" },
   { category: "phrases", term: "por ejemplo", english: "for example" },
   { category: "phrases", term: "sin embargo", english: "however" },
 

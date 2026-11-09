@@ -842,6 +842,20 @@ two sounds are plainly different: `junio` and `julio` were flagged that way on
 alike. A homophone note earns its place only when the two really are one
 sound.
 
+**A collision by ear is never a reason to leave a word out.** On 2026-11-09 a
+batch withheld `vez` because it sounds like the `ves` going in beside it, and
+wrote into this file that it must not be added later. The owner's answer is
+the right one, and it is already built: **"Hear another word" is what a
+collision is for.** That panel exists because *hace* and *hacer* turned out
+not to be homophones once heard one after the other — a distinction to learn
+rather than a reason to mute — and it searches every word, muted ones
+included, for exactly this. So a pair that sounds alike is something the
+learner can now investigate in the app, muting is an optional decision the
+owner does not currently use, and the worst a collision can cost is one
+unticked audio box. The homophone pass exists to *inform* that box, never to
+decide what may be learnt. If a wanted word collides, add it and say so in one
+line.
+
 **A listening miss does not say which of the two problems it was**, so the
 verdict offers "Hear another word": a search over the whole vocabulary, each
 match with a speaker button (`compareBlock` / `wireCompare` in
@@ -1198,9 +1212,9 @@ Read-only checks and one-off fixes live in `scripts/`:
   endings — and because its participle is irregular. Two glosses are
   deliberately not the obvious one and the file says why: `probar` is "to
   taste" because *intentar* and *tratar* already answer "to try", and `tocar`
-  is "to touch" because *jugar* already holds "to play". **`vez` must not be
-  added on its own later**: it would collide by ear with `ves`, which this
-  batch put in. *otra vez* is safe, being three syllables longer.
+  is "to touch" because *jugar* already holds "to play". `la vez` was left out
+  of the first run because it sounds like `ves`, and was added straight after
+  when the owner pointed out that this is not a reason to withhold a word.
 - **The months are entered bare; the days of the week carry `el`.** Spanish
   says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
   day is said, so the two sets look inconsistent and are not. Neither is
