@@ -1989,6 +1989,45 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
 
 .tr-model { margin-top: 14px; }
 .tr-model-text { font-family: var(--serif); font-size: 1.05rem; }
+.tr-model-hint { margin-top: 6px; font-size: 0.8rem; color: var(--text-faint); }
+
+/* Each word of the model sentence is a button, because it is the one place in
+   the app that puts a word you do not own yet in front of you. Underlined
+   rather than given a link colour, so the sentence still reads as a sentence. */
+.tr-word {
+  font: inherit;
+  color: inherit;
+  padding: 0 1px;
+  background: none;
+  border: 0;
+  border-bottom: 1px dashed var(--border-strong);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+}
+.tr-word:hover { background: var(--accent-soft); border-bottom-color: var(--accent); }
+.tr-word:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tr-word.is-added {
+  background: var(--learnt-soft);
+  border-bottom: 1px solid var(--learnt);
+  cursor: default;
+}
+
+.tr-add {
+  margin-top: 14px;
+  padding: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.tr-add-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 10px; align-items: end; }
+.tr-add-actions { margin-top: 10px; align-items: center; }
+.tr-add-msg { min-width: 0; font-size: 0.83rem; color: var(--text-muted); }
+.tr-add-msg.is-error { color: var(--danger); }
+
+/* Three fields abreast is too tight to type into on a phone. */
+@media (max-width: 640px) {
+  .tr-add-row { grid-template-columns: 1fr; }
+}
 
 /* The key hint inside the override button. */
 .btn kbd {

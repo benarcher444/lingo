@@ -4,7 +4,7 @@ import { z } from "zod";
 import { classifyAIError, provider } from "../ai.js";
 import { mayUseAI } from "../allowlist.js";
 import { LEVELS } from "../chat-scenarios.js";
-import { requireContext } from "../context.js";
+import { requireContext, typesFor } from "../context.js";
 import {
   composerPrompt,
   dropRound,
@@ -118,6 +118,13 @@ export async function sentenceRoutes(app: FastifyInstance): Promise<void> {
       total: words.length,
     };
 
+    // The categories for the add-a-word panel below. Rendered server-side, as
+    // the vocabulary page does, so the options are real HTML rather than a
+    // list rebuilt in script.
+    const typeOptions = typesFor(language)
+      .map((type) => `<option value="${type.id}">${esc(type.name)}</option>`)
+      .join("");
+
     const body = `
       ${head}
       <div class="stack">
@@ -176,6 +183,35 @@ export async function sentenceRoutes(app: FastifyInstance): Promise<void> {
               </form>
 
               <div id="tr-result"></div>
+
+              <!-- Tapping a word in "One way to say it" fills this in. The
+                   model sentence is the one place in the app where a word you
+                   do not own yet is put in front of you, so adding it should
+                   not mean leaving the round. -->
+              <div class="tr-add" id="tr-add" hidden>
+                <div class="tr-label">Add to your vocabulary</div>
+                <form id="tr-add-form" autocomplete="off">
+                  <div class="tr-add-row">
+                    <div class="field">
+                      <label for="tr-add-term">${esc(language.name)}</label>
+                      <input class="input" id="tr-add-term" ${NO_AUTOFILL} spellcheck="false">
+                    </div>
+                    <div class="field">
+                      <label for="tr-add-english">English</label>
+                      <input class="input" id="tr-add-english" ${NO_AUTOFILL} spellcheck="false">
+                    </div>
+                    <div class="field">
+                      <label for="tr-add-type">Category</label>
+                      <select class="select" id="tr-add-type">${typeOptions}</select>
+                    </div>
+                  </div>
+                  <div class="row tr-add-actions">
+                    <button class="btn btn-primary btn-sm" type="submit" id="tr-add-save">Add word</button>
+                    <button class="btn btn-ghost btn-sm" type="button" id="tr-add-cancel">Cancel</button>
+                    <span class="tr-add-msg" id="tr-add-msg" aria-live="polite"></span>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         </div>

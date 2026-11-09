@@ -233,6 +233,31 @@ export function isSpeakingReady(standing: {
   return true;
 }
 
+/**
+ * The gate on listening: a word is played by ear only once it has been met in
+ * writing. The owner asked for this on 2026-11-09, for the reason speaking has
+ * its own gate — hearing a word you have never read is two tests at once, and
+ * the miss it records says nothing about whether you know the word.
+ *
+ * **One written answer is the whole bar, not a score.** The owner chose this
+ * over a live threshold: the question is whether the word has been met, and a
+ * word answered once and then neglected still has been. So a word cannot fall
+ * back out of listening the way it can fall out of speaking, and the band it
+ * currently sits in does not matter.
+ *
+ * A word that is not in written practice at all is let through: written cannot
+ * vouch for a word it does not hold, and barring it for good would be a
+ * silent, permanent removal. That matches the rule speaking already follows —
+ * a mode the word is not in cannot hold it back.
+ */
+export function isListeningReady(standing: {
+  inWritten: boolean;
+  writtenAnswers: number;
+}): boolean {
+  if (!standing.inWritten) return true;
+  return standing.writtenAnswers > 0;
+}
+
 /** The bands a word moves through, as shown after each answer. */
 export type WordStatus = "new" | "learning" | "learnt" | "solid";
 

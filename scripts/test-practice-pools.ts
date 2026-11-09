@@ -1,9 +1,16 @@
 /**
- * Checks the gate on speaking practice: a word is asked only once it is solid
- * in written and in listening, and keeps everything it has earned if it falls
- * back out again.
+ * Checks the two gates on what a mode may ask for:
  *
- *   npx tsx scripts/test-speaking-pool.ts
+ * - **listening** asks only for words already answered in written practice;
+ * - **speaking** asks only for words solid in written and in listening, and a
+ *   word keeps everything it has earned if it falls back out again.
+ *
+ *   npx tsx scripts/test-practice-pools.ts
+ *
+ * Both live in `loadScoredWords`, so they are tested together: the way they
+ * compose is the part most likely to break. A word solid in written but never
+ * heard must be offered by listening and withheld by speaking at the same
+ * time, and neither gate may read the other one's filtered output.
  *
  * Runs against its own throwaway database, so it needs no server, no seeded
  * account and nothing of the real data — which is also why it can set up the
@@ -26,7 +33,7 @@ const { db, sqlite } = await import("../src/db/index.js");
 const { runMigrations } = await import("../src/db/migrate.js");
 const { languages, progress, users, wordTypes, words } = await import("../src/db/schema.js");
 const { loadScoredWords } = await import("../src/stats.js");
-const { isSpeakingReady, today } = await import("../src/algorithm.js");
+const { isListeningReady, isSpeakingReady, today } = await import("../src/algorithm.js");
 
 runMigrations();
 
@@ -40,7 +47,7 @@ const check = (name: string, ok: boolean, detail = "") => {
    The rule on its own
    ------------------------------------------------------------------ */
 
-console.log("\nThe rule\n");
+console.log("\nThe speaking rule\n");
 
 const SOLID = 3.5;
 const LEARNT = 2.5; // over the learnt line at 2.3, under solid at 2.556
@@ -146,6 +153,7 @@ function makeWord(opts: {
 const ready = makeWord({ term: "ready", written: "solid", listening: "solid" });
 const halfWritten = makeWord({ term: "half-written", written: "learnt", listening: "solid" });
 const halfHeard = makeWord({ term: "half-heard", written: "solid", listening: "learnt" });
+const neverHeard = makeWord({ term: "never-heard", written: "solid" });
 const untouched = makeWord({ term: "untouched" });
 const muted = makeWord({ term: "muted", written: "solid", audioEnabled: false });
 const mutedUnlearnt = makeWord({ term: "muted-unlearnt", written: "learnt", audioEnabled: false });
@@ -173,15 +181,70 @@ check("a muted word not yet solid in written is out", !inPool.has(mutedUnlearnt)
 check("kept out of written but solid in listening is in", inPool.has(heardOnly));
 check("in neither mode is out", !inPool.has(inNeither));
 check("the speaking opt-in still decides", !inPool.has(optedOut));
+check("solid in written but never heard is out", !inPool.has(neverHeard));
 check("so the pool is exactly those three", inPool.size === 3, `${inPool.size} words`);
 
 const writtenCount = loadScoredWords(language.id, "written").length;
 const audioCount = loadScoredWords(language.id, "audio").length;
 check(
-  "written and listening are untouched by the gate",
-  writtenCount === 7 && audioCount === 6,
+  "written is ungated, and listening has a gate of its own",
+  writtenCount === 8 && audioCount === 6,
   `${writtenCount} written, ${audioCount} listening`,
 );
+
+/* ------------------------------------------------------------------
+   The gate on listening
+   ------------------------------------------------------------------ */
+
+console.log("\nThe listening rule\n");
+
+check("answered in written is ready", isListeningReady({ inWritten: true, writtenAnswers: 1 }));
+check("never answered is not", !isListeningReady({ inWritten: true, writtenAnswers: 0 }));
+check(
+  "a word kept out of written is let through",
+  isListeningReady({ inWritten: false, writtenAnswers: 0 }),
+);
+
+console.log("\nWhich words listening offers\n");
+
+const heard = () => new Set(loadScoredWords(language.id, "audio").map((w) => w.wordId));
+let inHeard = heard();
+
+check("answered in written is in", inHeard.has(ready));
+check("only learnt in written is still in", inHeard.has(halfWritten));
+check("solid in written but never heard is in", inHeard.has(neverHeard));
+check("never answered in written is out", !inHeard.has(untouched));
+check("kept out of written is let through", inHeard.has(heardOnly));
+check("the listening opt-in still decides", !inHeard.has(muted));
+
+// Neglect pulls a written score down for ever, but it cannot un-answer the
+// question — so unlike speaking, this door only swings one way.
+const fourHundredDaysAgo = new Date();
+fourHundredDaysAgo.setDate(fourHundredDaysAgo.getDate() - 400);
+
+db.update(progress)
+  .set({ lastTested: today(fourHundredDaysAgo) })
+  .where(and(eq(progress.wordId, halfWritten), eq(progress.mode, "written")))
+  .run();
+
+const decayed =
+  loadScoredWords(language.id, "written").find((w) => w.wordId === halfWritten)?.score ?? 0;
+
+check("written neglect can take a score below zero", decayed < 0, `${decayed}`);
+check("but the word stays available to listening", heard().has(halfWritten));
+
+/* ------------------------------------------------------------------
+   The two gates composed
+   ------------------------------------------------------------------ */
+
+console.log("\nThe gates do not read each other\n");
+
+// If readyToSpeak read the *gated* listening list, a word never heard would
+// look like a word kept out of listening, and speaking would then judge it on
+// written alone — letting it in on half the evidence.
+check("a word solid in written but never heard is offered by listening", heard().has(neverHeard));
+check("and withheld by speaking at the same time", !pool().has(neverHeard));
+check("so the speaking pool is unmoved by the listening gate", pool().size === 3, `${pool().size} words`);
 
 /* ------------------------------------------------------------------
    Falling back out, and coming back in
@@ -253,7 +316,7 @@ check(
 
 /* ------------------------------------------------------------------ */
 
-if (failures === 0) console.log("\nSpeaking is asked only of ready words.\n");
+if (failures === 0) console.log("\nEach mode is asked only of the words it is ready for.\n");
 else console.log(`\n${failures} problem(s).\n`);
 
 // Windows will not delete the file while the handle is open, and a stray

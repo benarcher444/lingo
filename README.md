@@ -115,6 +115,10 @@ you're stuck. Ask the teacher about any message for an English
 breakdown, then keep asking follow-ups. Only accounts marked `yes` in the `ai`
 column of `allowed_emails.csv` can use it, because every message costs money.
 
+**Listening** draws only on words you have already answered in written
+practice, so a word is never played before you have met it in writing. One
+written answer is enough, and a word never drops back out.
+
 **Translation practice** — choose how many of your own words to use, where they
 come from (the ones you are still learning, or any at all) and a level. The AI
 builds a sentence around those words, shows you the English, and you write it in

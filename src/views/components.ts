@@ -93,12 +93,14 @@ export function progressBanner(opts: {
         <div class="big">${summary.learnt} of ${summary.total} learnt</div>
         <div class="small">${esc(opts.languageName)} · ${MODE_LABEL[opts.mode ?? "written"].toLowerCase()}</div>
         ${
-          // Speaking's total is smaller than the vocabulary and the reason has
-          // to be on the page, or the number looks like a bug. The banner
-          // knows the mode, so no caller has to remember to say it.
+          // The listening and speaking totals are smaller than the vocabulary
+          // and the reason has to be on the page, or the number looks like a
+          // bug. The banner knows the mode, so no caller has to remember.
           opts.mode === "speak"
             ? `<div class="banner-note">Only words solid in written and listening</div>`
-            : ""
+            : opts.mode === "audio"
+              ? `<div class="banner-note">Only words you have answered in written</div>`
+              : ""
         }
         ${
           hasExcluded

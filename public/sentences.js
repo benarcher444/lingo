@@ -112,9 +112,154 @@ function verdictCard(data) {
     ${notes ? `<div class="tr-notes">${notes}</div>` : ""}
     <div class="tr-model">
       <div class="tr-label">One way to say it</div>
-      <div class="tr-model-text">${escapeHtml(data.model)}</div>
+      <div class="tr-model-text">${clickableModel(data.model)}</div>
+      <div class="tr-model-hint">Tap any word to add it to your vocabulary</div>
     </div>`;
 }
+
+/**
+ * The model sentence with every word as a button, so a word you do not own yet
+ * can be added without leaving the round.
+ *
+ * Only runs of letters become buttons; punctuation and spacing are left as
+ * they are, which keeps "¿Dónde está?" reading correctly and means the
+ * question marks are not offered as vocabulary.
+ */
+function clickableModel(text) {
+  const word = /[\p{L}\p{M}\p{N}]+(?:['\u2019-][\p{L}\p{M}\p{N}]+)*/gu;
+  let html = "";
+  let last = 0;
+  let index = 0;
+  let match;
+
+  while ((match = word.exec(text)) !== null) {
+    html += escapeHtml(text.slice(last, match.index));
+
+    // The vocabulary is written lower case. Only the opening word is capital
+    // because of where it sits rather than because it is a name, so that is
+    // the only one worth lowering — and the field is editable either way.
+    const asWritten = match[0];
+    const suggested =
+      index === 0 && /^\p{Lu}\p{Ll}*$/u.test(asWritten)
+        ? asWritten.charAt(0).toLowerCase() + asWritten.slice(1)
+        : asWritten;
+
+    html +=
+      `<button type="button" class="tr-word" data-word="${escapeHtml(suggested)}">` +
+      `${escapeHtml(asWritten)}</button>`;
+
+    last = match.index + asWritten.length;
+    index += 1;
+  }
+
+  return html + escapeHtml(text.slice(last));
+}
+
+/* ---- Adding a word from the model sentence ---- */
+
+const addPanel = document.getElementById("tr-add");
+const addForm = document.getElementById("tr-add-form");
+const addTerm = document.getElementById("tr-add-term");
+const addEnglish = document.getElementById("tr-add-english");
+const addType = document.getElementById("tr-add-type");
+const addMsg = document.getElementById("tr-add-msg");
+
+// Shared with the vocabulary page, so the category you last added under is the
+// one offered here too.
+const categoryKey = `lingo:add-category:${config.languageId}`;
+
+try {
+  const saved = localStorage.getItem(categoryKey);
+  if (saved && addType && [...addType.options].some((o) => o.value === saved)) {
+    addType.value = saved;
+  }
+} catch {
+  // Storage blocked (private window, site data off): the first option stands.
+}
+
+/** The button whose word is in the form, so it can be ticked off on success. */
+let addSource = null;
+
+function sayAdd(message, state) {
+  if (!addMsg) return;
+  addMsg.textContent = message;
+  addMsg.className = `tr-add-msg${state ? ` is-${state}` : ""}`;
+}
+
+function openAdd(button) {
+  if (!addPanel) return;
+  addSource = button;
+  addTerm.value = button.dataset.word ?? "";
+  addEnglish.value = "";
+  sayAdd("", null);
+  addPanel.hidden = false;
+  // The term is filled in already; the meaning is what you have to type.
+  addEnglish.focus();
+}
+
+function closeAdd() {
+  if (!addPanel) return;
+  addPanel.hidden = true;
+  addSource = null;
+  sayAdd("", null);
+}
+
+// Delegated: the verdict is replaced wholesale on every round, so a listener
+// bound to the words themselves would not survive the next sentence.
+result?.addEventListener("click", (event) => {
+  const button = event.target.closest(".tr-word");
+  if (button) openAdd(button);
+});
+
+document.getElementById("tr-add-cancel")?.addEventListener("click", closeAdd);
+
+addForm?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const term = addTerm.value.trim();
+  const english = addEnglish.value.trim();
+  if (!term) return sayAdd("Enter the word.", "error");
+  if (!english) {
+    addEnglish.focus();
+    return sayAdd("Enter the English meaning.", "error");
+  }
+
+  const save = document.getElementById("tr-add-save");
+  save.disabled = true;
+  sayAdd("Adding…", null);
+
+  try {
+    const response = await fetch("/api/words", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ term, english, wordTypeId: Number(addType.value) }),
+    });
+    const body = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      // A duplicate comes back naming the entry that already holds it, which
+      // is more use than "already added".
+      return sayAdd(body.error || "That could not be added.", "error");
+    }
+
+    try {
+      localStorage.setItem(categoryKey, addType.value);
+    } catch {
+      // Nothing to remember with; harmless.
+    }
+
+    // Tick the word off in the sentence, so a long model shows what you took.
+    if (addSource) {
+      addSource.classList.add("is-added");
+      addSource.title = `Added as “${term}”`;
+    }
+    closeAdd();
+  } catch {
+    sayAdd("No connection — the word was not added.", "error");
+  } finally {
+    save.disabled = false;
+  }
+});
 
 setup?.addEventListener("submit", (event) => {
   event.preventDefault();

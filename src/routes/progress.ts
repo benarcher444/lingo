@@ -5,7 +5,13 @@ import type { Mode } from "../algorithm.js";
 import { requireContext } from "../context.js";
 import { db } from "../db/index.js";
 import { attempts, statSnapshots, wordTypes, words } from "../db/schema.js";
-import { loadScoredWords, summarise, summariseByType, type Summary } from "../stats.js";
+import {
+  loadScoredWords,
+  loadUngatedWords,
+  summarise,
+  summariseByType,
+  type Summary,
+} from "../stats.js";
 import {
   activityChart,
   barChart,
@@ -323,8 +329,8 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
     /* ---- Where the words stand: one block per mode ---- */
 
-    // Speaking counts only the words ready for it — solid in written and in
-    // listening — so both its total and its empty case need saying differently.
+    // Listening and speaking each count only the words ready for them, so
+    // both the total and the empty case need saying differently.
     const standing = (m: Mode, s: Summary) => {
       const title = MODE_LABEL[m];
       const icon = MODE_ICON[m];
@@ -333,7 +339,9 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
         const why =
           m === "speak"
             ? "No words are solid in written and listening yet"
-            : `No words marked for ${title.toLowerCase()} practice`;
+            : m === "audio" && loadUngatedWords(language.id, "audio").length > 0
+              ? "No words have been answered in written yet"
+              : `No words marked for ${title.toLowerCase()} practice`;
         return `<div class="standing"><div class="standing-head">${icon}<strong>${esc(title)}</strong>
           <span class="hint">${esc(why)}</span></div></div>`;
       }
@@ -350,7 +358,7 @@ export async function progressRoutes(app: FastifyInstance): Promise<void> {
 
       return `<div class="standing">
         <div class="standing-head">${icon}<strong>${esc(title)}</strong>
-          <span class="hint">${s.total} words${m === "speak" ? " ready" : ""} · ${s.pctLearnt.toFixed(1)}% learnt</span></div>
+          <span class="hint">${s.total} words${m === "written" ? "" : " ready"} · ${s.pctLearnt.toFixed(1)}% learnt</span></div>
         <div class="split-bar">${bands
           .filter((b) => b.count > 0)
           .map(

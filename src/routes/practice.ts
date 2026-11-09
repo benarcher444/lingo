@@ -9,7 +9,13 @@ import { LEVELS, SCENES, SCENE_KEYS } from "../chat-scenarios.js";
 import { MODE_DIRECTIONS, type Mode } from "../algorithm.js";
 import { requireContext, typesFor } from "../context.js";
 import { buildSession, recordAnswer } from "../practice.js";
-import { loadScoredWords, recordSnapshot, summarise, summariseByType } from "../stats.js";
+import {
+  loadScoredWords,
+  loadUngatedWords,
+  recordSnapshot,
+  summarise,
+  summariseByType,
+} from "../stats.js";
 import {
   MODE_ICON,
   MODE_LABEL,
@@ -64,16 +70,20 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       const language = ctx.currentLanguage;
       const scored = loadScoredWords(language.id, mode);
 
-      // Speaking has a second way of being empty, and it is not the learner's
-      // fault: the vocabulary is there, but nothing has been made solid in
-      // both written and listening yet. Sending them to the add-words page
-      // for that would be wrong twice over.
-      const waiting =
-        mode === "speak" &&
-        scored.length === 0 &&
-        loadScoredWords(language.id, "written").length +
-          loadScoredWords(language.id, "audio").length >
-          0;
+      // Listening and speaking each have a second way of being empty, and it
+      // is not the learner's fault: the vocabulary is there, but the gate has
+      // let nothing through yet. Sending them to the add-words page for that
+      // would be wrong twice over. These counts have to ignore the gates, or
+      // "nothing is through the gate" would itself read as "there are no
+      // words" and send them to the wrong place.
+      const feeders =
+        mode === "speak"
+          ? loadUngatedWords(language.id, "written").length +
+            loadUngatedWords(language.id, "audio").length
+          : mode === "audio"
+            ? loadUngatedWords(language.id, "written").length
+            : 0;
+      const waiting = mode !== "written" && scored.length === 0 && feeders > 0;
 
       if (scored.length === 0) {
         return reply.type("text/html").send(
@@ -82,16 +92,25 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
             body:
               pageHead({ title: copy.title }) +
               (waiting
-                ? emptyState({
-                    title: "Nothing is ready to speak yet",
-                    body: `Speaking only asks for words you have made solid in both written and listening. It is the hardest mode, so it waits until you know the word — keep going in the other two and they arrive here on their own.`,
-                    actionHref: `/practice/written?language=${language.id}`,
-                    actionLabel: "Written practice",
-                    actionIcon: icons.arrowRight,
-                    secondaryHref: `/practice/audio?language=${language.id}`,
-                    secondaryLabel: "Listening practice",
-                    icon: MODE_ICON.speak,
-                  })
+                ? mode === "audio"
+                  ? emptyState({
+                      title: "Nothing is ready to hear yet",
+                      body: `Listening only asks for words you have already answered in written practice. Hearing a word you have never read tests two things at once, so it waits — answer a few in written and they arrive here on their own.`,
+                      actionHref: `/practice/written?language=${language.id}`,
+                      actionLabel: "Written practice",
+                      actionIcon: icons.arrowRight,
+                      icon: MODE_ICON.audio,
+                    })
+                  : emptyState({
+                      title: "Nothing is ready to speak yet",
+                      body: `Speaking only asks for words you have made solid in both written and listening. It is the hardest mode, so it waits until you know the word — keep going in the other two and they arrive here on their own.`,
+                      actionHref: `/practice/written?language=${language.id}`,
+                      actionLabel: "Written practice",
+                      actionIcon: icons.arrowRight,
+                      secondaryHref: `/practice/audio?language=${language.id}`,
+                      secondaryLabel: "Listening practice",
+                      icon: MODE_ICON.speak,
+                    })
                 : emptyState({
                     title: "Please add some words to your vocabulary to start",
                     body:

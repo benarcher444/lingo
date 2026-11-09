@@ -579,7 +579,7 @@ are the answer.
     progress and attempt rows, goes on decaying with neglect, and comes back
     carrying the score it left on rather than starting again. That falls out
     of score being derived rather than stored, which is why the requirement
-    cost no code — but `test-speaking-pool.ts` pins it, because a future
+    cost no code — but `test-practice-pools.ts` pins it, because a future
     "tidy-up" of unused rows would silently break it.
   - **`recordAnswer` does not check the gate, deliberately.** A session saved
     to `localStorage` and resumed after a word fell out still finishes, and an
@@ -632,6 +632,30 @@ in the target language.
   until the round is marked, so it cannot be read out of the page mid-attempt.
 - **Missing accents and capitals are slips, not errors**, in the marker prompt —
   the same lenience the written modes apply.
+- **Every word of the model answer can be added to the vocabulary where it
+  stands.** "One way to say it" is the one place in the app that puts a word
+  the learner does **not** own in front of them, so each word of it is a
+  button: tapping one opens a small panel with the word filled in, the meaning
+  left to type, and the category remembered from last time. The owner asked
+  for this on 2026-11-09. Five decisions in it:
+  - **Only runs of letters become buttons.** Punctuation is left as text, so
+    "¿Dónde está?" still reads as a sentence and the question marks are not
+    offered as vocabulary.
+  - **The opening word is offered in lower case.** The vocabulary is written
+    lower case, and the first word of a sentence is capital because of where it
+    sits rather than because it is a name. Only the first is lowered, and the
+    field is editable, so a sentence that really opens on *España* costs one
+    keystroke.
+  - **It posts to the existing `POST /api/words`**, so the duplicate guard,
+    the ownership check and the refusal wording are the same ones the
+    vocabulary page uses. A word already held comes back named — more use than
+    "already added".
+  - **The category select is server-rendered** and shares
+    `lingo:add-category:<languageId>` with the vocabulary page, so the two
+    agree on what you last filed under.
+  - **The click listener is delegated from `#tr-result`**, because the verdict
+    is replaced wholesale every round and a listener bound to the words
+    themselves would not survive the next sentence.
 
 ### Sessions survive leaving the page
 
@@ -724,6 +748,42 @@ asked for the shortcut on 2026-10-26.
 - **Spelled out after answering** — the listening verdict shows the word that
   was spoken, under its meaning, so the sound is tied to the spelling. The
   owner asked for it on 2026-09-14.
+
+**Listening only asks for words already met in writing.** A word joins
+listening once it has **at least one written answer behind it**; until then it
+is not played. The owner asked for this on 2026-11-09, for the reason speaking
+has its own gate: hearing a word you have never read tests two things at once,
+and the miss it records says nothing about whether you know the word.
+`isListeningReady` in `algorithm.ts` is the rule. Four things follow, and the
+first two are where it differs from speaking:
+
+- **The bar is an answer, not a score.** The owner chose this over a live
+  threshold, asked: the question is whether the word has been *met*, and a
+  word answered once and then neglected still has been. So **the door only
+  swings one way** — neglect drags a written score below zero without
+  un-answering the question, and a word never leaves the listening pool once
+  it has entered. Speaking's gate, which reads a score, does let a word fall
+  back out.
+- **A word kept out of written practice is let through.** Written cannot vouch
+  for a word it does not hold, and barring such a word for good would be a
+  silent, permanent removal. That is the same rule speaking follows: a mode the
+  word is not in cannot hold it back.
+- **`loadScoredWords` is still the only gate**, now applying one filter for
+  listening and one for speaking, so the session builder, the banner, the
+  Progress page and the snapshots all agree without each remembering the rule.
+  Both predicates read `loadUngatedWords` rather than each other's output —
+  **this matters**: if `readyToSpeak` read the *gated* listening list, a word
+  never heard would look like a word kept out of listening, and speaking would
+  judge it on written alone and admit it on half the evidence.
+  `test-practice-pools.ts` pins exactly that.
+- **It changed nothing on the day it shipped.** Every one of the owner's 800
+  Spanish words and 99 audible French ones already had a written answer
+  (Spanish: minimum 2, median 9), so the gate governs words added from now on
+  rather than removing anything. The listening page says
+  "Only words you have answered in written" under the mode, the Progress
+  page's listening block counts "N words ready", and the vocabulary page in
+  Listening mode shows "Not yet" rather than "Off" for a word waiting its
+  turn — "Off" means the box is unticked and would be a lie.
 
 **Some words cannot be asked by ear at all.** Listening plays a word and asks
 for its English, so two true homophones make it a coin flip — and a wrong guess
@@ -999,6 +1059,17 @@ If the lag persists, establish the device and browser before changing more.
   `page.evaluate` makes the whole call throw. Keep those bodies free of them.
 - **PowerShell may be unavailable in a session.** Kill a stuck port with
   `netstat -ano | grep :3000` plus `taskkill /PID <pid> /F`.
+- **A slash between two italicised words closes a block comment.** Writing
+  `*aquel*/*aquella*` or `*fuerte*/*débil*` in a `/** … */` header puts a `*/`
+  in the middle of it: everything after becomes code and the file fails to
+  parse, with the first error reported tens of lines further down. It happened
+  three times in one session writing batch scripts. Use "and", or reword.
+  `grep -n '\*/' <file>` should find exactly one match per comment.
+- **A heredoc through the Bash tool breaks on an apostrophe.** The command is
+  wrapped in `bash -c '…'`, so a single quote anywhere in the body — `the
+  app's`, `learner's` — ends the wrapper early and the shell reports
+  `unexpected EOF`. Write the script to a file with the Write tool and run
+  that, which is also how the CRLF-safe patch scripts are handled.
 
 ### Accent entry
 
@@ -1023,14 +1094,14 @@ the demo account seeded.
 
 | Command | Covers |
 |---|---|
-| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice, the level briefs, the speaking pool |
+| `npm test` | Scoring, decay, sampling, answer matching, speech voice choice, the level briefs, the listening and speaking pools |
 | `npm run test:accents` | Accent composition, per language |
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |
 | `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
 | `npm run test:duplicates` | A word can't be added twice or renamed onto another, whatever case, spacing or category |
 | `npm run test:theme` | Theme saved per account and stamped on pages, safe redirect, phone language picker and Settings tab |
-| `npm run test:sentences` | Translation practice: a round from your words, the words revealed, marking, and that it records nothing. **Server must run with `AI_PROVIDER=mock`** |
+| `npm run test:sentences` | Translation practice: a round from your words, the words revealed, marking, adding a word from the model sentence, and that it records nothing. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:chat` | Conversation end to end: scene and level, AI opens, corrected turn, speech, teacher thread, own scene, out-of-credit message. **Server must run with `AI_PROVIDER=mock`** |
 | `npm run test:search` | Vocabulary search, category and status filters and paging, via the form |
 | `npm run test:session` | Session size, skip-on-empty, `y` override, the banner rebuilt after a session |
@@ -1083,6 +1154,20 @@ Read-only checks and one-off fixes live in `scripts/`:
   behind them), the `-go` *yo* form already established by `tengo`/`vengo`/
   `hago`, the unchanged `nosotros`/`vosotros` that is the boot shape itself,
   and an irregular participle.
+- `add-spanish-900.ts` — the batch that took Spanish to 900 on 2026-11-09:
+  40 nouns, 25 verbs, 18 adjectives, 6 adverbs, 4 phrases and the present of
+  `ver` with `he visto`. **Its seven conjugations were asked for by name.**
+  Chosen by reading the 800 already there rather than by topic: the verbs are
+  mostly the missing half of a pair the vocabulary held one of (*subir* and
+  *bajar*, *nacer* and *morir*, *llorar* and *reír*), and the adjectives are
+  mostly opposites of ones already in. `ver` was picked because it adds an
+  irregularity `decir` did not teach — a one-letter stem taking ordinary `-er`
+  endings — and because its participle is irregular. Two glosses are
+  deliberately not the obvious one and the file says why: `probar` is "to
+  taste" because *intentar* and *tratar* already answer "to try", and `tocar`
+  is "to touch" because *jugar* already holds "to play". **`vez` must not be
+  added on its own later**: it would collide by ear with `ves`, which this
+  batch put in. *otra vez* is safe, being three syllables longer.
 - **The months are entered bare; the days of the week carry `el`.** Spanish
   says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
   day is said, so the two sets look inconsistent and are not. Neither is
@@ -1092,11 +1177,15 @@ Read-only checks and one-off fixes live in `scripts/`:
   batch script keeps only its own list and its own reasoning, which is the
   point of having them. It was copied into the second batch before being
   extracted, which is exactly how two copies drift.
-- `test-speaking-pool.ts` (part of `npm test`) — the gate on speaking, run
-  against a throwaway database of its own under `DATABASE_PATH`, so it can set
-  up a muted word or a word that has decayed back below solid exactly rather
-  than hoping to find one. It needs no server and no seeded account, which is
-  why it can run in CI.
+- `test-practice-pools.ts` (part of `npm test`) — both gates, listening's and
+  speaking's, run against a throwaway database of its own under
+  `DATABASE_PATH`, so it can set up a muted word or a word that has decayed
+  back below solid exactly rather than hoping to find one. It needs no server
+  and no seeded account, which is why it can run in CI. The two are tested
+  together on purpose: how they compose is the part most likely to break, and
+  a word solid in written but never heard has to be offered by listening and
+  withheld by speaking at the same moment. It was `test-speaking-pool.ts`
+  until listening gained a gate of its own on 2026-11-09.
 - `check-accents-in-data.ts` — cross-references stored words against the
   archived vocabulary in `old_code_repo/` to find missing accents. Evidence
   rather than eyeballing.
@@ -1164,7 +1253,8 @@ Adding one touched more than the new page, and the next change will too:
 `MODE_DIRECTIONS` in `algorithm.ts` (the list everything else derives from),
 the `MODES` tuple in `routes/practice.ts` (pages, zod enums) and in
 `routes/progress.ts` (Today, standing, bars, the glance table, the chart
-switch), the opt-in column in `loadScoredWords`, `word-detail.ts`, the nav in
+switch), the opt-in column **and any gate** in `loadScoredWords`,
+`word-detail.ts`, the nav in
 `layout.ts`, `switch-language` in `server.ts`, the vocabulary page's status
 view, and the screenshot and mobile-audit page lists. `barChart` takes any
 number of series per row, and `activityChart` stacks all three modes.

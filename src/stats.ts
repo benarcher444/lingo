@@ -6,6 +6,7 @@ import {
   MODE_DIRECTIONS,
   isCompletelyLearnt,
   isLearnt,
+  isListeningReady,
   isSpeakingReady,
   scoreWord,
   type Direction,
@@ -33,12 +34,11 @@ export interface ScoredWord {
  * today's date, so any stored value is stale the next morning. At a few
  * thousand words per language this costs under a millisecond.
  *
- * Speaking is the exception to "every word": it sees only the words that are
- * ready for it. This is the one gate, so everything downstream — the session
- * builder, the banner, the Progress page, the snapshots — agrees on what
- * speaking consists of without each having to remember the rule.
+ * This is the ungated list: every word whose box is ticked for the mode. Only
+ * the gate predicates and the "is this empty because of a gate?" check want
+ * it. Everything else wants `loadScoredWords`.
  */
-export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
+export function loadUngatedWords(languageId: number, mode: Mode): ScoredWord[] {
   // One opt-in column per mode. Every word is in speaking unless its box is
   // unticked, which is what the default of true on `speak_enabled` buys.
   const enabledColumn =
@@ -111,8 +111,53 @@ export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
     entry.score = scoreWord(wordProgress, mode);
   }
 
-  const scored = [...byWord.values()];
-  return mode === "speak" ? scored.filter(readyToSpeak(languageId)) : scored;
+  return [...byWord.values()];
+}
+
+/**
+ * Every word a mode may actually ask for.
+ *
+ * Written asks for anything with its box ticked. The other two are gated —
+ * listening on having met the word in writing, speaking on it being solid in
+ * both — and **this is the only place either gate is applied**, so everything
+ * downstream (the session builder, the banner, the Progress page, the
+ * snapshots) agrees on what a mode consists of without each having to
+ * remember the rule.
+ *
+ * Both gates read the *ungated* lists, so they describe where a word stands
+ * rather than what another gate has already allowed. That also means the
+ * chain cannot recurse: the predicates never call back into this function.
+ */
+export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
+  const scored = loadUngatedWords(languageId, mode);
+
+  if (mode === "speak") return scored.filter(readyToSpeak(languageId));
+  if (mode === "audio") return scored.filter(readyToHear(languageId));
+  return scored;
+}
+
+/**
+ * The gate on listening: a word is asked by ear only once it has a written
+ * answer behind it (see isListeningReady).
+ *
+ * It counts answers rather than reading a score, which is what makes it a
+ * one-way door: neglect pulls a score down over time, but it cannot un-answer
+ * a question. A word that has been met in writing stays available to
+ * listening for good.
+ */
+function readyToHear(languageId: number): (word: ScoredWord) => boolean {
+  const answers = new Map(
+    loadUngatedWords(languageId, "written").map((w) => [
+      w.wordId,
+      MODE_DIRECTIONS.written.reduce((sum, d) => sum + (w.directions[d]?.tested ?? 0), 0),
+    ]),
+  );
+
+  return (word) =>
+    isListeningReady({
+      inWritten: answers.has(word.wordId),
+      writtenAnswers: answers.get(word.wordId) ?? 0,
+    });
 }
 
 /**
@@ -121,8 +166,7 @@ export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
  *
  * Two extra queries on a page that was already running one, which is why this
  * builds the two indexes once and returns a predicate rather than scoring the
- * other modes per word. It cannot recurse: only "speak" takes this path, and
- * it asks for "written" and "audio".
+ * other modes per word.
  *
  * Nothing is filtered out of the database. A word that falls back below solid
  * stops being *asked*, but keeps its speaking progress and attempt rows, and
@@ -130,8 +174,8 @@ export function loadScoredWords(languageId: number, mode: Mode): ScoredWord[] {
  * where it left off rather than starting again.
  */
 function readyToSpeak(languageId: number): (word: ScoredWord) => boolean {
-  const written = new Map(loadScoredWords(languageId, "written").map((w) => [w.wordId, w.score]));
-  const listening = new Map(loadScoredWords(languageId, "audio").map((w) => [w.wordId, w.score]));
+  const written = new Map(loadUngatedWords(languageId, "written").map((w) => [w.wordId, w.score]));
+  const listening = new Map(loadUngatedWords(languageId, "audio").map((w) => [w.wordId, w.score]));
 
   return (word) =>
     isSpeakingReady({
