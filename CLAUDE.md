@@ -942,6 +942,16 @@ it lists the voices the browser offers, runs this same `chooseVoice` against
 them and tries to speak, which separates "no engine" from "no Spanish voice"
 from "an engine that errors" in about ten seconds.
 
+**The notice is tested by handing the page a voice list**
+(`test-speech-notice.ts`, `npm run test:speech`). Waiting to meet a device
+with no Spanish voice is not a test, so the three cases are stubbed through
+`getVoices`: voices but none for this language, no voices at all, and a voice
+that fits. It covers the delayed re-check and that nothing is claimed before
+speech has been attempted. The notice was written for a fault on someone
+else's phone that could not be reproduced here, so whether the notice itself
+works is the one part that *can* be checked from here — and it is the part the
+next report depends on.
+
 **What was measured.** `scripts/measure-speech.ts` in a fresh Chrome: first word
 ~0.28s, later ones ~0.12–0.28s, before the warm-up — and no measurable change
 after it, because Google's network jitter is larger than the cold cost there. A
@@ -1156,6 +1166,7 @@ the demo account seeded.
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out, and comparing another word after a miss |
 | `npm run test:speak` | Speaking: the word hidden until "Hear it", self-marking, its own rows, and that only `say` may be self-marked |
 | `npm run test:hear` | The word record's Hear it button says the word in the language's voice |
+| `npm run test:speech` | The no-sound notice: names a missing voice, a device with none, and stays quiet when the language has one |
 | `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
 | `npm run test:entry` | Keyboard word entry |
 | `npm run test:daily` | Session-based daily counting |
