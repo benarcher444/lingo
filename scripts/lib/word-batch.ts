@@ -7,8 +7,8 @@
  * time lives here: find the account, apply the two duplicate guards, print what
  * would happen, back up, insert, and read it back.
  *
- * Two guards decide what may go in, and both exist because a question with two
- * right answers records a real miss:
+ * Two of the three guards decide what may go in, and both exist because a
+ * question with two right answers records a real miss:
  *
  * - **The same spelling in the same category** is what the app itself calls a
  *   duplicate, so the check imports `spellingKey` rather than re-deciding what
@@ -18,6 +18,14 @@
  *   coin flip — the written counterpart of the homophone problem that
  *   `mute-homophone-audio.ts` solves for listening. A word whose gloss is
  *   already taken is reported and skipped rather than entered.
+ *
+ * The third is about the shape of a batch rather than any one word. **At most
+ * one verb infinitive per ten words going in**, because verb infinitives are
+ * the hardest part of Spanish for the owner to learn and a run of them at once
+ * overwhelms. Unlike the other two it refuses the **whole batch** rather than
+ * skipping entries: which verbs to keep is a decision about what to study
+ * next, so it belongs to the owner and not to a script picking the first few
+ * off a list.
  *
  * What no script can check is whether a new word is a *homophone* of one
  * already there: that is a question about sound, and the vocabulary only holds
@@ -63,6 +71,21 @@ export interface Batch {
 
 /** Gloss already used anywhere in the language, whatever the spacing or case. */
 const glossKey = (english: string) => english.trim().replace(/\s+/g, " ").toLowerCase();
+
+/** The category the cap counts. Conjugated forms are not infinitives. */
+const VERB_CATEGORY = "verbs";
+
+/**
+ * How many verb infinitives a batch of this size may carry: one per ten words,
+ * counting what is actually going in rather than what the list says, so a
+ * re-run that adds a single noun is judged on that noun.
+ *
+ * The floor means 25 words allow two verbs, not three — two whole tens. The
+ * `max(1, …)` is so a batch smaller than ten can still carry one: three words
+ * including a verb is not what overwhelms anybody, and refusing it would make
+ * a one-word correction impossible.
+ */
+const verbsAllowedIn = (total: number) => Math.max(1, Math.floor(total / 10));
 
 export async function runBatch(batch: Batch): Promise<void> {
   const apply = process.argv.includes("--apply");
@@ -203,6 +226,22 @@ export async function runBatch(batch: Batch): Promise<void> {
   if (!toAdd.length && !toWithdraw.length) {
     console.log("Nothing to do.");
     process.exit(refused.length ? 1 : 0);
+  }
+
+  // The verb cap, checked after the plan is printed so the batch can be seen
+  // before it is turned away, and before anything is backed up or written.
+  const verbs = toAdd.filter(({ entry }) => entry.category.toLowerCase() === VERB_CATEGORY);
+  const allowed = verbsAllowedIn(toAdd.length);
+  if (verbs.length > allowed && !process.argv.includes("--verbs-ok")) {
+    console.error(
+      `\nRefused: ${verbs.length} verb infinitives in ${toAdd.length} words, and the cap is ` +
+        `${allowed} — one per ten.\n  ${verbs.map((v) => v.entry.term).join(", ")}\n\n` +
+        "Verb infinitives are the hardest part of the language to learn and too many at\n" +
+        `once overwhelms, so keep ${allowed} and leave the rest for a later batch. Which ones\n` +
+        "to keep is the owner's call, not this script's.\n\n" +
+        "If the owner asked for verbs by name, pass --verbs-ok.",
+    );
+    process.exit(1);
   }
 
   if (!apply) {

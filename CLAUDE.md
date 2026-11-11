@@ -1242,10 +1242,14 @@ Read-only checks and one-off fixes live in `scripts/`:
   day is said, so the two sets look inconsistent and are not. Neither is
   capitalised, which matches the lower-case English side.
 - `lib/word-batch.ts` — the machinery the batches share: find the account,
-  apply the two duplicate guards, print, back up, insert, read back. Each
+  apply the three guards, print, back up, insert, read back. Each
   batch script keeps only its own list and its own reasoning, which is the
   point of having them. It was copied into the second batch before being
-  extracted, which is exactly how two copies drift.
+  extracted, which is exactly how two copies drift. Two guards are about a
+  single word (a duplicate spelling in its category, a gloss already taken)
+  and skip the entry; the third is about the **shape** of the batch — the
+  verb cap in "Working agreements" — and refuses all of it, since trimming
+  would mean choosing someone's curriculum for them.
 - `test-practice-pools.ts` (part of `npm test`) — both gates, listening's and
   speaking's, run against a throwaway database of its own under
   `DATABASE_PATH`, so it can set up a muted word or a word that has decayed
@@ -1376,6 +1380,19 @@ number of series per row, and `activityChart` stacks all three modes.
   and eight participles in the first person only. All 21 were withdrawn the
   same day. The lesson is wider than conjugations: "fill in the holes" is an
   invitation to add vocabulary, not to redesign how somebody studies.
+- **At most one verb infinitive per ten words added.** The owner asked for
+  this on 2026-11-11: verb infinitives are the hardest part of Spanish for
+  them to learn, and a run of them in one batch overwhelms. It is **enforced**
+  in `lib/word-batch.ts` rather than left to be remembered, and it refuses the
+  whole batch instead of trimming it, because which verbs to keep is a
+  decision about what to study next and belongs to the owner. The cap counts
+  what is actually going in, so a re-run adding one noun is judged on that
+  noun; it is `floor(n / 10)` with a floor of 1, so 25 words allow two verbs
+  and a batch smaller than ten can still carry one. `--verbs-ok` waives it,
+  for when the owner asks for verbs by name. Conjugated forms are not
+  infinitives and do not count — they have their own rule above. The
+  101-word batch of 2026-11-09 carried **25** verbs, which is what prompted
+  this; it would be refused today.
 - **Fix a data bug; do not write it up and leave it.** Anything that miscounts
   what the app records (progress, attempts, snapshots) gets fixed straight
   away, with a regression test, or raised plainly with the owner. The override
