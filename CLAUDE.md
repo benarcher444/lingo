@@ -937,6 +937,17 @@ saying anything. It is a no-op unless that has happened. That one is a
 **guess that costs nothing**, not a diagnosis — if the sound comes back, it
 was most likely the voice data, and the notice will have said so.
 
+**It came back on 2026-11-11, and the cause was never established.** The owner
+reported the sound working again two days after the notice and the
+`synth.resume()` shipped, with nothing else touched in between — so it was one
+of those two, or the device's voice data arriving or being reinstalled, or an
+Android or Chrome update. **Do not record this as fixed by this code**, and do
+not take the `resume()` as proven: it stays because it costs nothing, not
+because it was shown to be the answer. What the episode is actually worth is
+the notice. A silent speech engine offered no evidence whatsoever — "the
+sound doesn't work" was the whole of what could be known — and the next such
+report starts from a page that names which of the three failures it is.
+
 There is a standalone check page for a phone that cannot be reached from here:
 it lists the voices the browser offers, runs this same `chooseVoice` against
 them and tries to speak, which separates "no engine" from "no Spanish voice"
