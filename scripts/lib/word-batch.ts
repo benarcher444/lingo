@@ -27,6 +27,20 @@
  * next, so it belongs to the owner and not to a script picking the first few
  * off a list.
  *
+ * Last there is a **report**, not a guard: a phrase whose own words are not in
+ * the vocabulary has been memorised rather than understood, so every phrase
+ * going in is broken into its words and the ones missing are printed. The
+ * owner asked for this on 2026-11-11, having spotted `por ejemplo` sitting
+ * there with no `el ejemplo` behind it.
+ *
+ * It reports rather than refuses, and the reason matters: some of a phrase's
+ * words are **conjugated forms** — *lo siento* needs `siento`, *no entiendo*
+ * needs `entiendo` — and conjugations are the owner's own curriculum, never
+ * added unasked. A guard demanding them could not be satisfied without
+ * breaking the rule above it. Articles are skipped as grammar rather than
+ * vocabulary, and a word is counted as held if the vocabulary has its
+ * singular or its masculine form.
+ *
  * What no script can check is whether a new word is a *homophone* of one
  * already there: that is a question about sound, and the vocabulary only holds
  * spelling. Every batch needs that pass by hand, against the watch list in
@@ -74,6 +88,33 @@ const glossKey = (english: string) => english.trim().replace(/\s+/g, " ").toLowe
 
 /** The category the cap counts. Conjugated forms are not infinitives. */
 const VERB_CATEGORY = "verbs";
+
+/** Grammar rather than vocabulary: never reported as a missing phrase part. */
+const ARTICLES = new Set(["el", "la", "los", "las", "un", "una", "unos", "unas"]);
+
+/** The words of a term, lower case, free of the punctuation a phrase carries. */
+const partsOf = (term: string) =>
+  term
+    .toLowerCase()
+    .replace(/[¿?¡!,.;:()"'’]/g, " ")
+    .split(/\s+/)
+    .filter((w) => w && !ARTICLES.has(w));
+
+/**
+ * Forms of a word that count as the vocabulary already holding it: a plural
+ * answered by its singular, a feminine by its masculine. `veces` needs the
+ * `z` rule of its own — without it `la vez` looks absent behind *a veces*.
+ */
+const heldForms = (w: string) => {
+  const forms = new Set([w]);
+  if (w.endsWith("ces")) forms.add(`${w.slice(0, -3)}z`);
+  if (w.endsWith("es")) forms.add(w.slice(0, -2));
+  if (w.endsWith("s")) forms.add(w.slice(0, -1));
+  if (w.endsWith("a")) forms.add(`${w.slice(0, -1)}o`);
+  if (w.endsWith("as")) forms.add(`${w.slice(0, -2)}o`);
+  if (w.endsWith("os")) forms.add(`${w.slice(0, -2)}o`);
+  return [...forms];
+};
 
 /**
  * How many verb infinitives a batch of this size may carry: one per ten words,
@@ -226,6 +267,44 @@ export async function runBatch(batch: Batch): Promise<void> {
   if (!toAdd.length && !toWithdraw.length) {
     console.log("Nothing to do.");
     process.exit(refused.length ? 1 : 0);
+  }
+
+  // Phrases whose own words are not in the vocabulary. A report, not a guard
+  // — see the header for why it cannot be one.
+  //
+  // The vocabulary of *words* is the single-word entries alone. A multi-word
+  // entry is a phrase, and a phrase is not evidence that its parts are known
+  // — which is the entire point of the check. Seeding this from the parts of
+  // every term instead let each phrase supply its own words and report
+  // nothing, which is how it was first written.
+  const asWord = (term: string) => {
+    const parts = partsOf(term);
+    return parts.length === 1 ? parts[0] : null;
+  };
+  const vocabulary = new Set<string>();
+  for (const w of [...remaining.map((w) => w.term), ...toAdd.map((a) => a.entry.term)]) {
+    const one = asWord(w);
+    if (one) vocabulary.add(one);
+  }
+
+  const undecomposed = toAdd
+    .filter(({ entry }) => partsOf(entry.term).length > 1)
+    .map(({ entry }) => ({
+      entry,
+      gaps: partsOf(entry.term).filter((p) => !heldForms(p).some((f) => vocabulary.has(f))),
+    }))
+    .filter((r) => r.gaps.length);
+
+  if (undecomposed.length) {
+    console.log("\nPhrases going in whose own words are not in the vocabulary:");
+    for (const { entry, gaps } of undecomposed) {
+      console.log(`  ? ${entry.term.padEnd(26)} needs ${gaps.join(", ")}`);
+    }
+    console.log(
+      "  A phrase you cannot take apart has been memorised rather than understood.\n" +
+        "  Add the words it is made of, unless they are conjugated forms — those are\n" +
+        "  the owner's to ask for.",
+    );
   }
 
   // The verb cap, checked after the plan is printed so the batch can be seen

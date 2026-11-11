@@ -1256,7 +1256,9 @@ Read-only checks and one-off fixes live in `scripts/`:
   single word (a duplicate spelling in its category, a gloss already taken)
   and skip the entry; the third is about the **shape** of the batch — the
   verb cap in "Working agreements" — and refuses all of it, since trimming
-  would mean choosing someone's curriculum for them.
+  would mean choosing someone's curriculum for them. There is also a
+  **report** that refuses nothing: the words a phrase is made of that the
+  vocabulary does not hold.
 - `test-practice-pools.ts` (part of `npm test`) — both gates, listening's and
   speaking's, run against a throwaway database of its own under
   `DATABASE_PATH`, so it can set up a muted word or a word that has decayed
@@ -1401,6 +1403,28 @@ number of series per row, and `activityChart` stacks all three modes.
   rather than in anybody's head for the same reason the verb cap is in code:
   an intention did not survive one batch. Take from the top, and **delete what
   is taken in the same commit as the batch script.**
+- **A phrase takes its own words in with it.** When a batch adds a phrase,
+  every word the phrase is made of is either already in the vocabulary or goes
+  in alongside it. The owner asked on 2026-11-11, having found `por ejemplo`
+  sitting there with no `el ejemplo` behind it: a phrase you cannot take apart
+  has been memorised rather than understood. `lib/word-batch.ts` prints the
+  gaps for every phrase going in. It **reports rather than refuses**, and the
+  reason is the conjugation rule below it — some of a phrase's words are
+  conjugated forms (*lo siento* needs `siento`, *no entiendo* needs
+  `entiendo`), and a guard demanding those could not be satisfied without
+  breaking it. So read the report; do not just clear it. Three other kinds of
+  part are deliberately left: conjugated forms, parts of proper nouns
+  (`estados unidos`), and words that barely exist outside their own idiom —
+  adding `el embargo` to justify *sin embargo* is teaching a word to explain a
+  word. The sweep of all 40 existing phrases is done, and what it found is in
+  `WORD-QUEUE.md` group 3.
+- **The vocabulary of words is the single-word entries alone.** A multi-word
+  entry is a phrase, and a phrase is not evidence that its parts are known —
+  which is the whole point of the check above. Written the other way first, so
+  every phrase supplied its own words and the check reported nothing. Also
+  worth knowing: `veces` needs its own `z` rule or `la vez` looks absent
+  behind *a veces*, and a check that strips accents to compare will match
+  `estás` for `estas` and `cuál` for `cual`, which it did.
 - **At most one verb infinitive per ten words added.** The owner asked for
   this on 2026-11-11: verb infinitives are the hardest part of Spanish for
   them to learn, and a run of them in one batch overwhelms. It is **enforced**

@@ -34,6 +34,9 @@ question with no good answer. Hence a queue on disk rather than an intention.
   CLAUDE.md). There are 36 verbs queued below, so they need **at least 360
   words of batches** to land and will arrive about ten at a time. Do not try to
   clear the verb group in one go; `lib/word-batch.ts` will refuse it.
+- **A phrase takes its own words with it.** If a batch adds a phrase, every
+  word in it is held already or joins the same batch. The engine reports the
+  gaps; group 3 lists the ones deliberately left.
 - Glosses here are a starting point, not decided. Check each one against the
   duplicate-gloss guard, and narrow it where another word already answers that
   English.
@@ -106,17 +109,61 @@ word each, and they turn clauses into sentences. No verbs here either.
 | sin que | without |
 | a menos que | unless |
 
-## Group 3 — abstract and relational nouns (22/22 absent)
+## Group 3 — the words behind phrases already held
+
+The owner asked on 2026-11-11 that a phrase's own words be in the vocabulary
+too, having found `por ejemplo` sitting there with no `el ejemplo` behind it.
+A phrase you cannot take apart has been memorised rather than understood.
+Found by sweeping all 40 phrases; `lib/word-batch.ts` now reports this for
+any phrase going in, so it should not need finding by eye again.
+
+| word | gloss (provisional) | the phrase that needs it |
+|---|---|---|
+| el ejemplo | the example | por ejemplo |
+| el calor | the heat | hace calor |
+| el punto | the point | en punto |
+| el cuarto | the quarter/room | y cuarto, menos cuarto |
+| medio | half | y media |
+| el favor | the favour | por favor |
+| el gusto | the pleasure | mucho gusto |
+| el permiso | the permission | con permiso |
+| tal | such | qué tal, and it gets you *tal vez* |
+| el fin | the end | el fin de semana — asked for by name |
+| la salud | the health | — |
+
+**`la salud` is an addition, not an edit.** `salud` is already held in *other*,
+bare, glossed "cheers/bless you" — an interjection. The noun goes in beside
+it **with its article**, which is what tells the two apart, exactly as *como*
+the conjunction sits beside *como* the conjugation. Raised as an edit on
+2026-11-11; the owner pointed out that the article already makes it clear, and
+they were right.
+
+**Deliberately not queued**, from the same sweep:
+
+- `llamo`, `entiendo`, `siento`, `gusto` as a verb form (from *me llamo*,
+  *no entiendo*, *lo siento*, *mucho gusto*) are **conjugated forms** of verbs
+  already held as infinitives. Those are the owner's own curriculum — never
+  added unasked. This is also why the phrase check reports rather than
+  refuses: a guard demanding them could not be satisfied.
+- `menudo`, `supuesto`, `embargo` barely exist outside *a menudo*,
+  *por supuesto* and *sin embargo*. Adding `el embargo` to justify
+  *sin embargo* would be teaching a word to explain a word.
+- `benjamin`, `reino`, `unido`, `estados`, `unidos` are parts of proper nouns.
+- `cepillo`, `pasta`, `ciento` are low value; raise them if ever wanted.
+
+## Group 4 — abstract and relational nouns (20/22 absent)
 
 The 300 nouns are almost entirely concrete. These are what conversation past
 the transactional runs on: "the reason I think that" is currently unsayable.
 
-la idea · la razón · la manera · la forma · el tipo · el ejemplo · la parte ·
+la idea · la razón · la manera · la forma · el tipo · la parte ·
 el final · el principio · el centro · el lado · el resto · el nivel ·
-la situación · la solución · el resultado · el punto · la vista · el caso ·
+la situación · la solución · el resultado · la vista · el caso ·
 el orden · la cantidad · el espacio
 
-## Group 4 — evaluative adjectives (30/30 absent)
+(`el ejemplo` and `el punto` moved up to group 3, being phrase parts.)
+
+## Group 5 — evaluative adjectives (30/30 absent)
 
 The adjectives already held are physical-property pairs (*alto/bajo*,
 *gordo/delgado*) and well done. What is missing is the whole register for
@@ -128,29 +175,29 @@ normal · suficiente · útil · serio · duro · ligero · pesado · seco · mo
 ancho · estrecho · blando · loco · contento · preocupado · enfadado ·
 sorprendido · aburrido · verdadero · falso · varios · capaz
 
-## Group 5 — adverbs that join ideas (18/18 absent)
+## Group 6 — adverbs that join ideas (18/18 absent)
 
 incluso · al menos · sobre todo · apenas · aún · realmente · completamente ·
 exactamente · finalmente · especialmente · generalmente · adelante · atrás ·
 alrededor · afuera · adentro · jamás · tal vez
 
-## Group 6 — nouns whose verb is already held (6 absent)
+## Group 7 — nouns whose verb is already held (6 absent)
 
 Cheap, because half the pair is already learnt.
 
 el viaje (*viajar* in) · el amor (*amar* in) · el dolor (*doler* in) ·
 la ayuda (*ayudar* in) · el cuento (*contar* in) · la vuelta (*volver* in)
 
-## Group 7 — common concrete nouns (36/36 absent)
+## Group 8 — common concrete nouns (36/36 absent)
 
 la luz · la voz · el sueño · la suerte · el miedo · la noticia · la historia ·
-el ruido · el aire · la tierra · el fuego · la nube · el calor · el camino ·
-el centro · la plaza · el mensaje · el correo · el móvil · el precio ·
+el ruido · el aire · la tierra · el fuego · la nube · el camino ·
+la plaza · el mensaje · el correo · el móvil · el precio ·
 la cuenta · la empresa · el jefe · la reunión · el novio · la novia ·
 el marido · la esposa · la pareja · el compañero · la medicina · el médico ·
 la enfermedad · la fuerza · el cuidado · el silencio
 
-## Group 8 — verbs (36 absent) — ten per hundred words, at most
+## Group 9 — verbs (36 absent) — ten per hundred words, at most
 
 Spread across batches under the verb cap. The first five are the highest
 value, because `importar`, `faltar` and `encantar` are the same backwards
@@ -167,8 +214,10 @@ preocuparse
 
 ---
 
-## Also noticed, not a queue item
+## A phrase's words go in with it
 
-`salud` is glossed only as "cheers/bless you", so the noun **health** is not
-available. Widening it to "cheers/health" would be an edit to the existing
-word, not an addition — the owner's call, raised 2026-11-11.
+From 2026-11-11, when a batch adds a phrase, the words it is made of must
+already be in the vocabulary or go in alongside it. `lib/word-batch.ts`
+reports any phrase whose words are missing, and the exceptions are written up
+in group 3 above. The report is advisory because conjugated forms cannot be
+added unasked — read the gaps, do not just clear them.
