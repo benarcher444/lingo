@@ -1237,6 +1237,13 @@ Read-only checks and one-off fixes live in `scripts/`:
   is "to touch" because *jugar* already holds "to play". `la vez` was left out
   of the first run because it sounds like `ves`, and was added straight after
   when the owner pointed out that this is not a reason to withhold a word.
+- `WORD-QUEUE.md` — not a script: the ranked list of words Spanish is
+  missing, verified absent against the live database on 2026-11-11, with the
+  reasoning for the order. Groups 1 and 2 (function words, compound
+  prepositions) carry no verbs at all, so they can go in as batches of their
+  own; group 8 holds 36 verbs, which under the cap need at least 360 words of
+  batches to land. It is consumed as it is used — see the frequency rule in
+  "Working agreements".
 - **The months are entered bare; the days of the week carry `el`.** Spanish
   says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
   day is said, so the two sets look inconsistent and are not. Neither is
@@ -1380,6 +1387,20 @@ number of series per row, and `activityChart` stacks all three modes.
   and eight participles in the first person only. All 21 were withdrawn the
   same day. The lesson is wider than conjugations: "fill in the holes" is an
   invitation to add vocabulary, not to redesign how somebody studies.
+- **Choose a batch by frequency, not by topic, and take it from
+  `scripts/WORD-QUEUE.md`.** Every batch up to 2026-11-09 was chosen by
+  reading the vocabulary and looking for thin *topics* — clothes were short,
+  the body half-done. That method finds missing categories and is
+  structurally blind to missing function words, because `tan` and `así`
+  belong to no topic and nothing looks thin when they are absent. After 241
+  words added that way, `el bisabuelo` and `la pasta de dientes` were in and
+  `tan`, `así`, `usted`, `lo que` and `la idea` were not — several of them
+  top-150 words. The owner asked on 2026-11-11 why, and there is no good
+  answer. **A batch that reads like a tidy topic list is the warning sign**;
+  a good one now looks like a list of small dull words. The queue is on disk
+  rather than in anybody's head for the same reason the verb cap is in code:
+  an intention did not survive one batch. Take from the top, and **delete what
+  is taken in the same commit as the batch script.**
 - **At most one verb infinitive per ten words added.** The owner asked for
   this on 2026-11-11: verb infinitives are the hardest part of Spanish for
   them to learn, and a run of them in one batch overwhelms. It is **enforced**
