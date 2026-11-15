@@ -531,7 +531,9 @@ the group, and the answer there is `--notes-ok`, not relabelling 22 cards the
 owner did not ask about. The one group genuinely worth raising with them is
 "you": `tú` sits bare against `te` = "you (obj)", `vosotros` = "you (pl)",
 `usted` = "you (formal)" and `ustedes` = "you (formal pl)", so the bare card is
-one of five — and the 1000-word batch is what made it five.
+one of five — and the 1000-word batch is what made it five. **Raised with the
+owner on 2026-11-15 and left as it is**, so do not re-raise it or relabel `tú`
+unprompted; a bare card against labelled siblings is the convention above.
 
 ### Theme, and the phone's menu
 
