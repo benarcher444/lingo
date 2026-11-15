@@ -22,13 +22,19 @@ asked for, in the order set out in "The first hour".
 - As you build, this file becomes the app's own handbook: add its decisions,
   its traps and its verification commands as you go. See "Keep the handbook
   current".
-- **If the app has an AI feature, read `AI-PLAYBOOK.md` as well**, before
-  writing any of it. It is the companion to this file and covers only that:
-  the provider abstraction, the free test stand-in that makes those features
-  testable at all, the current API shape, the errors worth distinguishing, and
-  how not to leak a key or run up a bill. Nothing in this file repeats it. If
-  that file did not come with this one, ask the owner for it rather than
-  improvising — most of it is things that are not guessable.
+- **Two companion files sit beside this one**, and nothing here repeats them.
+  If either is missing, ask the owner rather than improvising — most of what is
+  in them is not guessable.
+  - **`GITHUB-PLAYBOOK.md`** — read it **before the first commit**. The
+    repository itself: the ignore rules and why that is the only irreversible
+    step, how to commit, what never to run, the Windows traps, and how a key
+    reaches a server without a push being able to change what runs as root.
+    This file's "GitHub, CI and deployment" is the pipeline; that one is the
+    repository and your conduct in it.
+  - **`AI-PLAYBOOK.md`** — read it before writing any AI feature. The provider
+    abstraction, the free stand-in that makes those features testable at all,
+    the current API shape, the errors worth distinguishing, and how not to leak
+    a key or run up a bill.
 
 What is in it:
 
@@ -330,6 +336,34 @@ everything else, so a `<script type="module">` that assigns `window.APP_DATA`
 and then imports runs the import *first* — the imported module reads
 `undefined`. The split is the fix, not a redundancy. Put a comment on it; it
 looks like something to simplify.
+
+### Editing and running: traps that cost real time
+
+**A slash between two emphasised words closes a block comment.** Writing
+`*alpha*/*beta*` inside a `/** … */` header puts a literal `*/` in the middle
+of it: everything after becomes code, the file fails to parse, and the first
+error is reported tens of lines further down. Use "and", or reword. `grep -c
+'\*/' <file>` should equal the number of block comments.
+
+**Write a script to a file and run the file; do not pipe it through the
+shell.** A heredoc wrapped in `bash -c '…'` ends at the first apostrophe, so
+any prose containing `don't` or `the app's` fails with `unexpected EOF` far
+from the cause. A command mixing `${...}` with quotes can also trip a
+harness's safety classifier and stop to ask for approval on every attempt. One
+file written once costs one approval.
+
+**Mind the line endings when editing by script.** On a repository worked on
+from Windows, `sed` and friends can strip the carriage return and rewrite every
+line of the file, so the diff is the whole file and the real change is
+invisible inside it. Read with the newline mode preserved, edit, write back in
+the ending the file already had — and **validate every anchor before writing
+anything**, so a patch that half-applies is impossible. `GITHUB-PLAYBOOK.md`
+has the `.gitattributes` that stops this at the source.
+
+**The running server does not reload.** Started with a plain runner and no
+watcher, a server-side edit is invisible until a restart while static assets
+are served fresh — so a screenshot pass after editing server code verifies the
+*old* behaviour and passes. Restart, then verify.
 
 ### npm and install traps
 
@@ -892,6 +926,114 @@ not: the record keeps accumulating wrong while the note sits.
 `Number.isInteger(0)` is `true`, so an empty form field validates as a real id
 of zero and silently filters everything away. Parse optional numeric parameters
 through one helper that treats empty as absent, and use it everywhere.
+
+### Rules, gates and guards
+
+A rule the owner states in conversation is not implemented until something
+checks it. Each of these cost a round of being told the same thing twice.
+
+**If a script can check a rule, enforce it in code rather than writing it
+down.** A rule recorded in the handbook and nowhere else is an intention, and
+an intention does not survive the first time somebody is busy. This is not
+about distrust: the author of the next change is a different session with the
+handbook in context and the rule still gets missed, because prose does not
+fail. A check does.
+
+**Whether a guard skips the item or refuses the whole operation depends on
+whose decision the fix is.** Two different kinds:
+
+- A rule about **one item** — this record is a duplicate, this field is
+  malformed — skips that item, reports it, and lets the rest through. Nothing
+  is lost by continuing.
+- A rule about the **shape of the batch** — at most N of this kind, at least
+  one of that — refuses **everything**, because satisfying it means choosing
+  which items survive, and that is the owner's call and not a script's. A
+  guard that silently trimmed to fit would be making a decision and calling it
+  validation.
+
+Give the refusing kind an explicit waiver flag (`--allow-…`) for when the
+owner has asked for the thing the rule normally prevents, and say in the error
+message that the flag exists.
+
+**A check that cannot always be satisfied must report, not refuse.** If some
+legitimate inputs can never clear it — because clearing it would break a
+different rule — then refusing turns the guard into a wall. Print the finding,
+name what is missing, and let the operator judge. Then say in the code **why**
+it only reports, or the next session will "tighten" it into a wall.
+
+**A report nobody acts on is worse than no report.** The counterweight to the
+rule above: a finding that gets printed and skipped every run has taught
+everyone to skip it. If a report keeps being ignored, either it is noise and
+should go, or it is real and the operator needs it refused. Decide; do not
+leave it printing.
+
+**Scope a check to what the change touches.** A guard that audits the entire
+dataset on every run produces pages of findings about records nobody is
+changing, and the real finding is lost in them. Check what is going in, plus
+whatever it directly collides with. Auditing everything is a separate,
+deliberate job with its own command.
+
+**Put a derived gate in the one function that loads the records, never in each
+caller.** When a rule decides which records a feature may touch — ready, due,
+eligible, visible — every surface has to agree: the thing that picks work, the
+counter in the header, the progress page, the nightly snapshot. Put the
+predicate in the single loader they all call, and they agree without any of
+them remembering the rule.
+
+**Two gates must read the raw source, not each other's output.** If gate B
+reads the list gate A already filtered, then "A excluded this record" and "this
+record is not applicable to A" become indistinguishable, and B decides on half
+the evidence. Both read the unfiltered load; compose them explicitly. A suite
+should pin exactly that composition, because it is the part most likely to
+break and the least likely to be noticed.
+
+**Say what a gate does to the totals, in the place showing the totals.** A gate
+makes a denominator smaller, which reads as regress. Print the reason next to
+the number — and render it inside the component itself, so no caller can forget
+it. Where a record is excluded by a gate rather than by its own setting, label
+it as waiting rather than as off: "off" means somebody unticked a box, and
+saying that about a gated record is a lie the owner will act on.
+
+### Do not let a surface lie about state
+
+**Overlapping buckets look like a partition.** If one category is a subset of
+another, showing them side by side leaves records in neither visible bucket and
+the tiles do not add up to the total. Derive an explicit "in A but not B" count
+so the parts sum, rather than expecting the reader to know the hierarchy.
+
+**"Nothing selected" is not "show everything".** Both are a real user intent
+and they look identical in a query string. Pick a convention per screen, carry
+an explicit marker for the deliberate-empty case, and write down which screen
+does which — two screens disagreeing about it is the kind of bug that reads as
+a data problem.
+
+**An in-place update leaves the rest of the page stale.** Once part of a page
+updates by fetch without a reload, everything server-rendered around it — a
+header count, a summary, a hint — still shows what was true at load. The
+endpoint returns the rebuilt fragments alongside its result and the client
+swaps them in. Anything new added above such a widget needs the same
+treatment; rendering it server-side is not enough, and the stale version is
+*plausible*, which is why nobody reports it as a bug.
+
+**A capability that fails silently needs a notice saying which failure it is.**
+Device and browser capabilities — speech, clipboard, notifications, camera,
+storage — have several distinct failures that all look like nothing happening:
+no engine, no permission, no data for this choice, an engine that errors. A
+blank result cannot be told from a broken build, by the owner or by you, and
+"it doesn't work" is then the entire bug report. So the page names which one it
+is, once, above the content. Three rules that make it worth having:
+
+- **It is advisory and never blocks the attempt.** It reports; it does not
+  decide whether to try.
+- **An empty capability list is not evidence.** Several of these populate
+  asynchronously, so an empty list gets a short delay and a re-check before
+  anything is blamed.
+- **Cancellation is not an error.** Whatever the API raises when *you* cancel
+  to start something else must not be reported, or it cries wolf constantly.
+
+Test the notice by **injecting the capability list** rather than waiting to
+meet a device that lacks it. The notice exists for a fault you cannot
+reproduce, so whether the notice itself works is the one part you can check.
 
 ### Before calling a change done
 

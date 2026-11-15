@@ -308,27 +308,42 @@ in `sites/lingo.caddy`, with `caddy validate` before `systemctl reload caddy`.
 The pre-migration copy is at `/root/Caddyfile.before-migration` and
 `/etc/caddy/Caddyfile.bak-20261027T232737`.
 
-**`PLAYBOOK.md` is this project's practice, written for somebody else.** The
-owner asked on 2026-10-27 for a file that could be dropped into a brand-new,
-empty repository so an agent there could build a second app to the same
-standard without ever seeing this one. It is deliberately repo-agnostic — no
-vocabulary, no modes, no scoring — and self-contained: stack and layout, design
-tokens and mobile, accounts, the verification ladder, and the whole path from
-`git init` to a live HTTPS site beside this one. It carries no secrets and
-names no account. When a practice here changes, change it there too, or the
-copy in the next repository teaches the old way.
+**`playbooks/` is this project's practice, written for somebody else.** Three
+files meant to be copied whole into a brand-new repository so an agent there
+can build a second app to this standard without ever seeing this one. The
+owner asked for the folder on 2026-11-15, having had to copy the files
+individually; `playbooks/README.md` is the index and says which to read first.
+All three are **deliberately repo-agnostic** — no vocabulary, no modes, no
+scoring, nothing about language learning at all, checked on 2026-11-15 — and
+they carry no secrets and name no account.
 
-**`AI-PLAYBOOK.md` is its companion, for the AI parts.** The owner asked for it
-on 2026-10-28, because the agent on the new app had no idea how to set that
-side up — `PLAYBOOK.md` does not mention AI at all. It carries what this repo
-learned and could not be guessed: the one-interface provider abstraction and
-why the vendor choice stays configuration, the mock provider that makes AI
-features testable without a key or a bill, the current Anthropic call shape
-(adaptive thinking, `output_config.effort`, no `budget_tokens`, no prefill,
-refusal as a 200), the four errors worth telling apart, JSON fencing, and the
-key-handling rules. Both files go into a new repo together, and `PLAYBOOK.md`
-points at it. Model IDs and prices date, so check them before quoting that
-table back.
+- **`playbooks/PLAYBOOK.md`** (asked for 2026-10-27) — the whole brief: the
+  bar, stack and layout, design tokens and mobile, accounts for a public
+  server, the verification ladder, the data-integrity rules, **rules, gates
+  and guards**, and the path from `git init` to a live HTTPS site beside this
+  one.
+- **`playbooks/AI-PLAYBOOK.md`** (asked for 2026-10-28) — the AI parts, which
+  `PLAYBOOK.md` does not mention at all: the one-interface provider
+  abstraction and why the vendor choice stays configuration, the mock provider
+  that makes AI features testable without a key or a bill, the current
+  Anthropic call shape (adaptive thinking, `output_config.effort`, no
+  `budget_tokens`, no prefill, refusal as a 200), the four errors worth
+  telling apart, JSON fencing, and the key-handling rules.
+- **`playbooks/GITHUB-PLAYBOOK.md`** (asked for 2026-11-15) — the repository
+  itself, read before the first commit: the ignore rules and why that commit
+  is the only irreversible step, `env.example` without the leading dot, that
+  `gh auth login` is interactive so creating the repo is the owner's action,
+  commit messages through `-F` because a heredoc dies on an apostrophe, the
+  destructive commands that belong in a deny list, the Windows line-ending and
+  nested-repo traps, secrets against variables, the read-only deploy key
+  against the CI key, and the forced command that stops a push changing what
+  runs as root. It is the repository and the agent's conduct in it;
+  `PLAYBOOK.md`'s own GitHub section is the pipeline.
+
+**When a practice here changes, change it there too**, in the same commit, or
+the copy in the next repository teaches the old way to somebody with no way of
+knowing. Model IDs and prices date, so check them before quoting those tables
+back.
 
 **Pushes to `main` deploy themselves.** `.github/workflows/deploy.yml` runs the
 typecheck and the server-free suites (`npm test`, `test:accents`, `test:ai`),
@@ -504,6 +519,19 @@ So the check in `lib/word-batch.ts` compares **card faces**, and a second guard
 refuses a batch that would leave a meaning held by one labelled card and one
 bare one — `RENOTE` is how a batch labels the older half in the same run. A
 near-synonym entered by hand wants the same treatment.
+
+**One standing exception, and it is the owner's: a bare card against a `(pl)`
+one.** 27 Spanish meanings are shared by a labelled card and a bare one, and 22
+are conjugation pairs like `hablas` = "you speak" beside `habláis` = "you speak
+(pl)". That is not an oversight — the note marks the plural and its absence
+marks the singular, which is unambiguous once you know the convention, and the
+same holds for `quién` beside `quiénes` = "who (pl)" and `tu` beside `vuestro`
+= "your (pl)". The note guard **will** flag one of these if a batch ever joins
+the group, and the answer there is `--notes-ok`, not relabelling 22 cards the
+owner did not ask about. The one group genuinely worth raising with them is
+"you": `tú` sits bare against `te` = "you (obj)", `vosotros` = "you (pl)",
+`usted` = "you (formal)" and `ustedes` = "you (formal pl)", so the bare card is
+one of five — and the 1000-word batch is what made it five.
 
 ### Theme, and the phone's menu
 
@@ -1428,7 +1456,10 @@ number of series per row, and `activityChart` stacks all three modes.
   which it was.
 - **Keep this file current.** Update it as part of the change that makes it
   true, unprompted — decisions, traps and anything surprising a future session
-  would otherwise rediscover.
+  would otherwise rediscover. **If what you learned is not specific to
+  vocabulary or to this app, it belongs in `playbooks/` too** — the general
+  form of it, in the same commit. That is the only thing keeping those three
+  files from going quietly stale.
 - **Never add conjugations unless the owner asks for them by name.** The
   conjugations category is their own curriculum, not a gap to be filled: they
   hold the **core patterns and the common irregulars**, deliberately, and add

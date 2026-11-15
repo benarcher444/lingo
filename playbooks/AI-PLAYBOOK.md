@@ -189,6 +189,12 @@ save their money — tell them the numbers and let them choose.
 | Claude Sonnet 5.5 | `claude-sonnet-5-5` | $2.00 | $10.00 |
 | Claude Haiku 5.5 | `claude-haiku-5-5` | $0.10 | $0.50 |
 
+The Claude 5 family also includes **Fable 5.1** (`claude-fable-5-1`). It is not
+in the table because its pricing is not quoted here rather than because it is
+unsuitable — **look it up rather than guessing a number**, which goes for every
+row above as well. Prices move and IDs are added; a table in a file is a
+snapshot of the day it was written.
+
 Use the exact ID strings. **Never append a date suffix** —
 `claude-opus-5-5`, not `claude-opus-5-5-20260401`. A date-suffixed ID you half
 remember is probably wrong.
