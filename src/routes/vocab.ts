@@ -549,6 +549,86 @@ export async function vocabRoutes(app: FastifyInstance): Promise<void> {
     return reply.send({ words: ranked.slice(0, COMPARE_LIMIT).map((r) => r.row) });
   });
 
+  /**
+   * One word's practice modes, flipped from the list.
+   *
+   * Deliberately its own endpoint rather than a corner of the full edit: it
+   * may only flip three booleans, so a crafted request cannot rename a word,
+   * move it to another category or go round the duplicate guard. `all` turns
+   * everything on, or everything off when everything is already on.
+   *
+   * It answers with the row re-rendered by the server, not with "ok". Turning
+   * off the mode the list is showing changes that row's Status cell to "Off",
+   * and the rule deciding that ("Off", "Not yet", or a score) lives in
+   * `displayRow`; repeating it in the browser would be the second copy that
+   * drifts from the first.
+   */
+  app.post("/words/:id/modes", async (request, reply) => {
+    const ctx = requireContext(request, reply, "vocab");
+    if (!ctx) return;
+
+    const id = Number((request.params as { id: string }).id);
+    if (!Number.isInteger(id) || !ownsWord(ctx.user.id, id)) {
+      return reply.redirect("/vocab");
+    }
+
+    const body = request.body as Record<string, unknown>;
+    const filters = filtersFrom({
+      type: body["_type"],
+      q: body["_q"],
+      sort: body["_sort"],
+      mode: body["_mode"],
+      status: body["_status"],
+      page: body["_page"],
+    });
+    const inPlace = request.headers["x-requested-with"] === "fetch";
+    const back = `${vocabUrl(ctx.currentLanguage?.id, filters)}#word-${id}`;
+
+    const current = db.select().from(words).where(eq(words.id, id)).get();
+    if (!current) {
+      if (inPlace) return reply.send({ ok: true, reload: true });
+      return reply.redirect(back);
+    }
+
+    const flags = {
+      writtenEnabled: current.writtenEnabled,
+      audioEnabled: current.audioEnabled,
+      speakEnabled: current.speakEnabled,
+    };
+    const COLUMN = {
+      written: "writtenEnabled",
+      audio: "audioEnabled",
+      speak: "speakEnabled",
+    } as const;
+
+    const which = String(body["mode"] ?? "");
+    if (which === "all") {
+      const everything = flags.writtenEnabled && flags.audioEnabled && flags.speakEnabled;
+      flags.writtenEnabled = !everything;
+      flags.audioEnabled = !everything;
+      flags.speakEnabled = !everything;
+    } else if (which === "written" || which === "audio" || which === "speak") {
+      const column = COLUMN[which];
+      flags[column] = !flags[column];
+    } else {
+      if (inPlace) return reply.code(400).send({ error: "Unknown practice mode." });
+      return reply.redirect(back);
+    }
+
+    db.update(words).set(flags).where(eq(words.id, id)).run();
+
+    if (inPlace) {
+      const language = ctx.currentLanguage;
+      const row = language ? loadListRow(language.id, id) : undefined;
+      if (!language || !row) return reply.send({ ok: true, reload: true });
+      const score =
+        loadScoredWords(language.id, filters.mode).find((s) => s.wordId === id)?.score ?? null;
+      return reply.send({ ok: true, html: displayRow(row, score, language.id, filters) });
+    }
+
+    return reply.redirect(back);
+  });
+
   app.post("/words/:id", async (request, reply) => {
     const ctx = requireContext(request, reply, "vocab");
     if (!ctx) return;
@@ -1069,13 +1149,41 @@ function displayRow(
   languageId: number,
   filters: ListFilters,
 ): string {
-  const modes = [
-    row.writtenEnabled ? `<span class="pill pill-plain">Written</span>` : "",
-    row.audioEnabled ? `<span class="pill pill-plain">Listen</span>` : "",
-    row.speakEnabled ? `<span class="pill pill-plain">Speak</span>` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
+  /**
+   * Each mode is a button, not a read-out: green when the word is in that
+   * mode, grey when it is not, one click either way. Until 2026-11-15 the pill
+   * was simply *absent* when a mode was off, so the only way to switch one on
+   * was to open the editor, tick a box and save — three steps to flip a
+   * boolean. The owner asked for the click.
+   *
+   * It is a real form carrying the filters, so the page still works without
+   * JavaScript: it posts, redirects to the same filtered view and lands back
+   * on the row. `public/vocab.js` intercepts the click and swaps the row.
+   *
+   * The fourth button flips all three at once, and its label says which way it
+   * will go — "None" when everything is on, "All" otherwise.
+   */
+  const MODE_BUTTONS = [
+    { key: "written", label: "Written", on: row.writtenEnabled },
+    { key: "audio", label: "Listen", on: row.audioEnabled },
+    { key: "speak", label: "Speak", on: row.speakEnabled },
+  ];
+  const allOn = MODE_BUTTONS.every((m) => m.on);
+  const modes =
+    `<form method="post" action="/words/${row.id}/modes" class="mode-toggles" autocomplete="off">` +
+    filterFields(filters) +
+    MODE_BUTTONS.map(
+      (m) =>
+        `<button type="submit" name="mode" value="${m.key}" class="mode-pill${
+          m.on ? " is-on" : ""
+        }" aria-pressed="${m.on}" title="${m.label} practice is ${
+          m.on ? "on" : "off"
+        } — click to turn it ${m.on ? "off" : "on"}">${m.label}</button>`,
+    ).join("") +
+    `<button type="submit" name="mode" value="all" class="mode-pill mode-all" title="${
+      allOn ? "Turn all three off" : "Turn all three on"
+    }">${allOn ? "None" : "All"}</button>` +
+    `</form>`;
 
   return `<tr id="word-${row.id}" data-word-id="${row.id}">
     <td class="term"><a class="term-link" href="${esc(vocabUrl(languageId, filters, { word: row.id }))}">${esc(row.term)}</a>${
@@ -1095,7 +1203,7 @@ function displayRow(
             : `<span class="pill pill-plain" title="Not included in ${MODE_LABEL[filters.mode ?? "written"].toLowerCase()} practice">Off</span>`
         : `${scorePill(score)} <span class="hint num col-score">${score.toFixed(2)}</span>`
     }</td>
-    <td class="col-modes">${modes || `<span class="hint">none</span>`}</td>
+    <td class="col-modes">${modes}</td>
     <td><a class="btn btn-sm btn-ghost" data-edit="${row.id}" href="${esc(`${vocabUrl(languageId, filters, { edit: row.id })}#word-${row.id}`)}">Edit</a></td>
   </tr>`;
 }

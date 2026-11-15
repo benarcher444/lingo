@@ -1511,6 +1511,61 @@ table.glance th[scope="row"] { font-variant-numeric: tabular-nums; white-space: 
 .pill-accent { background: var(--accent-soft); border-color: var(--accent-border); color: var(--accent); }
 .pill-plain { background: var(--surface-sunken); border-color: var(--border); color: var(--text-muted); }
 
+/* The three practice modes in the word list, as buttons rather than a
+   read-out: green when the word is in that mode, grey when it is not, one
+   click either way. Before 2026-11-15 the pill was simply absent when a mode
+   was off, so switching one on meant opening the editor, ticking a box and
+   saving. Sized to match .pill, since they sit where pills used to. */
+.mode-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+}
+
+.mode-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border-radius: 99px;
+  border: 1px solid var(--new-border);
+  background: var(--new-soft);
+  color: var(--text-faint);
+  font-family: inherit;
+  font-size: 0.735rem;
+  font-weight: 580;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background 0.12s ease,
+    border-color 0.12s ease,
+    color 0.12s ease;
+}
+
+.mode-pill:hover { border-color: var(--border-strong); }
+
+.mode-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* On is the same green as a learnt pill, so the colour means one thing on
+   this page. Both halves are defined for each theme by the tokens. */
+.mode-pill.is-on {
+  background: var(--learnt-soft);
+  border-color: var(--learnt-border);
+  color: var(--learnt);
+}
+
+/* Flip-all is not a mode, so it never takes the green — otherwise it would
+   read as a fourth thing the word is in. */
+.mode-all {
+  background: transparent;
+  border-style: dashed;
+  color: var(--text-muted);
+}
+
 /* ============================================================
    Empty state
    ============================================================ */

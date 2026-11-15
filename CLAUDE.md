@@ -1073,6 +1073,26 @@ If the lag persists, establish the device and browser before changing more.
   plain `tsx`, no watch — so a server-side edit is invisible until a restart,
   while files in `public/` are served fresh. A screenshot pass after editing
   `src/` without restarting verifies the *old* code; it happened once.
+
+  **And `pkill -f "tsx src/server"` does not kill it on this machine.** Git
+  Bash's `pkill` does not match the Windows process, so it exits quietly, the
+  `npm start` that follows dies of `EADDRINUSE` into the log, and the old
+  server keeps answering — a restart that looks exactly like a restart, down
+  to the 200 from `/login`. On 2026-11-15 this served stale markup through a
+  screenshot pass and, worse, through an A/B test of whether a suite failed
+  before a change: both arms ran the same code. **Kill it by port**, and check
+  the port is free before starting:
+
+  ```bash
+  PID=$(netstat -ano | grep LISTENING | grep ':3000 ' | head -1 | awk '{print $NF}')
+  taskkill //PID $PID //F; sleep 2
+  netstat -ano | grep ':3000 ' | grep LISTENING || echo "port free"
+  ```
+
+  The wider lesson: **a verification that depends on a restart is worth no
+  more than the restart.** Where a page can be asked the question directly —
+  "does this page offer a session?" — ask it, instead of inferring from an A/B
+  that has a silent failure mode in the middle of it.
 - **An override corrects the miss; it is not an answer.** "I was right — count
   it" marks the miss just recorded as `correct` and `overridden`, and adds no
   row. Until 2026-09-11 it added a second, correct row and kept the miss, so
@@ -1156,6 +1176,27 @@ If the lag persists, establish the device and browser before changing more.
   certainly Chrome's own keyboard accessory. Nobody in Chrome's or Bitwarden's
   forums reports a page attribute that hides it; only Chrome's settings do.
   So don't keep adding attributes blind. Establish the phone and browser first.
+- **A word's practice modes are toggled from the list, in one click.** Each
+  row carries four buttons: Written, Listen, Speak — green when the word is in
+  that mode, grey when it is not — and a fourth that flips all three, labelled
+  "None" when everything is on and "All" otherwise. Before 2026-11-15 the pill
+  was simply *absent* when a mode was off, so switching one on meant opening
+  the editor, ticking a box and saving: three steps to flip a boolean. The
+  owner asked for the click. Four decisions in it:
+  - **`POST /words/:id/modes` is its own endpoint**, not a corner of the full
+    edit. It may only flip three booleans, so a crafted request cannot rename
+    a word, move it to another category or go round the duplicate guard.
+  - **It answers with the row re-rendered by the server**, not with "ok".
+    Turning off the mode the list is showing changes that row's Status cell to
+    "Off", and the rule choosing between "Off", "Not yet" and a score lives in
+    `displayRow`; repeating it in the browser would be the copy that drifts.
+  - **It is a real form carrying the filters**, so the page still works
+    without JavaScript — it posts, redirects to the same filtered view and
+    lands on the row. `public/vocab.js` intercepts the click.
+  - **The flip-all button never takes the green**, or it would read as a
+    fourth mode the word is in.
+  The modes column is hidden under 620px, as it was before, so this is a
+  desktop affordance; a phone still edits through the editor.
 - **Filters must travel — and editing must not reload.** Edit, Save, Cancel
   and Delete happen in place (`public/vocab.js` swaps the row, fetching
   `/vocab/words/:id/edit-row`; the save returns the new row as JSON when sent

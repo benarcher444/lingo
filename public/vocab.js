@@ -336,9 +336,63 @@ async function saveEditor(form) {
   }
 }
 
+/**
+ * A practice mode, flipped from the list. The row comes back rendered by the
+ * server rather than patched here, so its Status cell stays truthful: turning
+ * off the mode being shown makes that cell read "Off", and the rule deciding
+ * that lives in one place on the server.
+ */
+async function toggleMode(button) {
+  const form = button.closest("form");
+  const row = button.closest("tr");
+  if (!form || !row) return;
+
+  row.classList.add("is-busy");
+  try {
+    // FormData leaves out the button that submitted, so name the mode here.
+    const body = new URLSearchParams(new FormData(form));
+    body.set("mode", button.value);
+
+    const response = await fetch(form.action, {
+      method: "POST",
+      headers: {
+        "x-requested-with": "fetch",
+        "content-type": "application/x-www-form-urlencoded",
+      },
+      body,
+    });
+    const payload = await response.json().catch(() => null);
+    if (!response.ok || !payload) throw new Error("bad response");
+    if (payload.reload) {
+      window.location.reload();
+      return;
+    }
+    if (!payload.html) throw new Error("no row");
+
+    const updated = rowFrom(payload.html);
+    row.replaceWith(updated);
+    // Keep the keyboard where it was: the same button in the replacement row.
+    updated
+      .querySelector(`button[name="mode"][value="${button.value}"]`)
+      ?.focus({ preventScroll: true });
+  } catch {
+    // Signed out, server away, anything unexpected: the ordinary post works.
+    form.submit();
+  } finally {
+    row.classList.remove("is-busy");
+  }
+}
+
 tableBody?.addEventListener("click", (event) => {
   // Modified clicks open the link in a new tab, as usual.
   if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+    return;
+  }
+
+  const modeButton = event.target.closest("button[name='mode']");
+  if (modeButton) {
+    event.preventDefault();
+    toggleMode(modeButton);
     return;
   }
 
