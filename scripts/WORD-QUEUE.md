@@ -63,6 +63,19 @@ still owed:
 `terminar` already answers, so it needs a gloss decided first. `llamarse`
 took its slot.
 
+## What the phrase report found on 2026-11-15
+
+Four of the compound prepositions in `add-spanish-1000.ts` had a part the
+vocabulary did not hold. The report is advisory, so the batch went in and
+these were judged one at a time:
+
+| part | from | decision |
+|---|---|---|
+| `junto` | junto a | **Already there.** `juntos` is held; the check only went plural to singular, so it missed it. Fixed in `lib/word-batch.ts`. |
+| `enfrente` | enfrente de | **Queued** — group 6, a real adverb in its own right ("opposite"). |
+| `pesar` | a pesar de | **Queued** — group 9, the verb "to weigh". The cap was full at 9 for a 99-word batch. |
+| `tráves` | a través de | **Not wanted.** It does not exist outside this idiom, like `embargo` in *sin embargo*. |
+
 ## Group 5 — evaluative adjectives (8 left of 30)
 
 Twenty-two went in on 2026-11-15. What is left is the narrower physical and
@@ -74,7 +87,7 @@ seco · mojado · ancho · estrecho · blando · enfadado · sorprendido · capa
 
 incluso · al menos · sobre todo · apenas · aún · realmente · completamente ·
 exactamente · finalmente · especialmente · generalmente · adelante · atrás ·
-alrededor · afuera · adentro · jamás · tal vez
+alrededor · afuera · adentro · jamás · tal vez · enfrente
 
 ## Group 7 — nouns whose verb is already held (6 absent)
 
@@ -104,10 +117,43 @@ mostrar, conseguir, caer, soler), which was the cap for a 99-word batch.
 
 **Needs a gloss decided first:** acabar — "to finish" is already `terminar`.
 
+**From the phrase report:** pesar ("to weigh", behind *a pesar de*).
+
 **Then:** sentirse · valer · quedarse · gastar · durar · tardar · cuidar ·
 evitar · lograr · permitir · aceptar · ofrecer · crear · matar · andar ·
 irse · ocupar · molestar · alegrarse · enfadarse · apoyar · considerar ·
 presentar · mantener · suponer · preocuparse
+
+## Group 10 — the next tranche by frequency (24)
+
+Added to the queue on 2026-11-15 because groups 5 to 9 hold only 79 words and
+the next batch is meant to be 100. **Not yet verified against the live
+database** — do that before writing them in.
+
+These lean conversational rather than journalistic. The frequency lists put
+`el gobierno`, `la ley` and `la guerra` higher than their usefulness in
+speech, because the corpora are full of news; they are included but last.
+
+**Time and quantity:** el rato (a short while) · el futuro · el pasado ·
+la época (the era) · el siglo (the century) · la mitad (the half) ·
+el par (the pair)
+
+**Everyday abstract:** el peligro (the danger) · el interés · el esfuerzo
+(the effort) · el valor (the value) · la calidad (the quality) ·
+el servicio · el producto · el modo (the method)
+
+**People and groups:** el equipo (the team) · el partido (the match) ·
+la sociedad · el poder (the power — `poder` the verb is already held, which
+is fine: another category may hold the same spelling)
+
+**Later, if wanted:** el gobierno · la ley · el derecho (the entitlement) ·
+la guerra · la paz
+
+Gloss warnings already spotted: `la mitad` must be "the half", because
+`medio` took "half" on 2026-11-15; `el modo` wants a gloss that keeps it off
+`la manera` ("the way/manner"), so "the method"; `el estado` would collide
+with the `he estado` conjugation only on spelling, not gloss, so it is safe
+but was left out as low value.
 
 ---
 

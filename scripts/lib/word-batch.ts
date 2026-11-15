@@ -113,6 +113,12 @@ const heldForms = (w: string) => {
   if (w.endsWith("a")) forms.add(`${w.slice(0, -1)}o`);
   if (w.endsWith("as")) forms.add(`${w.slice(0, -2)}o`);
   if (w.endsWith("os")) forms.add(`${w.slice(0, -2)}o`);
+  // And the other way: `junto` is answered by the `juntos` already held, so
+  // the plural counts too or *junto a* reports a part that is really there.
+  if (!w.endsWith("s")) {
+    forms.add(`${w}s`);
+    forms.add(`${w}es`);
+  }
   return [...forms];
 };
 
