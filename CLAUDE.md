@@ -650,7 +650,32 @@ are the answer.
     itself, so no caller can forget it), the Progress page's standing block
     reads "N words ready", and the vocabulary page in Speaking mode shows
     "Not yet" rather than "Off" for a word waiting its turn — "Off" means the
-    box is unticked and would be a lie. Snapshots taken before 2026-11-08
+    box is unticked and would be a lie.
+  - **And the speaking banner now shows both counts at once.** Under each of
+    Solid, Learnt, Learning, Untouched and Avg score sits a small second
+    figure: the same band counted over **every** speak-enabled word, before
+    the gate. The owner asked for it on 2026-11-15 — the gate's cost could
+    otherwise only be worked out by opening another page. Four things about
+    it:
+    - It comes from `loadUngatedWords(id, "speak")`, which is **the same
+      source the gate itself filters**, so the two figures cannot disagree
+      about what they are counting.
+    - `progressBanner` takes an optional `ungated` summary and is otherwise
+      mode-agnostic, so **listening can have the same by passing one more
+      argument** and written, which has no gate, never asks.
+    - It renders the explaining line itself ("Small figures ignore that: all
+      N with speaking ticked"), for the reason the gate note is rendered
+      there: a bare second number means nothing, and a caller would forget.
+    - A word behind the gate that still carries speaking history is counted in
+      the small figures, which is correct — nothing is deleted when a word
+      drops out.
+
+**Anything added to the banner must be added to `/api/practice/finish` too.**
+That endpoint re-renders the whole banner after a session, so a figure
+computed only on the page path vanishes the moment a session ends and comes
+back on a reload — which reads as a flicker rather than a bug and so goes
+unreported. The ungated summary is computed in both places for exactly this
+reason. It is the same trap as the stale surrounding page, one level in. Snapshots taken before 2026-11-08
     covered every speak-enabled word, so the speaking line of the Progress
     chart steps down where the rule lands.
 - **`words.speak_enabled`** is its own opt-in column (migration 0004),
@@ -1236,7 +1261,7 @@ the demo account seeded.
 | `npm run test:session` | Session size, skip-on-empty, `y` override, the banner rebuilt after a session |
 | `npm run test:override` | "I was right" corrects the miss: counted once, never twice |
 | `npm run test:listening` | Silent speech warm-up, `r` replay, typed r untouched, the heard word spelled out, and comparing another word after a miss |
-| `npm run test:speak` | Speaking: the word hidden until "Hear it", self-marking, its own rows, and that only `say` may be self-marked |
+| `npm run test:speak` | Speaking: the word hidden until "Hear it", self-marking, its own rows, and that only `say` may be self-marked. **Needs a local database with words through the speaking gate** — see below |
 | `npm run test:hear` | The word record's Hear it button says the word in the language's voice |
 | `npm run test:speech` | The no-sound notice: names a missing voice, a device with none, and stays quiet when the language has one |
 | `npm run test:vocab-edit` | Editing in place: no reload, no scroll jump, add category kept and remembered |
@@ -1247,6 +1272,18 @@ the demo account seeded.
 
 `npm run shot` flags console errors and horizontal overflow — keep both at zero.
 `scripts/diagnose-overflow.ts` names the offending element.
+
+**`npm run test:speak` fails on a laptop whose local database has nothing
+through the speaking gate.** It times out waiting for `#say-hear`, because the
+page is showing "Nothing is ready to speak yet" and there is no card to reveal.
+Checked on 2026-11-15 against unmodified code: it is the fixture, not a
+regression, so **do not chase it as one** — and do not take it as cover for a
+real break either. It wants what `test-practice-pools.ts` does, which is to
+build its own throwaway database with a word solid in written and listening,
+rather than hoping the dev data has one. The same trick is how the speaking
+banner was verified visually: seed a scratch database, point a server at it
+with `DATABASE_PATH` and `PORT`, and run `npm run shot -- --only=speak` with
+`SHOT_BASE_URL` at that port.
 
 ### Data tooling
 

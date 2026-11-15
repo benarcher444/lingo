@@ -129,6 +129,14 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
       const summary = summarise(scored, mode);
       const typeSummaries = summariseByType(scored, mode);
 
+      // Speaking's figures count only what its gate lets through, which is a
+      // fraction of the words that have speaking ticked. The owner asked on
+      // 2026-11-15 to see the ungated bands beside them, so the gate's cost is
+      // on the page rather than worked out from another one. `loadUngatedWords`
+      // is the same source the gate itself filters, so the two cannot disagree.
+      const ungated =
+        mode === "speak" ? summarise(loadUngatedWords(language.id, "speak"), "speak") : undefined;
+
       const config = {
         languageId: language.id,
         languageCode: language.code,
@@ -157,6 +165,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
               types: typeSummaries,
               languageName: language.name,
               mode,
+              ungated,
             })}
           </div>
 
@@ -452,6 +461,14 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
     const scored = loadScoredWords(parsed.data.languageId, parsed.data.mode);
     const summary = summarise(scored, parsed.data.mode);
     const typeSummaries = summariseByType(scored, parsed.data.mode);
+    // The banner is re-rendered here, so the ungated figures have to be
+    // recomputed here too — otherwise they disappear the moment a session ends
+    // and only a reload brings them back. That is the trap this endpoint was
+    // created to fix, and it applies to anything added to the banner.
+    const ungated =
+      parsed.data.mode === "speak"
+        ? summarise(loadUngatedWords(parsed.data.languageId, "speak"), "speak")
+        : undefined;
 
     return reply.send({
       summary,
@@ -463,6 +480,7 @@ export async function practiceRoutes(app: FastifyInstance): Promise<void> {
         types: typeSummaries,
         languageName: finished.name,
         mode: parsed.data.mode,
+        ungated,
       }),
       total: summary.total,
       due: summary.total - summary.completelyLearnt,

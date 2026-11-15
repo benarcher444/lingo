@@ -34,6 +34,19 @@ export function progressBanner(opts: {
   languageName: string;
   mode?: Mode;
   linkBase?: string;
+  /**
+   * The same bands counted **without** this mode's gate, when the caller has
+   * them. Speaking asks only for words already solid in written and listening,
+   * so its figures are far smaller than the vocabulary they are drawn from —
+   * and the gate's cost could only be inferred by opening another page. The
+   * owner asked on 2026-11-15 to see both at once.
+   *
+   * Optional and mode-agnostic on purpose: this renders a second figure for
+   * whatever it is handed, so listening — which has a gate of its own — can
+   * have the same by passing one more argument, and written, which has none,
+   * never asks for it.
+   */
+  ungated?: Summary;
 }): string {
   const { summary, types } = opts;
   const pct = summary.pctLearnt;
@@ -71,6 +84,18 @@ export function progressBanner(opts: {
   const trueLearnt = trueTypes.reduce((n, t) => n + t.learnt, 0);
   const trueTotal = trueTypes.reduce((n, t) => n + t.total, 0);
 
+  /**
+   * The quiet second number under each band, counted before this mode's gate.
+   * Rendered only when the caller supplied one, so nothing changes on a page
+   * that has no gate to explain. The reader is never left to guess which is
+   * which: the line under the headline says what the small figures are, and
+   * every tooltip repeats it.
+   */
+  const ungated = opts.ungated;
+  const sub = (value: (s: Summary) => string) =>
+    ungated ? `<div class="sub">${value(ungated)}</div>` : "";
+  const subTitle = ungated ? " · small: the same, before this mode's gate" : "";
+
   const cells = types
     .map((t) => {
       const href = opts.linkBase ? `${opts.linkBase}&type=${t.wordTypeId}` : null;
@@ -103,6 +128,15 @@ export function progressBanner(opts: {
               : ""
         }
         ${
+          // A bare second number means nothing without this line, so the line
+          // is rendered here rather than left to the caller.
+          ungated
+            ? `<div class="banner-note">Small figures ignore that: all ${ungated.total} with ${MODE_LABEL[
+                opts.mode ?? "written"
+              ].toLowerCase()} ticked</div>`
+            : ""
+        }
+        ${
           hasExcluded
             ? `<div class="true-words" title="Learnt, leaving out conjugations and phrases: those are forms of words you already have, and sentences, rather than new words">${trueLearnt} of ${trueTotal} true words</div>`
             : ""
@@ -110,15 +144,25 @@ export function progressBanner(opts: {
       </div>
     </div>
     <div class="banner-stats">
-      <div class="mini-stat" title="Score above 2.556">
-        <div class="value solid">${summary.completelyLearnt}</div><div class="label">Solid</div></div>
-      <div class="mini-stat" title="Score above 2.3 but not yet solid">
-        <div class="value learnt-only">${summary.learntNotSolid}</div><div class="label">Learnt</div></div>
-      <div class="mini-stat" title="Practised, still below the learnt line">
-        <div class="value learning">${summary.inProgress}</div><div class="label">Learning</div></div>
-      <div class="mini-stat" title="Never tested">
-        <div class="value new">${summary.untouched}</div><div class="label">Untouched</div></div>
-      <div class="mini-stat"><div class="value">${summary.averageScore.toFixed(2)}</div><div class="label">Avg score</div></div>
+      <div class="mini-stat" title="Score above 2.556${subTitle}">
+        <div class="value solid">${summary.completelyLearnt}</div>${sub(
+          (s) => String(s.completelyLearnt),
+        )}<div class="label">Solid</div></div>
+      <div class="mini-stat" title="Score above 2.3 but not yet solid${subTitle}">
+        <div class="value learnt-only">${summary.learntNotSolid}</div>${sub(
+          (s) => String(s.learntNotSolid),
+        )}<div class="label">Learnt</div></div>
+      <div class="mini-stat" title="Practised, still below the learnt line${subTitle}">
+        <div class="value learning">${summary.inProgress}</div>${sub(
+          (s) => String(s.inProgress),
+        )}<div class="label">Learning</div></div>
+      <div class="mini-stat" title="Never tested${subTitle}">
+        <div class="value new">${summary.untouched}</div>${sub(
+          (s) => String(s.untouched),
+        )}<div class="label">Untouched</div></div>
+      <div class="mini-stat"><div class="value">${summary.averageScore.toFixed(2)}</div>${sub(
+        (s) => s.averageScore.toFixed(2),
+      )}<div class="label">Avg score</div></div>
     </div>
   </div>
   ${

@@ -629,6 +629,18 @@ img { max-width: 100%; }
 .mini-stat .value.learning { color: var(--learning); }
 .mini-stat .value.new { color: var(--new); }
 
+/* The same band counted before the mode's gate. Deliberately quiet, like
+   ".true-words": a second opinion on the figure above it, not a rival. Tabular
+   numerals so the two line up digit for digit. */
+.mini-stat .sub {
+  color: var(--text-faint);
+  font-size: 0.78rem;
+  font-weight: 560;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.15;
+  margin-top: 1px;
+}
+
 /* Per-word-type breakdown strip */
 /* Flex rather than grid: a wrapped final row containing one category stretches
    to fill the width, instead of leaving a block of dead space. Dividers are
