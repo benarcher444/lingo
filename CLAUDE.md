@@ -282,8 +282,51 @@ is meant to be reachable from anywhere, so:
   ever bites. The remaining attempts are shown, which reveals the account
   exists; with invitation-only sign-up that seemed worth it, so the owner
   doesn't lock themselves out.
+- **A password can be reset by the person who owns it.** `/forgot` emails a
+  link, `/reset/:token` sets a new password. The owner asked for this on
+  2026-11-15 — *"I just want something that a user can actually do themselves?
+  at the moment it's impossible"* — and he was right: until then a password
+  could only be replaced by somebody with a shell on the server, and so could
+  the five-wrong-passwords lock. That was tolerable while the server held one
+  account and stopped being so the day it held two. **A completed reset also
+  clears the lock**, which is what makes it a real replacement for SSH-ing in.
+  Six decisions worth keeping:
+  - **The token is stored hashed (SHA-256), never in the clear**, so a copy of
+    the table is worth nothing. SHA-256 and *not* argon2 on purpose: argon2 is
+    slow to make guessable secrets expensive, and a 256-bit random token is
+    not guessable, so the slowness would buy nothing and cost a delay on every
+    click.
+  - **Single use, enforced in the WHERE clause** (`usedAt IS NULL`), so two
+    requests racing cannot both succeed. One hour to live, and **asking again
+    invalidates the previous link** — otherwise a forwarded old email stays a
+    key.
+  - **`/forgot` answers the same whether or not the address exists.** The
+    sign-in form deliberately does the opposite, telling you how many attempts
+    remain, because that stops the owner locking himself out; a page anybody
+    can post to has no such excuse and would be an account-existence oracle.
+  - **The send is not awaited**, or the wording would be identical and the
+    *timing* would not: SMTP takes a visible moment and doing nothing does
+    not. Errors are caught and logged rather than shown.
+  - **Links are built from `APP_URL`, not the request's `Host` header.**
+    Building a reset link from a header the visitor controls is the classic
+    way this feature becomes a credential thief. `trustProxy` is loopback-only
+    so the host is currently trustworthy — `APP_URL` means it does not have to
+    stay that way.
+  - **Spent and expired links say which they are**, rather than "no such
+    link". Pressing back onto a used link is common and harmless, and none of
+    the three messages reveals whether an account exists.
+- **`src/email.ts` is one `send()` interface with providers behind it**, the
+  same shape as `src/ai.ts` and for the same reason: which service carries the
+  mail is configuration. `console` prints the whole message to the server log
+  and is the default, so an unconfigured install still works and the flow is
+  testable with no credentials, no network and no bill — the exact equivalent
+  of `AI_PROVIDER=mock`. `smtp` sends through nodemailer and is chosen
+  automatically as soon as `SMTP_HOST` is set. **The provider is chosen per
+  call, not at import**, which sidesteps the `src/env.ts`-must-be-first trap
+  that `ai.ts` has.
 - **A per-address limit** in memory (`src/rate-limit.ts`: 10 sign-ins per 15
-  min, 5 sign-ups per hour). argon2 is slow on purpose, so a flood of attempts
+  min, 5 sign-ups per hour, 5 reset requests per hour — tighter because each
+  one sends mail, so it would otherwise post mail at somebody). argon2 is slow on purpose, so a flood of attempts
   is also a CPU attack. Loopback is exempt, because tests and screenshot runs
   sign in dozens of times.
 - **`trustProxy` is loopback only**, so behind Caddy `request.ip` is the visitor
@@ -1294,6 +1337,7 @@ the demo account seeded.
 | `npm run test:accents:browser` | Accent typing in a real browser |
 | `npm run test:ai` | Provider/model resolution, all permutations |
 | `npm run test:auth` | Invitation-only sign-up, lockout and unlock, Secure cookie behind HTTPS, limiter |
+| `npm run test:reset` | Password-reset tokens: hashed at rest, single use, expiring, superseded by a newer request, and what a completed reset closes. Part of `npm test`, so CI runs it — it needs no server and no mail provider |
 | `npm run test:duplicates` | A word can't be added twice or renamed onto another, whatever case, spacing or category |
 | `npm run test:theme` | Theme saved per account and stamped on pages, safe redirect, phone language picker and Settings tab |
 | `npm run test:sentences` | Translation practice: a round from your words, the words revealed, marking, adding a word from the model sentence, and that it records nothing. **Server must run with `AI_PROVIDER=mock`** |
@@ -1470,7 +1514,16 @@ Read-only checks and one-off fixes live in `scripts/`:
   started), is a dry run without `--apply`, backs up first, and refuses a
   second run (`data/override-fix.done`). A second pass would take corrected
   misses for old overrides.
-- `set-password.ts` — replaces a password hash.
+- `set-password.ts` — replaces a password hash. Still the way in when nobody
+  can receive mail, but **no longer the only way**: see the reset flow above.
+- `migrate.ts` (`npm run db:migrate`) — applies pending migrations and says
+  which tables appeared. **`package.json` referenced this file from the start
+  and it did not exist**, so the command had always failed with
+  `ERR_MODULE_NOT_FOUND`; nobody noticed because `server.ts` calls
+  `runMigrations()` at boot, which is also why a deploy needs no migration
+  step — `systemctl restart lingo` is the migration. Written on 2026-11-15
+  when migration 0005 (`password_resets`) needed applying without starting a
+  server.
 - `clean-test-words.ts` — removes words left by the entry test.
 - `measure-speech.ts` — times Start-to-first-sound in listening practice and
   lists the voices on offer. Muted; `--direct`, `--headed`, `--runs=N`.

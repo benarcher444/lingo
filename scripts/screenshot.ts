@@ -37,6 +37,10 @@ interface Shot {
 const SHOTS: Shot[] = [
   { key: "login", path: "/login", authenticated: false },
   { key: "register", path: "/register", authenticated: false },
+  { key: "forgot", path: "/forgot", authenticated: false },
+  // A token nobody issued, so this is the "link cannot be used" page. The
+  // working form needs a live token and so cannot be a fixed path.
+  { key: "reset-dead", path: "/reset/not-a-real-token", authenticated: false },
   { key: "vocab", path: "/vocab", authenticated: true },
   { key: "vocab-listening", path: "/vocab?mode=audio", authenticated: true },
   { key: "written", path: "/practice/written", authenticated: true },

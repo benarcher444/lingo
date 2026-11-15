@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { provider, providerLabel } from "./ai.js";
-import { pruneSessions } from "./auth.js";
+import { prunePasswordResets, pruneSessions } from "./auth.js";
 import { loadContext, rememberLanguage, requireContext } from "./context.js";
 import { eq } from "drizzle-orm";
 
@@ -235,6 +235,7 @@ app.setNotFoundHandler(async (request, reply) => {
 
 runMigrations();
 pruneSessions();
+prunePasswordResets();
 
 /**
  * The machine's LAN addresses, so the startup log can tell you what to type on

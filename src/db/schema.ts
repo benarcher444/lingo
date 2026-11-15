@@ -50,6 +50,37 @@ export const sessions = sqliteTable(
   }),
 );
 
+/**
+ * A password reset in flight.
+ *
+ * The token is stored **hashed**, exactly as a password is, and for the same
+ * reason: a leaked database must not become account takeover. The plain token
+ * exists in one place only — the email that carried it — so a copy of this
+ * table is worth nothing to an attacker.
+ *
+ * `usedAt` rather than deleting the row: a reset that has been spent should
+ * say so when the link is followed a second time, which is a different message
+ * from "that link never existed" and a much less alarming one for the person
+ * who simply pressed back.
+ */
+export const passwordResets = sqliteTable(
+  "password_resets",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: text("expires_at").notNull(),
+    usedAt: text("used_at"),
+    createdAt: text("created_at").notNull().default(now),
+  },
+  (table) => ({
+    userIdx: index("password_resets_user_idx").on(table.userId),
+    tokenIdx: index("password_resets_token_idx").on(table.tokenHash),
+  }),
+);
+
 export const languages = sqliteTable(
   "languages",
   {
