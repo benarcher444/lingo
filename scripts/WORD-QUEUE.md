@@ -1,8 +1,12 @@
 # The word queue — Spanish
 
 **Read this before writing the next batch script.** It is the list of words
-the vocabulary is missing, in the order they are worth adding, verified absent
-against the live database on 2026-11-11 at 901 words.
+the vocabulary is missing, in the order they are worth adding.
+
+Verified absent against the live database on 2026-11-11 at 901 words. **97
+left**: groups 1 to 4 and most of 5 went in on 2026-11-15 as
+`add-spanish-1000.ts`, which took the vocabulary to 1000 exactly. Re-verify
+before the next batch — the owner adds words by hand too.
 
 ## Why this file exists
 
@@ -43,137 +47,28 @@ question with no good answer. Hence a queue on disk rather than an intention.
 
 ---
 
-## Group 1 — function words (22/22 absent)
+## Taken on 2026-11-15 — groups 1 to 4, and most of 5
 
-The worst hole and the cheapest to fix. `usted` and `ustedes` matter most:
-the vocabulary has *tú* and *vosotros*, so there is currently no way to address
-a stranger politely, and in Latin America *ustedes* is the **only** plural you.
-`tan` and `así` are top-150. None of these are verbs, so this group can go in
-as a batch of its own.
+`add-spanish-1000.ts` took 99 words and the vocabulary reached 1000 exactly.
+Groups 1, 2, 3 and 4 went in whole. Three words did **not** go in and are
+still owed:
 
-| word | gloss (provisional) |
+| word | why it was held back |
 |---|---|
-| usted | you (formal) |
-| ustedes | you (formal pl) |
-| tan | so |
-| tanto | so much |
-| así | like this/so |
-| lo que | what/that which |
-| ningún | no/not any |
-| ninguno | none |
-| sino | but rather |
-| pues | well/then |
-| todos | everyone/all |
-| cualquier | any |
-| contigo | with you |
-| alguno | some/any |
-| estos | these (m) |
-| estas | these (f) |
-| esos | those (m) |
-| esas | those (f) |
-| aquellos | those over there (m) |
-| cual | which (relative) |
-| mío | mine |
-| tuyo | yours |
+| `pues` | "well" is already `bien`, and there is no note to tell them apart. Needs a gloss decided before it can go in. |
+| `cual` | left out as low value — mostly formal (*el cual*). Not for colliding with `cuál`; a collision by ear is never a reason to withhold a word. |
+| `alguno` | the vocabulary already holds `algún`, which is the same word apocopated. Probably not wanted at all. |
 
-Note: the vocabulary holds `esta` (this, f) and `cuál` (which?), so the
-accented and unaccented members of those pairs need keeping straight — and
-`cual`/`cuál` and `esta`/`estás` are listening collisions. That is **not** a
-reason to withhold them (see CLAUDE.md); "Hear another word" is what a
-collision is for.
+`acabar` is also still owed, from group 9: it means "to finish", which
+`terminar` already answers, so it needs a gloss decided first. `llamarse`
+took its slot.
 
-## Group 2 — compound prepositions and connectives (18/18 absent)
+## Group 5 — evaluative adjectives (8 left of 30)
 
-The vocabulary has `antes` and `después` as bare adverbs but not the `de`
-forms that attach them to a noun, and the same for `cerca`/`lejos`. One small
-word each, and they turn clauses into sentences. No verbs here either.
+Twenty-two went in on 2026-11-15. What is left is the narrower physical and
+emotional end.
 
-| word | gloss (provisional) |
-|---|---|
-| hacia | towards |
-| según | according to |
-| contra | against |
-| antes de | before (+ noun) |
-| después de | after (+ noun) |
-| cerca de | near to |
-| lejos de | far from |
-| enfrente de | opposite |
-| junto a | next to |
-| a través de | through |
-| a pesar de | despite |
-| en vez de | instead of |
-| además de | as well as |
-| así que | so |
-| ya que | since |
-| para que | so that |
-| sin que | without |
-| a menos que | unless |
-
-## Group 3 — the words behind phrases already held
-
-The owner asked on 2026-11-11 that a phrase's own words be in the vocabulary
-too, having found `por ejemplo` sitting there with no `el ejemplo` behind it.
-A phrase you cannot take apart has been memorised rather than understood.
-Found by sweeping all 40 phrases; `lib/word-batch.ts` now reports this for
-any phrase going in, so it should not need finding by eye again.
-
-| word | gloss (provisional) | the phrase that needs it |
-|---|---|---|
-| el ejemplo | the example | por ejemplo |
-| el calor | the heat | hace calor |
-| el punto | the point | en punto |
-| el cuarto | the quarter/room | y cuarto, menos cuarto |
-| medio | half | y media |
-| el favor | the favour | por favor |
-| el gusto | the pleasure | mucho gusto |
-| el permiso | the permission | con permiso |
-| tal | such | qué tal, and it gets you *tal vez* |
-| el fin | the end | el fin de semana — asked for by name |
-| la salud | the health | — |
-
-**`la salud` is an addition, not an edit.** `salud` is already held in *other*,
-bare, glossed "cheers/bless you" — an interjection. The noun goes in beside
-it **with its article**, which is what tells the two apart, exactly as *como*
-the conjunction sits beside *como* the conjugation. Raised as an edit on
-2026-11-11; the owner pointed out that the article already makes it clear, and
-they were right.
-
-**Deliberately not queued**, from the same sweep:
-
-- `llamo`, `entiendo`, `siento`, `gusto` as a verb form (from *me llamo*,
-  *no entiendo*, *lo siento*, *mucho gusto*) are **conjugated forms** of verbs
-  already held as infinitives. Those are the owner's own curriculum — never
-  added unasked. This is also why the phrase check reports rather than
-  refuses: a guard demanding them could not be satisfied.
-- `menudo`, `supuesto`, `embargo` barely exist outside *a menudo*,
-  *por supuesto* and *sin embargo*. Adding `el embargo` to justify
-  *sin embargo* would be teaching a word to explain a word.
-- `benjamin`, `reino`, `unido`, `estados`, `unidos` are parts of proper nouns.
-- `cepillo`, `pasta`, `ciento` are low value; raise them if ever wanted.
-
-## Group 4 — abstract and relational nouns (20/22 absent)
-
-The 300 nouns are almost entirely concrete. These are what conversation past
-the transactional runs on: "the reason I think that" is currently unsayable.
-
-la idea · la razón · la manera · la forma · el tipo · la parte ·
-el final · el principio · el centro · el lado · el resto · el nivel ·
-la situación · la solución · el resultado · la vista · el caso ·
-el orden · la cantidad · el espacio
-
-(`el ejemplo` and `el punto` moved up to group 3, being phrase parts.)
-
-## Group 5 — evaluative adjectives (30/30 absent)
-
-The adjectives already held are physical-property pairs (*alto/bajo*,
-*gordo/delgado*) and well done. What is missing is the whole register for
-**judging** things, which is most of what adjectives do in speech. `aburrido`
-is a conspicuous gap given *divertido* is in.
-
-seguro · raro · propio · único · necesario · imposible · cierto · común ·
-normal · suficiente · útil · serio · duro · ligero · pesado · seco · mojado ·
-ancho · estrecho · blando · loco · contento · preocupado · enfadado ·
-sorprendido · aburrido · verdadero · falso · varios · capaz
+seco · mojado · ancho · estrecho · blando · enfadado · sorprendido · capaz
 
 ## Group 6 — adverbs that join ideas (18/18 absent)
 
@@ -197,20 +92,22 @@ la cuenta · la empresa · el jefe · la reunión · el novio · la novia ·
 el marido · la esposa · la pareja · el compañero · la medicina · el médico ·
 la enfermedad · la fuerza · el cuidado · el silencio
 
-## Group 9 — verbs (36 absent) — ten per hundred words, at most
+## Group 9 — verbs (27 left of 36) — ten per hundred words, at most
 
 Spread across batches under the verb cap. The first five are the highest
 value, because `importar`, `faltar` and `encantar` are the same backwards
 pattern as *gustar* and *doler*, which are already held — three words for a
 grammar point already paid for.
 
-**First:** importar · faltar · encantar · costar · acabar
+Nine went in on 2026-11-15 (importar, faltar, encantar, costar, llamarse,
+mostrar, conseguir, caer, soler), which was the cap for a 99-word batch.
 
-**Then:** mostrar · conseguir · caer · soler · llamarse · sentirse · valer ·
-quedarse · gastar · durar · tardar · cuidar · evitar · lograr · permitir ·
-aceptar · ofrecer · crear · matar · andar · irse · ocupar · molestar ·
-alegrarse · enfadarse · apoyar · considerar · presentar · mantener · suponer ·
-preocuparse
+**Needs a gloss decided first:** acabar — "to finish" is already `terminar`.
+
+**Then:** sentirse · valer · quedarse · gastar · durar · tardar · cuidar ·
+evitar · lograr · permitir · aceptar · ofrecer · crear · matar · andar ·
+irse · ocupar · molestar · alegrarse · enfadarse · apoyar · considerar ·
+presentar · mantener · suponer · preocuparse
 
 ---
 

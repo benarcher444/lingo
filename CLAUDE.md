@@ -1244,6 +1244,20 @@ Read-only checks and one-off fixes live in `scripts/`:
   own; group 8 holds 36 verbs, which under the cap need at least 360 words of
   batches to land. It is consumed as it is used — see the frequency rule in
   "Working agreements".
+- `add-spanish-1000.ts` — the batch that took Spanish to 1000 on 2026-11-15,
+  and **the first chosen by frequency rather than topic**, taken from
+  `WORD-QUEUE.md`: 20 function words, 18 compound prepositions, 5
+  conjunctions, 29 nouns, 23 adjectives and 9 verbs. 99 words, not 100,
+  because the owner asked for the total to land on 1000 exactly — and 99 is
+  also why the verb count is 9: the cap is `floor(n / 10)`. It reads as a dull
+  list of small grey words, which is the correction and not an accident.
+  Several glosses are narrower than the dictionary and the file says why; the
+  important general lesson is that **the gloss guard compares exact strings,
+  while answer matching drops a parenthesised note and reads a slash as either
+  alternative** — so `el cuarto` as "the quarter/room" would have collided
+  with `la habitación` and the guard would not have noticed. Check new glosses
+  against every reading the vocabulary already accepts, not just the literal
+  string.
 - **The months are entered bare; the days of the week carry `el`.** Spanish
   says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
   day is said, so the two sets look inconsistent and are not. Neither is
