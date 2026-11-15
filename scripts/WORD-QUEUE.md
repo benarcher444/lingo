@@ -41,9 +41,13 @@ question with no good answer. Hence a queue on disk rather than an intention.
 - **A phrase takes its own words with it.** If a batch adds a phrase, every
   word in it is held already or joins the same batch. The engine reports the
   gaps; group 3 lists the ones deliberately left.
-- Glosses here are a starting point, not decided. Check each one against the
-  duplicate-gloss guard, and narrow it where another word already answers that
-  English.
+- Glosses here are a starting point, not decided. Check each against the live
+  data — but **never narrow one to dodge the duplicate check.** If another word
+  already holds that exact English, both cards get a bracketed note
+  (`to love (a)` and `to love (q)`) and the older one is fixed through `RENOTE`
+  in the same batch. A *reading* shared with a word whose face differs — "to
+  try" against `tratar` = "to try/to treat" — needs nothing at all. See
+  "Duplicate words" in CLAUDE.md.
 
 ---
 
@@ -53,15 +57,62 @@ question with no good answer. Hence a queue on disk rather than an intention.
 Groups 1, 2, 3 and 4 went in whole. Three words did **not** go in and are
 still owed:
 
-| word | why it was held back |
-|---|---|
-| `pues` | "well" is already `bien`, and there is no note to tell them apart. Needs a gloss decided before it can go in. |
-| `cual` | left out as low value — mostly formal (*el cual*). Not for colliding with `cuál`; a collision by ear is never a reason to withhold a word. |
-| `alguno` | the vocabulary already holds `algún`, which is the same word apocopated. Probably not wanted at all. |
+| word | why it was held back | where it stands now |
+|---|---|---|
+| `pues` | "well" is already `bien` | **Owed.** Goes in with a note, beside a renote for `bien`. Wording below. |
+| `acabar` | "to finish" is already `terminar` | **Owed.** Same — a note each. `llamarse` took its slot in the batch. |
+| `cual` | left out as low value — mostly formal (*el cual*). Not for colliding with `cuál`; a collision by ear is never a reason to withhold a word. | Still a judgement call, not a gloss problem. |
+| `alguno` | the vocabulary already holds `algún`, which is the same word apocopated. | Probably not wanted at all. |
 
-`acabar` is also still owed, from group 9: it means "to finish", which
-`terminar` already answers, so it needs a gloss decided first. `llamarse`
-took its slot.
+Two of those four were held back for a reason that **was not a reason**, and
+the next batch owes them. See below.
+
+## Glosses to repair — the narrowing was wrong
+
+On 2026-11-15 the owner said plainly: *"don't put something as something else
+just because that word is taken … You do know synonyms exist in all
+languages?"* Several batches had been narrowing a word's meaning, or dropping
+the word, to get past the duplicate-gloss check. The rule now is a bracketed
+note on every card that shares a meaning — see "Duplicate words" in CLAUDE.md,
+and `lib/word-batch.ts` enforces it.
+
+**Which letter or word goes in the brackets is the owner's wording**, so
+nothing here is applied until they say. Each row below is a proposal.
+
+Most of them turn out not to need a note at all: the duplicate check compares
+the **card face**, and `a través de` = "through" never collided with `por` =
+"for/by/through" in the first place. Those were narrowed by an over-strict
+pre-check of mine, not by the guard.
+
+### No note needed — just give the word its meaning back
+
+| word | reads now | should read | why it was narrowed |
+|---|---|---|---|
+| `a través de` | by way of | **through** | to keep off `por` = "for/by/through" — different face, no clash |
+| `único` | unique | **only/unique** | to keep off `solo` = "only/alone" — different face |
+| `ningún` | not any | **no/not any** | to keep off `no` = "no" — different face |
+| `probar` | to taste | **to try/to taste** | to keep off `intentar` = "to try" — different face |
+| `tocar` | to touch | **to touch/to play (an instrument)** | to keep off `jugar` = "to play". The lost half is the one Spanish actually needs |
+| `luego` | later | **then/later** | to keep off `entonces` = "then/so" — different face |
+| `desde` | since | **since/from** | to keep off `de` = "of/from" — different face |
+
+### A note on both halves — the faces really do collide
+
+| the pair | proposal |
+|---|---|
+| `lo que` = "that which" and `qué` = "what" | `lo que` → **"what (relative)"**, `qué` → **"what (asking)"**. Grammatical rather than initials, because that is the actual difference. `qué` asks; `lo que` joins clauses. |
+| `la vez` = "the occasion" and `el tiempo` = "the time" | `la vez` → **"the time (occasion)"**, `el tiempo` → **"the time (duration)"**. `la hora` = "the hour/time" needs nothing — different face. |
+| `acabar` (absent) and `terminar` = "to finish" | `acabar` → **"to finish (a)"**, `terminar` → **"to finish (t)"**. Near-perfect synonyms with no useful semantic split, so initials, exactly as `because (c)` and `because (pq)`. |
+| `pues` (absent) and `bien` = "well" | `pues` → **"well (so then)"**, `bien` → **"well (nicely)"**. Different parts of speech, so a semantic note beats initials. |
+
+### Needs a decision, not a note
+
+| word | reads now | the question |
+|---|---|---|
+| `el cuarto` | the quarter | It went in for *y cuarto*, but *el cuarto* is also an everyday word for a room. Add that meaning — `el cuarto` = "the quarter/room (c)" with `la habitación` = "the room (h)" — or leave it as the quarter alone? |
+
+`duro` = "hard (not soft)" is **right as it is**: nothing holds "hard", so the
+note is doing honest semantic work rather than dodging a guard.
 
 ## What the phrase report found on 2026-11-15
 

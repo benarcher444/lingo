@@ -469,10 +469,41 @@ The owner's data had no duplicates when this went in (2026-09-10).
 **Two words with the same English is the same bug facing the other way.**
 Nothing stops it — the app checks spellings, not meanings — but a shared gloss
 makes the English-to-Spanish direction a coin flip, exactly as a homophone does
-for listening, and the miss it records is real. So a batch added by script
-checks it (`add-spanish-routine.ts` refuses a word whose gloss is taken and
-names the holder), and a near-synonym entered by hand wants a gloss that picks
-it out: `luego` went in as "later" because `entonces` already held "then".
+for listening, and the miss it records is real.
+
+**The fix is a bracketed note on every card sharing the meaning, never a
+narrower meaning on one of them.** Two Spanish words for "to love" are
+`to love (a)` and `to love (q)`. The owner had to say this on 2026-11-15 —
+*"don't put something as something else just because that word is taken …
+You do know synonyms exist in all languages? That doesn't mean we shouldn't
+learn them?"* — after batches had written `a través de` as "by way of" to keep
+off `por`, `lo que` as "that which" to keep off `qué`, `la vez` as "the
+occasion" to keep off `el tiempo`, and had dropped `acabar` and `pues`
+altogether. Every one of those was a two-character note away from being
+correct, and a wrong meaning taught is worse than the coin flip it dodges.
+
+Three things make the note the right answer rather than a workaround:
+
+- **It is already the convention, and it is the owner's, not a script's.** 84
+  of the 1000 Spanish entries and 13 of the 100 French ones carry one:
+  `because (c)` and `because (pq)`, `the cousin (m)` and `the cousin (f)`,
+  `to be (states, conditions & location)` and `to be (inherent identity &
+  characteristics)`, `according to (da)` and `according to (s)`.
+- **It costs the learner nothing.** `answersMatch` drops a parenthesised note,
+  so target-to-English still accepts the bare meaning. The note only does work
+  in the direction that needs it, which is the one showing English.
+- **A shared *reading* is not a shared card, and needs no note at all.** 62
+  Spanish readings are answered by more than one word — `beber` and `tomar`
+  ("to take/to drink"), `intentar` and `tratar` ("to try/to treat"),
+  `contestar` and `responder` — and none of them is ambiguous on screen,
+  because the card faces differ. What has to be distinct is **the English as
+  written**. On 2026-11-15 no two Spanish cards shared a face, and exactly one
+  French pair did: `quel` and `lequel`, both bare "which".
+
+So the check in `lib/word-batch.ts` compares **card faces**, and a second guard
+refuses a batch that would leave a meaning held by one labelled card and one
+bare one — `RENOTE` is how a batch labels the older half in the same run. A
+near-synonym entered by hand wants the same treatment.
 
 ### Theme, and the phone's menu
 
@@ -1251,28 +1282,36 @@ Read-only checks and one-off fixes live in `scripts/`:
   because the owner asked for the total to land on 1000 exactly — and 99 is
   also why the verb count is 9: the cap is `floor(n / 10)`. It reads as a dull
   list of small grey words, which is the correction and not an accident.
-  Several glosses are narrower than the dictionary and the file says why; the
-  important general lesson is that **the gloss guard compares exact strings,
-  while answer matching drops a parenthesised note and reads a slash as either
-  alternative** — so `el cuarto` as "the quarter/room" would have collided
-  with `la habitación` and the guard would not have noticed. Check new glosses
-  against every reading the vocabulary already accepts, not just the literal
-  string.
+  Several glosses in it are narrower than the dictionary, and **that was the
+  wrong call** — the owner said so on 2026-11-15 and the rule in "Duplicate
+  words" is the result. `a través de` should not read "by way of", `lo que`
+  should not read "that which", and `acabar` and `pues` should not have been
+  dropped; each wanted a bracketed note instead. The repairs are tracked in
+  `WORD-QUEUE.md`. What does carry over from writing it is the mechanical
+  point: **the gloss guard compares exact strings, while answer matching drops
+  a parenthesised note and reads a slash as either alternative** — so
+  `el cuarto` as "the quarter/room" would have collided with `la habitación`
+  and the guard would not have noticed. Check a new gloss against every
+  reading the vocabulary already accepts, not just the literal string.
 - **The months are entered bare; the days of the week carry `el`.** Spanish
   says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
   day is said, so the two sets look inconsistent and are not. Neither is
   capitalised, which matches the lower-case English side.
 - `lib/word-batch.ts` — the machinery the batches share: find the account,
-  apply the three guards, print, back up, insert, read back. Each
+  apply the four guards, print, back up, write, read back. Each
   batch script keeps only its own list and its own reasoning, which is the
   point of having them. It was copied into the second batch before being
   extracted, which is exactly how two copies drift. Two guards are about a
-  single word (a duplicate spelling in its category, a gloss already taken)
-  and skip the entry; the third is about the **shape** of the batch — the
-  verb cap in "Working agreements" — and refuses all of it, since trimming
-  would mean choosing someone's curriculum for them. There is also a
-  **report** that refuses nothing: the words a phrase is made of that the
-  vocabulary does not hold.
+  single word and skip the entry: a duplicate spelling in its category, and a
+  **card face** already taken — the English as written, note included. Two
+  are about the **shape** of the batch and refuse all of it, since trimming
+  would mean choosing someone's curriculum: the verb cap, and the note rule
+  (a meaning an incoming word joins may not be left with one labelled card
+  and one bare one). `--verbs-ok` and `--notes-ok` waive them. `RENOTE` puts
+  a note on a word already there, which is the note rule's other half; it
+  rewrites the English only, so it is safe on a word with answers behind it
+  in a way withdrawal is not. There is also a **report** that refuses
+  nothing: the words a phrase is made of that the vocabulary does not hold.
 - `test-practice-pools.ts` (part of `npm test`) — both gates, listening's and
   speaking's, run against a throwaway database of its own under
   `DATABASE_PATH`, so it can set up a muted word or a word that has decayed
@@ -1417,6 +1456,20 @@ number of series per row, and `activityChart` stacks all three modes.
   rather than in anybody's head for the same reason the verb cap is in code:
   an intention did not survive one batch. Take from the top, and **delete what
   is taken in the same commit as the batch script.**
+- **A taken gloss is never a reason to change what a word means, or to leave
+  it out.** The answer is a bracketed note on **every** card that shares the
+  meaning — `to love (a)` and `to love (q)` — which is this vocabulary's own
+  convention and which answer matching drops, so it costs nothing in the
+  target-to-English direction. Narrowing a gloss to dodge the duplicate check
+  teaches a word the wrong meaning, which is worse than the ambiguity it
+  avoids; dropping the word teaches nothing at all. Synonyms exist in every
+  language and are part of what there is to learn. **Which letter or word goes
+  in the brackets is the owner's wording — ask, do not invent one**, and
+  remember a note on one side needs one on the other or the unlabelled card is
+  the ambiguous one. `lib/word-batch.ts` enforces both halves and `RENOTE`
+  fixes the older one in the same run; see "Duplicate words" for why a shared
+  *reading* like `beber` and `tomar` needs no note at all. The owner asked for
+  this on 2026-11-15.
 - **A phrase takes its own words in with it.** When a batch adds a phrase,
   every word the phrase is made of is either already in the vocabulary or goes
   in alongside it. The owner asked on 2026-11-11, having found `por ejemplo`
