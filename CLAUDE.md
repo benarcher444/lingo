@@ -1401,6 +1401,30 @@ Read-only checks and one-off fixes live in `scripts/`:
   `el cuarto` as "the quarter/room" would have collided with `la habitación`
   and the guard would not have noticed. Check a new gloss against every
   reading the vocabulary already accepts, not just the literal string.
+- `add-anna-studylist.ts` — **not the owner's vocabulary.** 822 entries from
+  the second account holder's own Word document, added to *her* account on
+  2026-11-15 at the owner's request. It is the only batch here chosen by
+  somebody else, and none of the rules about what to study apply to it: not
+  frequency-first, not the verb cap, not the note convention. `--verbs-ok` and
+  `--notes-ok` are passed for exactly that reason, and the file says so. Worth
+  reading before writing another import, for three things it had to get right:
+  - **Her account was named explicitly and verified empty first.** Adding 822
+    words to the wrong person's vocabulary is not recoverable by anything
+    short of a restore, which is why `runBatch` demands `--email=`.
+  - **The English gloss decides the category, not the Spanish ending.** Her
+    list is organised by topic and the app files by part of speech. A first
+    classifier went by suffix and called `leer` and `verse` nouns, and sent
+    six countries to adjectives because *Germany*, *Hungary*, *Italy*,
+    *Norway* and *Turkey* end in `-y` and *Portugal* in `-al`. A gloss opening
+    "to " is a verb; a capitalised single word is a proper noun, which fixed
+    all 38 countries at once. The owner asked for the sections to be
+    double-checked and that is what the check found.
+  - **Her glosses are hers.** Only conventions the owner has stated for his
+    own data were applied — a noun reads "the X" (244 gained one), a noun
+    carries its article, and five connectors were filed where his vocabulary
+    files them. The 46 adjectives written as gendered pairs (`doblado/a`)
+    were **left alone**: answer matching reads the slash as either
+    alternative, so `doblado` is accepted, and house style is not a fault.
 - **The months are entered bare; the days of the week carry `el`.** Spanish
   says *en enero* and never *en el enero*, but *el lunes* is genuinely how the
   day is said, so the two sets look inconsistent and are not. Neither is
@@ -1664,6 +1688,14 @@ from the laptop. A cloud session clones this repo into an isolated VM, so:
 - **The owner's data moved there on 2026-09-10** (150 words, 1,022 answers,
   checksums matched). **The server's database is the real one.** The laptop's
   copy of that account is stale, and the local install is for development.
+- **There is more than one real account on it.** As of 2026-11-15 the server
+  holds the owner's (French and Spanish) and a second person's Spanish, 822
+  words added from her own study list. So **a script that touches data must
+  name its account and must not assume there is only one** — `runBatch`
+  requires `--email=` for this reason, and a query written against "the
+  Spanish language" will now match two. Her password was reset on the same
+  day at the owner's request, which signs out her sessions; tell him the new
+  one rather than leaving it in a file.
 - **GitHub deploy key:** `~/.ssh/lingo_deploy` on the laptop. The server's
   `authorized_keys` forces it to `lingo-deploy`, and it cannot open a shell.
 - **The server's `.env`** holds `HOST=127.0.0.1` and Sonnet. The owner adds the
