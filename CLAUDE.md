@@ -77,8 +77,12 @@ latest_accuracy, score` — same idea, one direction (hear it, type it).
 **Statistics — `statistics/statistics.csv`** (~25.7k rows, 2025-01-23 →
 2025-11-08) and `statistics_audio.csv` (~1.6k rows, 2025-10-16 → 2025-11-08).
 
-Long format: `language, word_type, date, measure, value`. `date` is a
-`YYYY-MM-DD HH:MM:SS` timestamp. `word_type` includes the pseudo-type `all`.
+Long format: `language, word_type, date, measure, value`. `date` is
+**`YYYY-MM-DD`, date-only** — this file said timestamp until 2026-11-16, and
+not one of the ~25.7k rows carries a time component. So the series resolves to
+a day, and two sessions on one day are indistinguishable in it; anything
+reading these files must not expect to order within a date.
+`word_type` includes the pseudo-type `all`.
 Measures: `total_words`, `average_score`, `average_accuracy` /
 `average_to_english_accuracy` / `average_from_english_accuracy`, `words_learnt`,
 `words_completely_learnt`, `percentage_learnt`,
@@ -1751,8 +1755,44 @@ from the laptop. A cloud session clones this repo into an isolated VM, so:
   one rather than leaving it in a file.
 - **GitHub deploy key:** `~/.ssh/lingo_deploy` on the laptop. The server's
   `authorized_keys` forces it to `lingo-deploy`, and it cannot open a shell.
-- **The server's `.env`** holds `HOST=127.0.0.1` and Sonnet. The owner adds the
-  API key there themselves.
+- **The server's `.env`** holds `HOST=127.0.0.1`, Sonnet, and since
+  2026-11-16 the SMTP settings. The owner adds every credential there
+  themselves — that file is off-limits to me for writing as well as reading,
+  so the way to change it is to hand him the block and a command.
+- **Mail goes out through the owner's Gmail**, configured 2026-11-16:
+  `SMTP_HOST=smtp.gmail.com`, port 587, `APP_URL` set to the sslip.io origin,
+  and `EMAIL_FROM=Lingo <his address>`. **Verified end to end the same day**,
+  not assumed: `POST /forgot` logged *"sent via smtp.gmail.com"* with a
+  message id, and the mail was found in his inbox, subject "Reset your Lingo
+  password". Four things worth knowing before touching it again:
+  - **A Gmail app password needs 2-Step Verification on the account.** Without
+    it, `myaccount.google.com/apppasswords` does not say "turn on 2SV" — it
+    says *"The setting that you are looking for is not available for your
+    account"*, which reads like an account-type restriction and sent the owner
+    looking in the wrong place. Google retired "less secure app access", so
+    there is no alternative route for SMTP.
+  - **Gmail, and not a mail service, because sslip.io is not a verifiable
+    domain.** Resend, Postmark and the rest want a domain they can check;
+    `91-99-202-188.sslip.io` is not one. Brevo and Mailjet verify a single
+    sender *address* instead and would work without a domain, but mail from an
+    unauthenticated sender is treated harshly by Gmail and Outlook, so it
+    would land in spam more often — worse than Gmail, not better. **When a
+    real domain arrives, move to a proper service**: it is two lines in
+    `.env`, because `src/email.ts` has providers behind one interface.
+  - **`EMAIL_FROM` must be the authenticated Gmail address.** Gmail refuses to
+    send as anybody else, so that one is not a free choice.
+  - **Whoever runs the app owns one piece of configuration, once.** The owner
+    expected a self-service reset to need nothing from him and asked *"I
+    thought this was so any user could set up"*. Users do self-serve, for
+    good; an app simply cannot send mail without credentials for some
+    mailbox, exactly as Conversation cannot run without an API key. Say it in
+    those terms, because the API key is the precedent he already accepted.
+    Three attempts were needed to land the block, so **give the steps one per
+    message and name the shell**: a heredoc pasted into PowerShell on the
+    laptop fails with "The '<' operator is reserved for future use", and the
+    cue that `ssh` worked is the prompt changing to `root@…`. Pasting it three
+    times over left three copies in `.env`; `grep -c '^SMTP_HOST'` is the
+    check, and it prints the count without printing the secret.
 
 ### Outstanding
 

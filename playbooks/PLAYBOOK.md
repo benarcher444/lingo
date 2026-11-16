@@ -643,6 +643,66 @@ is a rewrite.
 - **Passwords cannot be recovered, only replaced.** Ship a
   `scripts/set-password.ts` on day one: being locked out of your own install
   otherwise has no remedy but editing the database by hand.
+- **And a reset the account holder can do alone, the day a second person gets
+  an account.** A password script and an account lock that only a shell can
+  clear are fine while you are the only user and indefensible the moment you
+  are not: every forgotten password becomes a support request routed through
+  SSH. Build `/forgot` and `/reset/:token`, and **have a completed reset clear
+  the lockout too**, or it is a convenience on top of the shell rather than a
+  replacement for it. A reset link is a bearer credential, so make it worth as
+  little as possible:
+  - **Store it hashed and never in the clear**, so a copy of the table is
+    useless. SHA-256, *not* argon2: argon2 is slow to make guessable secrets
+    expensive, and a 256-bit random token is not guessable, so the slowness
+    buys nothing and costs a delay on every click.
+  - **Single use, enforced in the `WHERE` clause** (`used_at IS NULL`) rather
+    than by reading then writing, so two requests racing cannot both succeed.
+    An hour to live, and a new request invalidates the previous link — or a
+    forwarded old email stays a key.
+  - **Answer identically whether or not the address exists**, and **do not
+    await the send**: identical wording is no use if the timing differs, since
+    SMTP takes a visible moment and doing nothing does not. A sign-in form may
+    reasonably leak existence to stop the owner locking himself out; a page
+    anybody can post to has no such excuse.
+  - **Build the link from a configured `APP_URL`, never the request's `Host`
+    header.** Building it from a header the visitor controls is the classic way
+    this feature becomes a credential thief.
+  - **Say whether a dead link was spent or expired.** Pressing back onto a used
+    link is common and harmless, and neither message reveals whether an account
+    exists.
+- **Put mail behind one `send()` interface, with a `console` provider as the
+  default.** Same shape as the AI abstraction and for the same reason: which
+  service carries the mail is configuration. The console provider prints the
+  whole message to the log, so an unconfigured install still works and the
+  entire flow is testable with no credentials, no network and no bill. Choose
+  the provider **per call rather than at import**, or it is fixed before the
+  environment has loaded.
+- **Expect sending mail to be the part that stalls**, and budget for it
+  separately from the code. Three things catch people out, in order:
+  - **Transactional services want a verified domain.** Until you own one, your
+    options are a consumer mailbox over SMTP, or a service that verifies a
+    single sender *address* — and mail from an unauthenticated sender is
+    treated harshly by the big inbox providers, so it lands in spam more often.
+    Pick the consumer mailbox, and move when the domain arrives; behind one
+    `send()` interface that is two lines of configuration.
+  - **A Gmail app password requires 2-Step Verification**, and without it the
+    app-passwords page says only *"The setting that you are looking for is not
+    available for your account"* — which reads as an account restriction rather
+    than a missing prerequisite. The display shows the password in four groups
+    for readability; the spaces are not part of it.
+  - **The owner will reasonably ask why *they* have to configure anything** for
+    a feature whose whole point is that users serve themselves. They do serve
+    themselves, permanently; an app cannot send mail without credentials for
+    some mailbox. Compare it to the API key they already added, which is the
+    same shape of one-time setup, and **give the steps one per message, naming
+    which shell each runs in** — a heredoc pasted into PowerShell instead of
+    the server's bash fails in a way that looks like the block is wrong, and a
+    block pasted twice silently duplicates every line. Give a counting check
+    (`grep -c '^SMTP_HOST' …`) that confirms the result without printing the
+    secret.
+  - **Verify it by finding the mail, not by reading a 200.** The send being
+    accepted, the provider being chosen and the message arriving are three
+    different claims, and only the last one is the feature.
 
 ### Rules that keep it safe on the open internet
 
